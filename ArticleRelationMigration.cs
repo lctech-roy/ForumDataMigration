@@ -6,11 +6,11 @@ using MySqlConnector;
 
 namespace ForumDataMigration;
 
-public class RelationMigration
+public class ArticleRelationMigration
 {
     private readonly ISnowflake _snowflake;
 
-    public RelationMigration(ISnowflake snowflake)
+    public ArticleRelationMigration(ISnowflake snowflake)
     {
         _snowflake = snowflake;
     }

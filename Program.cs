@@ -12,7 +12,7 @@ var serviceCollection = new ServiceCollection();
 // 2. 註冊服務
 serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint)new Random().Next(1, 31)));
 serviceCollection.AddSingleton<Migration>();
-serviceCollection.AddSingleton<RelationMigration>();
+serviceCollection.AddSingleton<ArticleRelationMigration>();
 serviceCollection.AddSingleton<ArticleCommentMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
@@ -22,7 +22,7 @@ var serviceProvider = serviceCollection.BuildServiceProvider();
 
 // 3. 執行主服務
 var migration = serviceProvider.GetRequiredService<Migration>();
-var relation = serviceProvider.GetRequiredService<RelationMigration>();
+var articleRelationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
 var articleCommentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
 var articleRatingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var articleVoteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
@@ -33,7 +33,7 @@ Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 // //1.文章Id關聯表
-// relation.Migration();
+// articleRelationMigration.Migration();
 // migration.ExecuteRelation();
 
 // //2.寫入ArticleId Mapping表

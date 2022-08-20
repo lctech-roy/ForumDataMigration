@@ -6,15 +6,13 @@ namespace ForumDataMigration.Helper;
 
 public static class RelationHelper
 {
-    private const string CONNECTION_STR = Setting.NEW_FORUM_CONNECTION;
-
     public static Dictionary<int, long> GetArticleDic()
     {
         const string queryRelationSql = $"select \"{nameof(ArticleRelation.Id)}\",\"{nameof(ArticleRelation.Tid)}\" from \"{nameof(ArticleRelation)}\"";
 
         var relationDic = new Dictionary<int, long>();
 
-        using (var conn = new NpgsqlConnection(CONNECTION_STR))
+        using (var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
         {
             conn.Open();
 
@@ -42,7 +40,7 @@ public static class RelationHelper
 
         var boardDic = new Dictionary<int, long>();
 
-        using (var conn = new NpgsqlConnection(CONNECTION_STR))
+        using (var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
         {
             conn.Open();
 
@@ -70,7 +68,7 @@ public static class RelationHelper
 
         var categoryDic = new Dictionary<int, long>();
 
-        using (var conn = new NpgsqlConnection(CONNECTION_STR))
+        using (var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
         {
             conn.Open();
 

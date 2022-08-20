@@ -29,7 +29,7 @@ public class ArticleVoteMigration
 
         const string articleVoteItemHistorySql = $"COPY \"{nameof(ArticleVoteItemHistory)}\" " +
                                                  $"(\"{nameof(ArticleVoteItemHistory.Id)}\",\"{nameof(ArticleVoteItemHistory.ArticleVoteItemId)}\"" + Setting.COPY_ENTITY_SUFFIX;
-        
+
         const string queryPollSql = $@"SELECT thread.dateline,
                                                 thread.authorid,
                                                 poll.tid  AS Tid,

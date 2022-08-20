@@ -6,21 +6,8 @@ namespace ForumDataMigration.Extensions;
 
 public static class StringExtension
 {
-    private static readonly Regex RegexImg = new("\\[(?<tag>(?:attach)?img)(?<attr>[^\\]]*)\\](?<content>[^\\[]+)\\[\\/(?:(?:attach)?img)]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    // private static readonly Regex RegexD = new($"\\{Setting.D}", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    // private static readonly Regex RegexU = new("\\u0000", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    // private static readonly Regex RegexBackSlash = new("\\\\", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    // private static readonly Regex RegexBackSlashR = new("\\r", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    // private static readonly Regex RegexBackSlashN = new("\\n", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    
-    // public static string ToCopyText(this string str)
-    // {
-    //     return str.Length == 0 ? str : str.Replace(Setting.D,"")
-    //                                       .Replace("\\","\\\\")
-    //                                       .Replace("\r", "\\r")
-    //                                       .Replace("\n", "\\n")
-    //                                       .Replace("\u0000", "");
-    // }
+    private static readonly Regex RegexImg = new("\\[(?<tag>(?:attach)?img)(?<attr>[^\\]]*)\\](?<content>[^\\[]+)\\[\\/(?:(?:attach)?img)]", 
+                                                 RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
     public static List<string> GetExternalImageUrls(this string content)
     {
@@ -49,17 +36,6 @@ public static class StringExtension
     
         return sb.ToString();
     }
-    
-    // public static string ToCopyText(this string str)
-    // {
-    //     RegexD.Replace(str,"");
-    //     RegexU.Replace(str,"");
-    //     RegexBackSlash.Replace(str,"\\\\");
-    //     RegexBackSlashR.Replace(str,"\\r");
-    //     RegexBackSlashN.Replace(str,"\\n");
-    //
-    //     return str;
-    // }
     
     public static string ToNewTags(this string tagStr)
     {

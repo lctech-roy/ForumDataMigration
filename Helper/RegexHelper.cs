@@ -6,9 +6,9 @@ namespace ForumDataMigration.Helper;
 public static class RegexHelper
 {
     private const string EMBED = "embed";
-    public static Dictionary<string, Func<Match, int, string>> BbcodeDic { get; set; }
-    public static string Pattern { get; }
-    public static Regex Regex { get; }
+    private static Dictionary<string, Func<Match, int, string>> BbcodeDic { get; set; }
+    private static string Pattern { get; }
+    private static Regex Regex { get; }
 
     static RegexHelper()
     {
@@ -93,8 +93,7 @@ public static class RegexHelper
                   "|(?<emoji>{:([1-9]|10)_(199|[2-7][0-9]{2}|8[0-3][0-9]|84[0-6]):})";
         Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     }
-
-
+    
     public static string GetNewMessage(string message, int tid)
     {
         var newMessage = Regex.Replace(message, m =>

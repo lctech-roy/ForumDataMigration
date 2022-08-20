@@ -25,6 +25,8 @@ public class Migration
         {
             cn.ExecuteAllTextsIfExists($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRelation)}/{period.FileName}");
         }
+        
+        cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{AFTER_FILE_NAME}");
     }
 
     public async Task ExecuteArticleAsync(CancellationToken token)

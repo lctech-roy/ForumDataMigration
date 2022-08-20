@@ -32,14 +32,12 @@ public class ArticleRatingMigration
         const string queryRateSql = @"SELECT tid,pid,uid,extcredits,dateline,score,reason,forceshow FROM pre_forum_ratelog WHERE tid<>-1 AND dateline >= @Start AND dateline < @End";
 
         const string ratingSql = $"COPY \"{nameof(ArticleRating)}\" " +
-                                 $"(\"{nameof(ArticleRating.Id)}\",\"{nameof(ArticleRating.CreationDate)}\",\"{nameof(ArticleRating.CreatorId)}\",\"{nameof(ArticleRating.ModificationDate)}\",\"{nameof(ArticleRating.Version)}\"" +
-                                 $",\"{nameof(ArticleRating.ModifierId)}\",\"{nameof(ArticleRating.ArticleId)}\",\"{nameof(ArticleRating.VisibleType)}\",\"{nameof(ArticleRating.Content)}\") " +
-                                 $"FROM STDIN (DELIMITER '{Setting.D}')\n{{0}}";
+                                 $"(\"{nameof(ArticleRating.Id)}\",\"{nameof(ArticleRating.ArticleId)}\",\"{nameof(ArticleRating.VisibleType)}\",\"{nameof(ArticleRating.Content)}\"" +
+                                 Setting.COPY_SUFFIX;
 
         const string ratingItemSql = $"COPY \"{nameof(ArticleRatingItem)}\" " +
-                                     $"(\"{nameof(ArticleRatingItem.Id)}\",\"{nameof(ArticleRatingItem.CreationDate)}\",\"{nameof(ArticleRatingItem.CreatorId)}\",\"{nameof(ArticleRatingItem.ModificationDate)}\",\"{nameof(ArticleRating.Version)}\"" +
-                                     $",\"{nameof(ArticleRatingItem.ModifierId)}\",\"{nameof(ArticleRatingItem.CreditId)}\",\"{nameof(ArticleRatingItem.Point)}\") " +
-                                     $"FROM STDIN (DELIMITER '{Setting.D}')\n{{0}}";
+                                     $"(\"{nameof(ArticleRatingItem.Id)}\",\"{nameof(ArticleRatingItem.CreditId)}\",\"{nameof(ArticleRatingItem.Point)}\"" +
+                                     Setting.COPY_SUFFIX;
         
         var periods = PeriodHelper.GetPeriods();
 
@@ -52,9 +50,9 @@ public class ArticleRatingMigration
 
                              if (!rateLogs.Any()) return;
 
-                             var ratingDic = new Dictionary<(uint pid, int tid, uint uid), byte>();
-                             var ratingValueSb = new StringBuilder();
-                             var ratingItemValueSb = new StringBuilder();
+                             var ratingIdDic = new Dictionary<(uint pid, int tid, uint uid), byte>();
+                             var articleRatingSb = new StringBuilder();
+                             var articleRatingItemSb = new StringBuilder();
 
                              foreach (var rateLog in rateLogs)
                              {
@@ -65,28 +63,65 @@ public class ArticleRatingMigration
                                  if (!relationDic.ContainsKey(rateLog.Tid))
                                      continue;
 
-                                 if (!ratingDic.ContainsKey((rateLog.Pid, rateLog.Tid, rateLog.Uid)))
+                                 if (!ratingIdDic.ContainsKey((rateLog.Pid, rateLog.Tid, rateLog.Uid)))
                                  {
-                                     rateLog.Reason = rateLog.Reason.ToCopyText();
+                                     var articleRating = new ArticleRating
+                                                         {
+                                                             Id = ratingId,
+                                                             ArticleId = relationDic[rateLog.Tid],
+                                                             VisibleType = VisibleType.Public,
+                                                             Content = rateLog.Reason,
+                                                             CreationDate = rateCreateDate,
+                                                             CreatorId = rateLog.Uid,
+                                                             ModificationDate = rateCreateDate,
+                                                             ModifierId = rateLog.Uid
+                                                         };
 
-                                     ratingValueSb.Append($"{ratingId}{Setting.D}{rateCreateDate}{Setting.D}{rateLog.Uid}{Setting.D}{rateCreateDate}{Setting.D}{0}{Setting.D}{0}{Setting.D}{relationDic[rateLog.Tid]}{Setting.D}{(int) VisibleType.Public}{Setting.D}{rateLog.Reason}\n");
-                                     ratingItemValueSb.Append($"{ratingId}{Setting.D}{rateCreateDate}{Setting.D}{rateLog.Uid}{Setting.D}{rateCreateDate}{Setting.D}{0}{Setting.D}{0}{Setting.D}{rateLog.Extcredits}{Setting.D}{rateLog.Score}\n");
-
-                                     ratingDic.Add((rateLog.Pid, rateLog.Tid, rateLog.Uid), rateLog.Extcredits);
+                                     articleRatingSb.Append($"{articleRating.Id}{Setting.D}{articleRating.ArticleId}{Setting.D}{(int) articleRating.VisibleType}{Setting.D}{articleRating.Content.ToCopyText()}{Setting.D}" +
+                                                            $"{articleRating.CreationDate}{Setting.D}{articleRating.CreatorId}{Setting.D}{articleRating.ModificationDate}{Setting.D}{articleRating.ModifierId}{Setting.D}{articleRating.Version}\n");
+                                     
+                                     var articleRatingItem = new ArticleRatingItem()
+                                                         {
+                                                             Id = ratingId,
+                                                             CreditId = rateLog.Extcredits,
+                                                             Point = rateLog.Score,
+                                                             CreationDate = rateCreateDate,
+                                                             CreatorId = rateLog.Uid,
+                                                             ModificationDate = rateCreateDate,
+                                                             ModifierId = rateLog.Uid
+                                                         };
+                                     
+                                     articleRatingItemSb.Append($"{articleRatingItem.Id}{Setting.D}{articleRatingItem.CreditId}{Setting.D}{articleRatingItem.Point}{Setting.D}" +
+                                                            $"{articleRatingItem.CreationDate}{Setting.D}{articleRatingItem.CreatorId}{Setting.D}{articleRatingItem.ModificationDate}{Setting.D}{articleRatingItem.ModifierId}{Setting.D}{articleRatingItem.Version}\n");
+                                     
+                                     ratingIdDic.Add((rateLog.Pid, rateLog.Tid, rateLog.Uid), rateLog.Extcredits);
                                  }
                                  else
                                  {
-                                     var existsRatingCreditId = ratingDic[(rateLog.Pid, rateLog.Tid, rateLog.Uid)];
+                                     var existsRatingCreditId = ratingIdDic[(rateLog.Pid, rateLog.Tid, rateLog.Uid)];
 
-                                     if (existsRatingCreditId != rateLog.Extcredits)
-                                         ratingItemValueSb.Append($"{ratingId}{Setting.D}{rateCreateDate}{Setting.D}{rateLog.Uid}{Setting.D}{rateCreateDate}{Setting.D}{0}{Setting.D}{0}{Setting.D}{rateLog.Extcredits}{Setting.D}{rateLog.Score}\n");
+                                     if (existsRatingCreditId == rateLog.Extcredits) continue;
+
+                                     var articleRatingItem = new ArticleRatingItem()
+                                                             {
+                                                                 Id = ratingId,
+                                                                 CreditId = rateLog.Extcredits,
+                                                                 Point = rateLog.Score,
+                                                                 CreationDate = rateCreateDate,
+                                                                 CreatorId = rateLog.Uid,
+                                                                 ModificationDate = rateCreateDate,
+                                                                 ModifierId = rateLog.Uid
+                                                             };
+                                         
+                                     articleRatingItemSb.Append($"{articleRatingItem.Id}{Setting.D}{articleRatingItem.CreditId}{Setting.D}{articleRatingItem.Point}{Setting.D}" +
+                                                                $"{articleRatingItem.CreationDate}{Setting.D}{articleRatingItem.CreatorId}{Setting.D}{articleRatingItem.ModificationDate}{Setting.D}{articleRatingItem.ModifierId}{Setting.D}{articleRatingItem.Version}\n");
                                  }
                              }
 
-                             if (ratingValueSb.Length == 0) return;
-                             
-                             var insertRatingSql = string.Format(ratingSql, ratingValueSb);
-                             var insertRatingItemSql = string.Format(ratingItemSql, ratingItemValueSb);
+                             if (articleRatingSb.Length == 0) return;
+
+                             var insertRatingSql = string.Concat(ratingSql, articleRatingSb);
+                             var insertRatingItemSql = string.Concat(ratingItemSql, articleRatingItemSb);
 
                              File.WriteAllText($"{ratingPath}/{period.FileName}", insertRatingSql);
                              File.WriteAllText($"{ratingItemPath}/{period.FileName}", insertRatingItemSql);

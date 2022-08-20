@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
@@ -13,7 +14,18 @@ namespace ForumDataMigration;
 public class ArticleCommentMigration
 {
     private readonly ISnowflake _snowflake;
+    private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
+    private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
+    private const string HIDE_PATTERN = @"(\[\/?hide[^\]]*\]|{[^}]*})";
 
+    public static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    public static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    public static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    
+    private static readonly Dictionary<int, string?> ColorDic = new()
+                                                                {
+                                                                    { 0, null }, { 1, "#EE1B2E" }, { 2, "#EE5023" }, { 3, "#996600" }, { 4, "#3C9D40" }, { 5, "#2897C5" }, { 6, "#2B65B7" }, { 7, "#8F2A90" }, { 8, "#EC1282" }
+                                                                };
     public ArticleCommentMigration(ISnowflake snowflake)
     {
         _snowflake = snowflake;
@@ -143,13 +155,6 @@ public class ArticleCommentMigration
 
                                      foreach (var post in posts)
                                      {
-                                         if (post.Tid == 14615241)
-                                         {
-                                             
-                                         }
-                                         
-                                        
-                                         
                                          //髒資料放過他
                                          if (!articleDic.ContainsKey(post.Tid) || !boardDic.ContainsKey(post.Fid))
                                              continue;
@@ -262,8 +267,8 @@ public class ArticleCommentMigration
         var isScheduling = post.PostTime < post.Dateline;
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = postResult.ReadDic.ContainsKey(post.Tid) ? postResult.ReadDic[post.Tid] : null;
-        var imageCount = Setting.BbCodeImageRegex.Matches(post.Message).Count;
-        var videoCount = Setting.BbCodeVideoRegex.Matches(post.Message).Count;
+        var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
+        var videoCount = BbCodeVideoRegex.Matches(post.Message).Count;
         var modDic = postResult.ModDic;
 
         var article = new Article()
@@ -314,7 +319,7 @@ public class ArticleCommentMigration
                           VideoCount = videoCount,
                           DonatePoint = 0,
                           Highlight = post.Highlight != 0,
-                          HighlightColor = Setting.ColorDic.ContainsKey(highlightInt) ? Setting.ColorDic[highlightInt] : null,
+                          HighlightColor = ColorDic.ContainsKey(highlightInt) ? ColorDic[highlightInt] : null,
                           Recommend = post.Digest,
                           ReadPermission = post.Readperm,
                           CommentDisabled = post.Closed == 1,
@@ -325,7 +330,7 @@ public class ArticleCommentMigration
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
                           SchedulePublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : null,
-                          HideExpirationDate = Setting.BbCodeHideTagRegex.IsMatch(post.Message!) ? postResult.CreateDate.AddDays(postResult.HideExpirationDay) : null,
+                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message!) ? postResult.CreateDate.AddDays(postResult.HideExpirationDay) : null,
                           PinExpirationDate = modDic.ContainsKey((post.Tid, "EST")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EST")]) : null,
                           RecommendExpirationDate = modDic.ContainsKey((post.Tid, "EDI")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EDI")]) : null,
                           HighlightExpirationDate = modDic.ContainsKey((post.Tid, "EHL")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EHL")]) : null,

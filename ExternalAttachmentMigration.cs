@@ -21,8 +21,6 @@ public class ExternalAttachmentMigration
 
     public void Migration()
     {
-        // const string queryAttachmentsSql = @"SELECT tid,pid,message FROM pre_forum_post WHERE `first` = TRUE AND dateline >= @Start AND dateline < @End";
-
         const string copyAttachmentSql = $"COPY \"{nameof(ExternalAttachmentUrl)}\" " +
                                          $"(\"{nameof(ExternalAttachmentUrl.AttachmentId)}\",\"{nameof(ExternalAttachmentUrl.Tid)}\",\"{nameof(ExternalAttachmentUrl.Pid)}\",\"{nameof(ExternalAttachmentUrl.AttachmentUrl)}\"" + Setting.COPY_SUFFIX;
 
@@ -73,50 +71,5 @@ public class ExternalAttachmentMigration
                                  }
                              });
         }
-
-        // for (var i = 0; i <= 150; i++)
-        // {
-        //     var externalAttachmentUrlPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ExternalAttachmentUrl)}/{i}";
-        //     Directory.CreateDirectory(externalAttachmentUrlPath);
-        //
-        //     var queryAttachmentsSql = $@"SELECT tid,pid,message FROM pre_forum_post{(i != 0 ? $"_{i}" : "")} WHERE `first` = TRUE AND dateline >= @Start AND dateline < @End";
-        //
-        //     Parallel.ForEach(periods,
-        //                      period =>
-        //                      {
-        //                          try
-        //                          {
-        //                              var attachmentSb = new StringBuilder();
-        //                              using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION_DEV);
-        //
-        //                              var threadMessages = cn.Query<ThreadMessage>(queryAttachmentsSql, new { Start = period.StartSeconds, End = period.EndSeconds }).ToArray();
-        //
-        //                              foreach (var threadMessage in threadMessages)
-        //                              {
-        //                                  var externalImageUrls = threadMessage.Message.GetExternalImageUrls();
-        //
-        //                                  foreach (var externalImageUrl in externalImageUrls)
-        //                                  {
-        //                                      attachmentSb.Append($"{_snowflake.Generate()}{Setting.D}{threadMessage.Tid}{Setting.D}{threadMessage.Pid}{Setting.D}{externalImageUrl}\n");
-        //                                  }
-        //                              }
-        //
-        //                              if (attachmentSb.Length == 0) return;
-        //
-        //                              var insertAttachmentSql = string.Concat(copyAttachmentSql, attachmentSb);
-        //
-        //
-        //                              var fullPath = $"{externalAttachmentUrlPath}/{period.FileName}";
-        //                              File.WriteAllText(fullPath, insertAttachmentSql);
-        //                              Console.WriteLine(fullPath);
-        //                          }
-        //                          catch (Exception e)
-        //                          {
-        //                              Console.WriteLine(e);
-        //
-        //                              throw;
-        //                          }
-        //                      });
-        // }
     }
 }
