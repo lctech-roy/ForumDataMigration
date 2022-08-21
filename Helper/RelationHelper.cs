@@ -1,4 +1,5 @@
 using System.Data;
+using Dapper;
 using ForumDataMigration.Models;
 using Npgsql;
 
@@ -144,5 +145,35 @@ public static class RelationHelper
         Console.WriteLine("Finish Import MemberDisplayNameDic!");
 
         return memberDic;
+    }
+
+    public static Dictionary<int, long> GetArticleIdDic(int[] tids)
+    {
+        const string queryArticleIdSql = @"SELECT ""Id"",""Tid"" FROM ""ArticleRelation"" WHERE ""Tid"" =ANY(@tids)";
+
+        using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+
+        var articleIdDic = conn.Query<(long id, int tid)>(queryArticleIdSql, new { tids })
+                                  .ToDictionary(t =>t.tid, t => t.id);
+
+        return articleIdDic;
+    }
+    
+    public static Dictionary<int, (long, string)> GetSimpleMemberDic(string[] uids)
+    {
+        const string queryMemberSql = @"SELECT memberUid.""Id"", memberUid.""Value"" ::INTEGER AS  Uid, memberName.""Value"" AS DisplayName 
+                                        FROM ""MemberProfile"" memberUid
+                                        INNER JOIN (
+	                                        SELECT ""Id"", ""Value"" FROM ""MemberProfile"" WHERE ""Key"" = 'DisplayName' 
+                                        ) memberName
+                                        ON memberUid.""Id"" = memberName.""Id""
+                                        WHERE memberUid.""Key"" = 'PanUid' AND memberUid.""Value"" =ANY(@uids)";
+
+        using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
+
+        var simpleMemberDic = conn.Query<(long id, int uid, string displayName)>(queryMemberSql, new { uids })
+                                  .ToDictionary(t =>t.uid, t => (t.id, t.displayName));
+
+        return simpleMemberDic;
     }
 }

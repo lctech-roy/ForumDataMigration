@@ -7,7 +7,7 @@ public class RateLog
     [Slapper.AutoMapper.Id]
     public int Tid { get; set; }
     [Slapper.AutoMapper.Id]
-    public uint Uid { get; set; }
+    public int Uid { get; set; }
     [Slapper.AutoMapper.Id]
     public byte Extcredits { get; set; }
     public uint Dateline { get; set; }
