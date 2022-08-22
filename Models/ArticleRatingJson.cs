@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Lctech.Jkf.Domain.Entities;
+using Lctech.Jkf.Search.Enums;
 
 namespace ForumDataMigration.Models;
 
@@ -19,6 +20,6 @@ public class ArticleRatingJson : ArticleRating
     public long? ModifierUid { get; set; }
     public string ModifierName { get; set; } = null!;
     
-    public short Type { get; set; } = 2;
+    public DocumentType Type { get; set; } = DocumentType.Rating;
     public bool Deleted { get; set; } = false;
 }

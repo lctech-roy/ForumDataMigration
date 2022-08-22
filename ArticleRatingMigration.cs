@@ -42,7 +42,7 @@ public class ArticleRatingMigration
         Directory.CreateDirectory(POST0_RATING_DIRECTORY_PATH);
         Directory.CreateDirectory(POST0_RATING_JASON_DIRECTORY_PATH);
         Directory.CreateDirectory(POST0_RATING_ITEM_DIRECTORY_PATH);
-        
+
         _snowflake = snowflake;
     }
 
@@ -76,11 +76,12 @@ public class ArticleRatingMigration
                                                                          await ExecuteAsync(rateLogs, postTableId, cancellationToken: cancellationToken);
                                                                      });
     }
+
     private async Task ExecuteAsync(RateLog[] rateLogs, int postTableId, Period? period = null, CancellationToken cancellationToken = default)
     {
         if (!rateLogs.Any()) return;
 
-        var articleIdDic = await RelationHelper.GetArticleIdDicAsync(rateLogs.Select(x => x.Tid).Distinct().ToArray(),cancellationToken);
+        var articleIdDic = await RelationHelper.GetArticleIdDicAsync(rateLogs.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
 
         if (!articleIdDic.Any())
             return;
@@ -105,7 +106,7 @@ public class ArticleRatingMigration
             if (!ratingIdDic.ContainsKey((rateLog.Pid, rateLog.Tid, rateLog.Uid)))
             {
                 var articleId = articleIdDic[rateLog.Tid];
-                
+
                 var articleRating = new ArticleRatingJson()
                                     {
                                         Id = ratingId,
@@ -126,13 +127,13 @@ public class ArticleRatingMigration
                                         ModifierUid = rateLog.Uid,
                                         ModifierName = memberName
                                     };
-
-                articleRatingSb.Append($"{articleRating.Id}{Setting.D}{articleRating.ArticleId}{Setting.D}{(int) articleRating.VisibleType}{Setting.D}{articleRating.Content.ToCopyText()}{Setting.D}" +
-                                       $"{articleRating.CreationDate}{Setting.D}{articleRating.CreatorId}{Setting.D}{articleRating.ModificationDate}{Setting.D}{articleRating.ModifierId}{Setting.D}{articleRating.Version}\n");
+                
+                articleRatingSb.AppendCopyValues(articleRating.Id, articleRating.ArticleId, (int) articleRating.VisibleType, articleRating.Content.ToCopyText(),
+                                                 articleRating.CreationDate, articleRating.CreatorId, articleRating.ModificationDate, articleRating.ModifierId, articleRating.Version);
 
                 var json = await JsonHelper.GetJsonAsync(articleRating, cancellationToken);
                 articleRatingJsonSb.Append($"{json}\n");
-                
+
                 var articleRatingItem = new ArticleRatingItem()
                                         {
                                             Id = ratingId,
@@ -144,8 +145,8 @@ public class ArticleRatingMigration
                                             ModifierId = memberId
                                         };
 
-                articleRatingItemSb.Append($"{articleRatingItem.Id}{Setting.D}{articleRatingItem.CreditId}{Setting.D}{articleRatingItem.Point}{Setting.D}" +
-                                           $"{articleRatingItem.CreationDate}{Setting.D}{articleRatingItem.CreatorId}{Setting.D}{articleRatingItem.ModificationDate}{Setting.D}{articleRatingItem.ModifierId}{Setting.D}{articleRatingItem.Version}\n");
+                articleRatingItemSb.AppendCopyValues(articleRatingItem.Id, articleRatingItem.CreditId, articleRatingItem.Point,
+                                                     articleRatingItem.CreationDate, articleRatingItem.CreatorId, articleRatingItem.ModificationDate, articleRatingItem.ModifierId, articleRatingItem.Version);
 
                 ratingIdDic.Add((rateLog.Pid, rateLog.Tid, rateLog.Uid), rateLog.Extcredits);
             }
@@ -166,26 +167,40 @@ public class ArticleRatingMigration
                                             ModifierId = memberId
                                         };
 
-                articleRatingItemSb.Append($"{articleRatingItem.Id}{Setting.D}{articleRatingItem.CreditId}{Setting.D}{articleRatingItem.Point}{Setting.D}" +
-                                           $"{articleRatingItem.CreationDate}{Setting.D}{articleRatingItem.CreatorId}{Setting.D}{articleRatingItem.ModificationDate}{Setting.D}{articleRatingItem.ModifierId}{Setting.D}{articleRatingItem.Version}\n");
+                articleRatingItemSb.AppendCopyValues(articleRatingItem.Id, articleRatingItem.CreditId, articleRatingItem.Point,
+                                                     articleRatingItem.CreationDate, articleRatingItem.CreatorId, articleRatingItem.ModificationDate, articleRatingItem.ModifierId, articleRatingItem.Version);
             }
         }
 
         if (articleRatingSb.Length == 0) return;
 
-        var insertRatingSql = string.Concat(RATING_SQL, articleRatingSb);
-        var insertRatingItemSql = string.Concat(RATING_ITEM_SQL, articleRatingItemSb);
-
         var ratingPath = postTableId == 0 ? $"{POST0_RATING_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}/{postTableId}.sql";
-        await File.WriteAllTextAsync(ratingPath, insertRatingSql, cancellationToken);
-        Console.WriteLine(ratingPath);
-        
         var ratingJsonPath = postTableId == 0 ? $"{POST0_RATING_JASON_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/{postTableId}.sql";
-        await File.WriteAllTextAsync(ratingJsonPath, articleRatingJsonSb.ToString(), cancellationToken);
-        Console.WriteLine(ratingJsonPath);
-
         var ratingItemPath = postTableId == 0 ? $"{POST0_RATING_ITEM_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}/{postTableId}.sql";
-        await File.WriteAllTextAsync(ratingItemPath, insertRatingItemSql, cancellationToken);
+
+        var ratingTask = new Task(() =>
+                                  {
+                                      var insertRatingSql = string.Concat(RATING_SQL, articleRatingSb);
+                                      File.WriteAllText(ratingPath, insertRatingSql);
+                                  });
+
+        var ratingJsonTask = new Task(() =>
+                                      {
+                                          File.WriteAllText(ratingJsonPath, articleRatingJsonSb.ToString());
+                                      });
+
+        var ratingItemTask = new Task(() =>
+                                      {
+                                          var insertRatingItemSql = string.Concat(RATING_ITEM_SQL, articleRatingItemSb);
+                                          File.WriteAllText(ratingItemPath, insertRatingItemSql);
+                                      });
+
+        ratingTask.Start();
+        ratingJsonTask.Start();
+        ratingItemTask.Start();
+        await Task.WhenAll(ratingTask, ratingJsonTask, ratingItemTask);
+        Console.WriteLine(ratingPath);
+        Console.WriteLine(ratingJsonPath);
         Console.WriteLine(ratingItemPath);
     }
 }
