@@ -147,19 +147,19 @@ public static class RelationHelper
         return memberDic;
     }
 
-    public static Dictionary<int, long> GetArticleIdDic(int[] tids)
+    public static async Task<Dictionary<int, long>> GetArticleIdDicAsync(int[] tids,CancellationToken cancellationToken =default)
     {
         const string queryArticleIdSql = @"SELECT ""Id"",""Tid"" FROM ""ArticleRelation"" WHERE ""Tid"" =ANY(@tids)";
 
-        using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+        await using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
-        var articleIdDic = conn.Query<(long id, int tid)>(queryArticleIdSql, new { tids })
+        var articleIdDic = (await conn.QueryAsync<(long id, int tid)>(new CommandDefinition(queryArticleIdSql,new { tids },cancellationToken: cancellationToken)))
                                   .ToDictionary(t =>t.tid, t => t.id);
 
         return articleIdDic;
     }
     
-    public static Dictionary<int, (long, string)> GetSimpleMemberDic(string[] uids)
+    public static async Task<Dictionary<int, (long, string)>> GetSimpleMemberDicAsync(string[] uids,CancellationToken cancellationToken =default)
     {
         const string queryMemberSql = @"SELECT memberUid.""Id"", memberUid.""Value"" ::INTEGER AS  Uid, memberName.""Value"" AS DisplayName 
                                         FROM ""MemberProfile"" memberUid
@@ -169,9 +169,9 @@ public static class RelationHelper
                                         ON memberUid.""Id"" = memberName.""Id""
                                         WHERE memberUid.""Key"" = 'PanUid' AND memberUid.""Value"" =ANY(@uids)";
 
-        using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
+        await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
-        var simpleMemberDic = conn.Query<(long id, int uid, string displayName)>(queryMemberSql, new { uids })
+        var simpleMemberDic = (await conn.QueryAsync<(long id, int uid, string displayName)>(new CommandDefinition(queryMemberSql,new { uids },cancellationToken: cancellationToken)))
                                   .ToDictionary(t =>t.uid, t => (t.id, t.displayName));
 
         return simpleMemberDic;
