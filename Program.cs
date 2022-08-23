@@ -1,5 +1,4 @@
 ﻿// See https://aka.ms/new-console-template for more information
-using System.Diagnostics;
 using System.Globalization;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
@@ -10,7 +9,7 @@ using Netcorext.Algorithms;
 var serviceCollection = new ServiceCollection();
 
 // 2. 註冊服務
-serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint)new Random().Next(1, 31)));
+serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint) new Random().Next(1, 31)));
 serviceCollection.AddSingleton<Migration>();
 serviceCollection.AddSingleton<ArticleRelationMigration>();
 serviceCollection.AddSingleton<ArticleCommentMigration>();
@@ -22,10 +21,10 @@ var serviceProvider = serviceCollection.BuildServiceProvider();
 
 // 3. 執行主服務
 var migration = serviceProvider.GetRequiredService<Migration>();
-var articleRelationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
-var articleCommentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
-var articleRatingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
-var articleVoteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
+var relationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
+var commentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
+var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
+var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
 
 var token = new CancellationTokenSource().Token;
 
@@ -33,24 +32,24 @@ Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 // //1.文章Id關聯表
-// articleRelationMigration.Migration();
+// relationMigration.Migration();
 // migration.ExecuteRelation();
-
+//
 // //2.寫入ArticleId Mapping表
-//RelationContainer.ArticleIdDic =  RelationHelper.GetArticleDic();
-
+// RelationContainer.ArticleIdDic = RelationHelper.GetArticleDic();
+//
 // //3.文章,留言
-// articleCommentMigration.Migration();
- await migration.ExecuteArticleAsync(token);
-//await migration.ExecuteArticleRewardAsync(token);
+// commentMigration.Migration();
+// await migration.ExecuteArticleAsync(token);
+// await migration.ExecuteArticleRewardAsync(token);
 // await migration.ExecuteCommentAsync(token);
-
+//
 // //4.文章評分
-// articleRatingMigration.Migration();
-// await migration.ExecuteRatingAsync(token);
-
+// await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
+//
 // //5.文章投票
-// articleVoteMigration.Migration();
+// voteMigration.Migration();
 // await migration.ExecuteArticleVoteAsync(token);
 
 Console.WriteLine("Hello, World!");

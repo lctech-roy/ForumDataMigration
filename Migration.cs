@@ -25,7 +25,7 @@ public class Migration
         {
             cn.ExecuteAllTextsIfExists($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRelation)}/{period.FileName}");
         }
-        
+
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{AFTER_FILE_NAME}");
     }
 
@@ -70,7 +70,7 @@ public class Migration
             //
             //                      connection.ExecuteAllTexts(filePath);
             //                  });
-            
+
             Parallel.ForEach(postTableIds,
                              postTableId =>
                              {
@@ -91,14 +91,14 @@ public class Migration
     {
         const string articleRewardSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleReward)}";
         const string articleRewardPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}";
-        
+
         await using var cn = new NpgsqlConnection(CONNECTION_STR);
 
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{BEFORE_FILE_NAME}", token);
-        
+
         var periods = PeriodHelper.GetPeriods();
         var postTableIds = ArticleHelper.GetPostTableIds();
-        
+
         foreach (var period in periods)
         {
             Parallel.ForEach(postTableIds,
@@ -113,7 +113,7 @@ public class Migration
                                  connection.ExecuteAllTexts(filePath);
                              });
         }
-        
+
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
@@ -177,26 +177,29 @@ public class Migration
         const string ratingSchemaPath = $"{SCHEMA_PATH}/Rating";
         const string ratingPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}";
         const string ratingItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}";
-
-        await using var cn = new NpgsqlConnection(CONNECTION_STR);
-        await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{BEFORE_FILE_NAME}", token);
-
-        var periods = PeriodHelper.GetPeriods();
-
-        foreach (var filePath in periods.Select(period => $"{ratingPath}/{period.FileName}").Where(filePath => File.Exists(filePath)))
-        {
-            cn.ExecuteAllTexts(filePath);
-        }
-
-        foreach (var filePath in periods.Select(period => $"{ratingItemPath}/{period.FileName}").Where(filePath => File.Exists(filePath)))
-        {
-            cn.ExecuteAllTexts(filePath);
-        }
-
-        await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{AFTER_FILE_NAME}", token);
+        
+        await using (var cn = new NpgsqlConnection(CONNECTION_STR))
+            await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{BEFORE_FILE_NAME}", token);
+        
+        var copyRatingTask = new Task(() =>
+                                   {
+                                       using var cn = new NpgsqlConnection(CONNECTION_STR);
+                                       cn.ExecuteAllCopyFiles(ratingPath);
+                                   });
+        
+        var copyRatingItemTask = new Task(() =>
+                                      {
+                                          using var cn = new NpgsqlConnection(CONNECTION_STR);
+                                          cn.ExecuteAllCopyFiles(ratingItemPath);
+                                      });
+        copyRatingTask.Start();
+        copyRatingItemTask.Start();
+        await Task.WhenAll(copyRatingTask, copyRatingItemTask);
+        
+        await using (var cn = new NpgsqlConnection(CONNECTION_STR))
+            await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{AFTER_FILE_NAME}", token);
     }
-
-
+    
     public async Task ExecuteCommentAsync(CancellationToken token)
     {
         const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
@@ -228,7 +231,7 @@ public class Migration
                                        }
                                    });
 
-        
+
         var commentExtendDataTask = new Task(() =>
                                              {
                                                  foreach (var period in periods)

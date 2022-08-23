@@ -48,6 +48,18 @@ public static class ConnectionExtension
         }
     }
 
+    public static void ExecuteAllCopyFiles(this NpgsqlConnection cn, string path)
+    {
+        var inputFilePaths = Directory.GetFiles(path, "*.sql", SearchOption.AllDirectories);
+
+        foreach (var inputFilePath in inputFilePaths)
+        {
+            cn.ExecuteAllTexts(inputFilePath);
+        }
+        
+        Console.WriteLine($"{path} Execute copy command done");
+    }
+
     public static async Task ExecuteCommandByPathAsync(this NpgsqlConnection cn, string path,CancellationToken token)
     {
         if (cn.State == ConnectionState.Closed)
