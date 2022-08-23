@@ -80,6 +80,11 @@ public class ArticleRatingMigration
 
                                                                          await ExecuteAsync(rateLogs, postTableId, cancellationToken: cancellationToken);
                                                                      });
+
+        await FileHelper.CombineMultipleFilesIntoSingleFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}",
+                                                                 "*.json",
+                                                                 $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}.json",
+                                                                 cancellationToken);
     }
 
     private async Task ExecuteAsync(RateLog[] rateLogs, int postTableId, Period? period = null, CancellationToken cancellationToken = default)
@@ -182,7 +187,7 @@ public class ArticleRatingMigration
         if (ratingSb.Length == 0) return;
 
         var ratingPath = postTableId == 0 ? $"{POST0_RATING_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}/{postTableId}.sql";
-        var ratingJsonPath = postTableId == 0 ? $"{POST0_RATING_JASON_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/{postTableId}.sql";
+        var ratingJsonPath = postTableId == 0 ? $"{POST0_RATING_JASON_DIRECTORY_PATH}/{period!.FolderName}.json" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/{postTableId}.json";
         var ratingItemPath = postTableId == 0 ? $"{POST0_RATING_ITEM_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}/{postTableId}.sql";
 
         var ratingTask = new Task(() =>
