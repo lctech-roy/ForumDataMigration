@@ -4,7 +4,7 @@ namespace ForumDataMigration.Extensions;
 
 public static class StringBuilderExtension
 {
-    private const string DELIMITER = "";
+    private const char DELIMITER = '';
     
     public static void AppendCopyValues(this StringBuilder sb, params object[] values)
     {
@@ -16,6 +16,6 @@ public static class StringBuilderExtension
             sb.Append(values[i]);
         }
 
-        sb.Append("\n");
+        sb.Append(Environment.NewLine);
     }
 }

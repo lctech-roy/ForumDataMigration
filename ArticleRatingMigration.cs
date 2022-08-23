@@ -1,6 +1,7 @@
 using System.Text;
 using Netcorext.Algorithms;
 using Dapper;
+using ForumDataMigration.Enums;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
@@ -22,13 +23,13 @@ public class ArticleRatingMigration
 
     private const string QUERY_RATE_SQL_DATE_CONDITION = " AND post.dateline >= @Start AND post.dateline < @End";
 
-    private const string RATING_SQL = $"COPY \"{nameof(ArticleRating)}\" " +
-                                      $"(\"{nameof(ArticleRating.Id)}\",\"{nameof(ArticleRating.ArticleId)}\",\"{nameof(ArticleRating.VisibleType)}\",\"{nameof(ArticleRating.Content)}\"" +
-                                      Setting.COPY_SUFFIX;
-
-    private const string RATING_ITEM_SQL = $"COPY \"{nameof(ArticleRatingItem)}\" " +
-                                           $"(\"{nameof(ArticleRatingItem.Id)}\",\"{nameof(ArticleRatingItem.CreditId)}\",\"{nameof(ArticleRatingItem.Point)}\"" +
+    private const string COPY_RATING_SQL = $"COPY \"{nameof(ArticleRating)}\" " +
+                                           $"(\"{nameof(ArticleRating.Id)}\",\"{nameof(ArticleRating.ArticleId)}\",\"{nameof(ArticleRating.VisibleType)}\",\"{nameof(ArticleRating.Content)}\"" +
                                            Setting.COPY_SUFFIX;
+
+    private const string COPY_RATING_ITEM_SQL = $"COPY \"{nameof(ArticleRatingItem)}\" " +
+                                                $"(\"{nameof(ArticleRatingItem.Id)}\",\"{nameof(ArticleRatingItem.CreditId)}\",\"{nameof(ArticleRatingItem.Point)}\"" +
+                                                Setting.COPY_SUFFIX;
 
     private const string POST0_RATING_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}/0";
     private const string POST0_RATING_JASON_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/0";
@@ -36,6 +37,10 @@ public class ArticleRatingMigration
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<int, long> CategoryDic = RelationHelper.GetCategoryDic();
+
+    private static readonly string RateEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Rating).ToLower()}-";
+    private static readonly string RateEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
+    private static readonly string RateEsRootIdSuffix = $"\" }}}}";
 
     public ArticleRatingMigration(ISnowflake snowflake)
     {
@@ -71,7 +76,7 @@ public class ArticleRatingMigration
 
                                                                          await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-                                                                         var rateLogs = cn.Query<RateLog>(sql).ToArray();
+                                                                         var rateLogs = (await cn.QueryAsync<RateLog>(new CommandDefinition(sql, cancellationToken: token))).ToArray();
 
                                                                          await ExecuteAsync(rateLogs, postTableId, cancellationToken: cancellationToken);
                                                                      });
@@ -81,16 +86,16 @@ public class ArticleRatingMigration
     {
         if (!rateLogs.Any()) return;
 
-        var articleIdDic = await RelationHelper.GetArticleIdDicAsync(rateLogs.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
+        var idDic = await RelationHelper.GetArticleIdDicAsync(rateLogs.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
 
-        if (!articleIdDic.Any())
+        if (!idDic.Any())
             return;
 
         var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(rateLogs.Select(x => x.Uid.ToString()).Distinct().ToArray(), cancellationToken);
 
-        var articleRatingSb = new StringBuilder();
-        var articleRatingJsonSb = new StringBuilder();
-        var articleRatingItemSb = new StringBuilder();
+        var ratingSb = new StringBuilder();
+        var ratingJsonSb = new StringBuilder();
+        var ratingItemSb = new StringBuilder();
         var ratingIdDic = new Dictionary<(uint pid, int tid, int uid), byte>();
 
         foreach (var rateLog in rateLogs)
@@ -100,53 +105,55 @@ public class ArticleRatingMigration
             var (memberId, memberName) = simpleMemberDic.ContainsKey(rateLog.Uid) ? simpleMemberDic[rateLog.Uid] : (0, string.Empty);
 
             //對不到Tid的不處理
-            if (!articleIdDic.ContainsKey(rateLog.Tid))
+            if (!idDic.ContainsKey(rateLog.Tid))
                 continue;
 
             if (!ratingIdDic.ContainsKey((rateLog.Pid, rateLog.Tid, rateLog.Uid)))
             {
-                var articleId = articleIdDic[rateLog.Tid];
+                var id = idDic[rateLog.Tid];
 
-                var articleRating = new ArticleRatingJson()
-                                    {
-                                        Id = ratingId,
-                                        ArticleId = articleId,
-                                        VisibleType = VisibleType.Public,
-                                        Content = rateLog.Reason,
-                                        CreationDate = rateCreateDate,
-                                        CreatorId = memberId,
-                                        ModificationDate = rateCreateDate,
-                                        ModifierId = memberId,
+                var rating = new ArticleRatingJson()
+                             {
+                                 Id = ratingId,
+                                 ArticleId = id,
+                                 VisibleType = VisibleType.Public,
+                                 Content = rateLog.Reason,
+                                 CreationDate = rateCreateDate,
+                                 CreatorId = memberId,
+                                 ModificationDate = rateCreateDate,
+                                 ModifierId = memberId,
 
-                                        //for search json
-                                        RootId = articleId,
-                                        BoardId = BoardDic.ContainsKey(rateLog.Fid) ? BoardDic[rateLog.Fid] : 0,
-                                        CategoryId = CategoryDic.ContainsKey(rateLog.Typeid) ? CategoryDic[rateLog.Typeid] : 0,
-                                        CreatorUid = rateLog.Uid,
-                                        CreatorName = memberName,
-                                        ModifierUid = rateLog.Uid,
-                                        ModifierName = memberName
-                                    };
-                
-                articleRatingSb.AppendCopyValues(articleRating.Id, articleRating.ArticleId, (int) articleRating.VisibleType, articleRating.Content.ToCopyText(),
-                                                 articleRating.CreationDate, articleRating.CreatorId, articleRating.ModificationDate, articleRating.ModifierId, articleRating.Version);
+                                 //for search json
+                                 RootId = id,
+                                 BoardId = BoardDic.ContainsKey(rateLog.Fid) ? BoardDic[rateLog.Fid] : 0,
+                                 CategoryId = CategoryDic.ContainsKey(rateLog.Typeid) ? CategoryDic[rateLog.Typeid] : 0,
+                                 CreatorUid = rateLog.Uid,
+                                 CreatorName = memberName,
+                                 ModifierUid = rateLog.Uid,
+                                 ModifierName = memberName
+                             };
 
-                var json = await JsonHelper.GetJsonAsync(articleRating, cancellationToken);
-                articleRatingJsonSb.Append($"{json}\n");
+                ratingSb.AppendCopyValues(rating.Id, rating.ArticleId, (int) rating.VisibleType, rating.Content.ToCopyText(),
+                                          rating.CreationDate, rating.CreatorId, rating.ModificationDate, rating.ModifierId, rating.Version);
 
-                var articleRatingItem = new ArticleRatingItem()
-                                        {
-                                            Id = ratingId,
-                                            CreditId = rateLog.Extcredits,
-                                            Point = rateLog.Score,
-                                            CreationDate = rateCreateDate,
-                                            CreatorId = memberId,
-                                            ModificationDate = rateCreateDate,
-                                            ModifierId = memberId
-                                        };
 
-                articleRatingItemSb.AppendCopyValues(articleRatingItem.Id, articleRatingItem.CreditId, articleRatingItem.Point,
-                                                     articleRatingItem.CreationDate, articleRatingItem.CreatorId, articleRatingItem.ModificationDate, articleRatingItem.ModifierId, articleRatingItem.Version);
+                ratingJsonSb.Append(RateEsIdPrefix).Append(ratingId).Append(RateEsRootIdPrefix).Append(id).AppendLine(RateEsRootIdSuffix);
+                var json = await JsonHelper.GetJsonAsync(rating, cancellationToken);
+                ratingJsonSb.AppendLine(json);
+
+                var ratingItem = new ArticleRatingItem()
+                                 {
+                                     Id = ratingId,
+                                     CreditId = rateLog.Extcredits,
+                                     Point = rateLog.Score,
+                                     CreationDate = rateCreateDate,
+                                     CreatorId = memberId,
+                                     ModificationDate = rateCreateDate,
+                                     ModifierId = memberId
+                                 };
+
+                ratingItemSb.AppendCopyValues(ratingItem.Id, ratingItem.CreditId, ratingItem.Point,
+                                              ratingItem.CreationDate, ratingItem.CreatorId, ratingItem.ModificationDate, ratingItem.ModifierId, ratingItem.Version);
 
                 ratingIdDic.Add((rateLog.Pid, rateLog.Tid, rateLog.Uid), rateLog.Extcredits);
             }
@@ -156,23 +163,23 @@ public class ArticleRatingMigration
 
                 if (existsRatingCreditId == rateLog.Extcredits) continue;
 
-                var articleRatingItem = new ArticleRatingItem()
-                                        {
-                                            Id = ratingId,
-                                            CreditId = rateLog.Extcredits,
-                                            Point = rateLog.Score,
-                                            CreationDate = rateCreateDate,
-                                            CreatorId = memberId,
-                                            ModificationDate = rateCreateDate,
-                                            ModifierId = memberId
-                                        };
+                var ratingItem = new ArticleRatingItem()
+                                 {
+                                     Id = ratingId,
+                                     CreditId = rateLog.Extcredits,
+                                     Point = rateLog.Score,
+                                     CreationDate = rateCreateDate,
+                                     CreatorId = memberId,
+                                     ModificationDate = rateCreateDate,
+                                     ModifierId = memberId
+                                 };
 
-                articleRatingItemSb.AppendCopyValues(articleRatingItem.Id, articleRatingItem.CreditId, articleRatingItem.Point,
-                                                     articleRatingItem.CreationDate, articleRatingItem.CreatorId, articleRatingItem.ModificationDate, articleRatingItem.ModifierId, articleRatingItem.Version);
+                ratingItemSb.AppendCopyValues(ratingItem.Id, ratingItem.CreditId, ratingItem.Point,
+                                              ratingItem.CreationDate, ratingItem.CreatorId, ratingItem.ModificationDate, ratingItem.ModifierId, ratingItem.Version);
             }
         }
 
-        if (articleRatingSb.Length == 0) return;
+        if (ratingSb.Length == 0) return;
 
         var ratingPath = postTableId == 0 ? $"{POST0_RATING_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}/{postTableId}.sql";
         var ratingJsonPath = postTableId == 0 ? $"{POST0_RATING_JASON_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/{postTableId}.sql";
@@ -180,18 +187,15 @@ public class ArticleRatingMigration
 
         var ratingTask = new Task(() =>
                                   {
-                                      var insertRatingSql = string.Concat(RATING_SQL, articleRatingSb);
+                                      var insertRatingSql = string.Concat(COPY_RATING_SQL, ratingSb);
                                       File.WriteAllText(ratingPath, insertRatingSql);
                                   });
 
-        var ratingJsonTask = new Task(() =>
-                                      {
-                                          File.WriteAllText(ratingJsonPath, articleRatingJsonSb.ToString());
-                                      });
+        var ratingJsonTask = new Task(() => File.WriteAllText(ratingJsonPath, ratingJsonSb.ToString()));
 
         var ratingItemTask = new Task(() =>
                                       {
-                                          var insertRatingItemSql = string.Concat(RATING_ITEM_SQL, articleRatingItemSb);
+                                          var insertRatingItemSql = string.Concat(COPY_RATING_ITEM_SQL, ratingItemSb);
                                           File.WriteAllText(ratingItemPath, insertRatingItemSql);
                                       });
 

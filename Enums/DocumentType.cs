@@ -1,4 +1,4 @@
-namespace Lctech.Jkf.Search.Enums;
+namespace ForumDataMigration.Enums;
 
 public enum DocumentType
 {
