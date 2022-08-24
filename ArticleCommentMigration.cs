@@ -21,11 +21,12 @@ public class ArticleCommentMigration
     private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    
+
     private static readonly Dictionary<int, string?> ColorDic = new()
                                                                 {
                                                                     { 0, null }, { 1, "#EE1B2E" }, { 2, "#EE5023" }, { 3, "#996600" }, { 4, "#3C9D40" }, { 5, "#2897C5" }, { 6, "#2B65B7" }, { 7, "#8F2A90" }, { 8, "#EC1282" }
                                                                 };
+
     public ArticleCommentMigration(ISnowflake snowflake)
     {
         _snowflake = snowflake;
@@ -136,7 +137,8 @@ public class ArticleCommentMigration
 
                                      using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
                                      {
-                                          posts = cn.Query<Post>(sql, new { Start = period.StartSeconds, End = period.EndSeconds }).ToList();
+                                         posts = cn.Query<Post>(sql, new { Start = period.StartSeconds, End = period.EndSeconds }).ToList();
+
                                          //posts = Slapper.AutoMapper.MapDynamic<Post>(dynamicPosts, false).ToList();
                                      }
 
@@ -175,11 +177,12 @@ public class ArticleCommentMigration
                                                               ReadDic = readDic,
                                                               Post = post
                                                           };
-                                         
+
                                          if (post.First) //文章
                                          {
                                              SetArticle(postResult, sb, coverSb);
                                              SetArticleReward(postResult, rewardSb, rewardDic);
+
                                              //SetArticleWarning(postResult,warningSb);
                                              SetCommentFirst(postResult, commentSb, commentExtendDataSb, period, postTableId, commentSql);
                                          }
@@ -345,18 +348,18 @@ public class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate
                       };
 
-        sb.Append($"{article.Id}{Setting.D}{article.BoardId}{Setting.D}{article.CategoryId}{Setting.D}{(int) article.Status}{Setting.D}{(int) article.VisibleType}{Setting.D}" +
-                         $"{(int) article.Type}{Setting.D}{(int) article.ContentType}{Setting.D}{(int) article.PinType}{Setting.D}{article.Title.ToCopyText()}{Setting.D}" +
-                         $"{article.Content.ToCopyText()}{Setting.D}{article.ViewCount}{Setting.D}{article.ReplyCount}{Setting.D}{article.SortingIndex}{Setting.D}{article.LastReplyDate.ToCopyValue()}{Setting.D}" +
-                         $"{article.LastReplierId.ToCopyValue()}{Setting.D}{article.PinPriority}{Setting.D}" +
-                         $"{article.Cover.ToCopyValue()}{Setting.D}{article.Tag}{Setting.D}{article.RatingCount}{Setting.D}{article.ShareCount}{Setting.D}" +
-                         $"{article.ImageCount}{Setting.D}{article.VideoCount}{Setting.D}{article.DonatePoint}{Setting.D}{article.Highlight}{Setting.D}{article.HighlightColor.ToCopyValue()}{Setting.D}" +
-                         $"{article.Recommend}{Setting.D}{article.ReadPermission}{Setting.D}{article.CommentDisabled}{Setting.D}{(int) article.CommentVisibleType}{Setting.D}{article.LikeCount}{Setting.D}" +
-                         $"{article.Ip}{Setting.D}{article.Price}{Setting.D}{article.AuditorId.ToCopyValue()}{Setting.D}{article.AuditFloor.ToCopyValue()}{Setting.D}" +
-                         $"{article.SchedulePublishDate.ToCopyValue()}{Setting.D}{article.HideExpirationDate.ToCopyValue()}{Setting.D}{article.PinExpirationDate.ToCopyValue()}{Setting.D}" +
-                         $"{article.RecommendExpirationDate.ToCopyValue()}{Setting.D}{article.HighlightExpirationDate.ToCopyValue()}{Setting.D}{article.CommentDisabledExpirationDate.ToCopyValue()}{Setting.D}" +
-                         $"{article.InVisibleArticleExpirationDate.ToCopyValue()}{Setting.D}{article.Signature}{Setting.D}{article.Warning}{Setting.D}" +
-                         $"{article.CreationDate}{Setting.D}{article.CreatorId}{Setting.D}{article.ModificationDate}{Setting.D}{article.ModifierId}{Setting.D}{article.Version}\n");
+        sb.AppendCopyValues(article.Id, article.BoardId, article.CategoryId, (int) article.Status, (int) article.VisibleType,
+                            (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
+                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
+                            article.LastReplierId.ToCopyValue(), article.PinPriority,
+                            article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.ShareCount,
+                            article.ImageCount, article.VideoCount, article.DonatePoint, article.Highlight, article.HighlightColor.ToCopyValue(),
+                            article.Recommend, article.ReadPermission, article.CommentDisabled, (int) article.CommentVisibleType, article.LikeCount,
+                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
+                            article.SchedulePublishDate.ToCopyValue(), article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
+                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
+                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
     }
 
     private static ArticleCoverRelation? SetArticleCoverRelation(PostResult postResult, StringBuilder coverSb)
@@ -369,15 +372,15 @@ public class ArticleCommentMigration
         if (string.IsNullOrEmpty(coverPath)) return null;
 
         var coverRelation = new ArticleCoverRelation
-                                   {
-                                       Id = postResult.ArticleId,
-                                       OriginCover = isCover ? post.Cover : post.Thumb,
-                                       Tid = post.Tid,
-                                       Pid = Convert.ToInt32(post.Tid),
-                                       AttachmentUrl = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb)
-                                   };
+                            {
+                                Id = postResult.ArticleId,
+                                OriginCover = isCover ? post.Cover : post.Thumb,
+                                Tid = post.Tid,
+                                Pid = Convert.ToInt32(post.Tid),
+                                AttachmentUrl = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb)
+                            };
 
-        coverSb.Append($"{coverRelation.Id}{Setting.D}{coverRelation.OriginCover}{Setting.D}{coverRelation.Tid}{Setting.D}{coverRelation.Pid}{Setting.D}{coverRelation.AttachmentUrl}\n");
+        coverSb.AppendCopyValues(coverRelation.Id,coverRelation.OriginCover,coverRelation.Tid, coverRelation.Pid, coverRelation.AttachmentUrl);
 
         return coverRelation;
     }
@@ -389,24 +392,24 @@ public class ArticleCommentMigration
         if (post.Special != 3) return;
 
         var reward = new ArticleReward
-                            {
-                                Id = postResult.ArticleId,
-                                Point = post.Price,
-                                ExpirationDate = postResult.CreateDate.AddDays(postResult.RewardExpirationDay),
-                                SolveCommentId = null,
-                                SolveDate = null,
-                                AllowAdminSolveDate = postResult.CreateDate.AddDays(1),
-                                CreationDate = postResult.CreateDate,
-                                CreatorId = postResult.MemberId,
-                                ModifierId = postResult.MemberId,
-                                ModificationDate = postResult.CreateDate
-                            };
+                     {
+                         Id = postResult.ArticleId,
+                         Point = post.Price,
+                         ExpirationDate = postResult.CreateDate.AddDays(postResult.RewardExpirationDay),
+                         SolveCommentId = null,
+                         SolveDate = null,
+                         AllowAdminSolveDate = postResult.CreateDate.AddDays(1),
+                         CreationDate = postResult.CreateDate,
+                         CreatorId = postResult.MemberId,
+                         ModifierId = postResult.MemberId,
+                         ModificationDate = postResult.CreateDate
+                     };
 
         if (post.Price >= 0) //未解決
         {
-            rewardSb.Append($"{reward.Id}{Setting.D}{reward.Point}{Setting.D}{reward.ExpirationDate}{Setting.D}" +
-                                   $"{reward.SolveCommentId.ToCopyValue()}{Setting.D}{reward.SolveDate.ToCopyValue()}{Setting.D}{reward.AllowAdminSolveDate}{Setting.D}" +
-                                   $"{reward.CreationDate}{Setting.D}{reward.CreatorId}{Setting.D}{reward.ModificationDate}{Setting.D}{reward.ModifierId}{Setting.D}{reward.Version}\n");
+            rewardSb.AppendCopyValues(reward.Id, reward.Point, reward.ExpirationDate,
+                                      reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
+                                      reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
         }
         else
         {
@@ -425,9 +428,9 @@ public class ArticleCommentMigration
         reward.SolveDate = postResult.CreateDate;
         reward.SolveCommentId = commentId;
 
-        rewardSb.Append($"{reward.Id}{Setting.D}{reward.Point}{Setting.D}{reward.ExpirationDate}{Setting.D}" +
-                               $"{reward.SolveCommentId.ToCopyValue()}{Setting.D}{reward.SolveDate.ToCopyValue()}{Setting.D}{reward.AllowAdminSolveDate}{Setting.D}" +
-                               $"{reward.CreationDate}{Setting.D}{reward.CreatorId}{Setting.D}{reward.ModificationDate}{Setting.D}{reward.ModifierId}{Setting.D}{reward.Version}\n");
+        rewardSb.AppendCopyValues(reward.Id, reward.Point, reward.ExpirationDate,
+                                  reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
+                                  reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
 
         rewardDic.Remove(post.Tid);
     }
@@ -452,11 +455,11 @@ public class ArticleCommentMigration
 
         AppendCommentSb(comment, ref commentSb, period, postTableId, commentSql);
 
-        commentExtendDataSb.Append($"{postResult.ArticleId}{Setting.D}{Setting.EXTEND_DATA_BOARD_ID}{Setting.D}{postResult.BoardId}{Setting.D}" +
-                                   $"{comment.CreationDate}{Setting.D}{comment.CreatorId}{Setting.D}{comment.ModificationDate}{Setting.D}{comment.ModifierId}{Setting.D}{comment.Version}\n");
+        commentExtendDataSb.AppendCopyValues(postResult.ArticleId, Setting.EXTEND_DATA_BOARD_ID, postResult.BoardId,
+                                             comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 
-    private void SetComment(PostResult postResult,  StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentReplySb, Period period, int postTableId, string commentSql, long commentId)
+    private void SetComment(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentReplySb, Period period, int postTableId, string commentSql, long commentId)
     {
         var post = postResult.Post;
 
@@ -488,8 +491,8 @@ public class ArticleCommentMigration
         {
             var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
-            commentExtendDataSb.Append($"{commentId}{Setting.D}{Setting.EXTEND_DATA_RECOMMEND_COMMENT}{Setting.D}{true}{Setting.D}" +
-                                       $"{stickDate}{Setting.D}{0}{Setting.D}{stickDate}{Setting.D}{0}{Setting.D}{0}\n");
+            commentExtendDataSb.AppendCopyValues(commentId, Setting.EXTEND_DATA_RECOMMEND_COMMENT, true,
+                                                 stickDate, 0, stickDate, 0, 0);
         }
 
         if (!post.Comment) return;
@@ -520,73 +523,59 @@ public class ArticleCommentMigration
                                    ModificationDate = replyDate,
                                };
 
-            commentReplySb.Append($"{commentReply.Id}{Setting.D}{commentReply.RootId}{Setting.D}{commentReply.ParentId}{Setting.D}{commentReply.Level}{Setting.D}{commentReply.Hierarchy}{Setting.D}{commentReply.SortingIndex}{Setting.D}" +
-                                  $"{commentReply.Content.ToCopyText()}{Setting.D}{(int) commentReply.VisibleType}{Setting.D}{commentReply.Ip}{Setting.D}{commentReply.Sequence}{Setting.D}" +
-                                  $"{commentReply.RelatedScore}{Setting.D}{commentReply.ReplyCount}{Setting.D}{commentReply.LikeCount}{Setting.D}{commentReply.DislikeCount}{Setting.D}{commentReply.IsDeleted}{Setting.D}" +
-                                  $"{commentReply.CreationDate}{Setting.D}{commentReply.CreatorId}{Setting.D}{commentReply.ModificationDate}{Setting.D}{commentReply.ModifierId}{Setting.D}{commentReply.Version}\n");
+            commentReplySb.AppendCopyValues(commentReply.Id, commentReply.RootId, commentReply.ParentId, commentReply.Level, commentReply.Hierarchy, commentReply.SortingIndex,
+                                            commentReply.Content.ToCopyText(), (int) commentReply.VisibleType, commentReply.Ip, commentReply.Sequence,
+                                            commentReply.RelatedScore, commentReply.ReplyCount, commentReply.LikeCount, commentReply.DislikeCount, commentReply.IsDeleted,
+                                            commentReply.CreationDate, commentReply.CreatorId, commentReply.ModificationDate, commentReply.ModifierId, commentReply.Version);
         }
     }
 
     private static void AppendCommentSb(Comment comment, ref StringBuilder commentSb, Period period, int postTableId, string commentSql)
     {
-        var commentAppendStr = $"{comment.Id}{Setting.D}{comment.RootId}{Setting.D}{comment.ParentId.ToCopyValue()}{Setting.D}{comment.Level}{Setting.D}{comment.Hierarchy}{Setting.D}{comment.SortingIndex}{Setting.D}" +
-                               $"{comment.Content.ToCopyText()}{Setting.D}{(int) comment.VisibleType}{Setting.D}{comment.Ip}{Setting.D}{comment.Sequence}{Setting.D}" +
-                               $"{comment.RelatedScore}{Setting.D}{comment.ReplyCount}{Setting.D}{comment.LikeCount}{Setting.D}{comment.DislikeCount}{Setting.D}{comment.IsDeleted}{Setting.D}" +
-                               $"{comment.CreationDate}{Setting.D}{comment.CreatorId}{Setting.D}{comment.ModificationDate}{Setting.D}{comment.ModifierId}{Setting.D}{comment.Version}\n";
-
-        try
+        if (commentSb.Length > 30000)
         {
-            if (commentSb.Length > 30000)
-            {
-                var path = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}";
-                var fullPath = $"{path}/{postTableId}.sql";
+            var path = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}";
+            var fullPath = $"{path}/{postTableId}.sql";
 
-                if (File.Exists(fullPath) && File.ReadLines(fullPath).Any())
-                    File.AppendAllText(fullPath, commentSb.ToString());
-                else
-                {
-                    Directory.CreateDirectory(path);
-                    File.WriteAllText(fullPath, string.Concat(commentSql, commentSb.ToString()));
-                }
-
-                commentSb = new StringBuilder(commentAppendStr);
-            }
+            if (File.Exists(fullPath) && File.ReadLines(fullPath).Any())
+                File.AppendAllText(fullPath, commentSb.ToString());
             else
             {
-                commentSb.Append(commentAppendStr);
+                Directory.CreateDirectory(path);
+                File.WriteAllText(fullPath, string.Concat(commentSql, commentSb.ToString()));
             }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
 
-            throw;
+            commentSb = new StringBuilder();
         }
+
+        commentSb.AppendCopyValues(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
+                                   comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
+                                   comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
+                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
-
+    
     public void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
     {
         var post = postResult.Post;
 
-        if (post.Warning != null)
-        {
-            var warningDate = DateTimeOffset.FromUnixTimeSeconds(post.Warning.Dateline);
+        if (post.Warning == null) return;
 
-            var warning = new Warning
-                          {
-                              Id = _snowflake.Generate(),
-                              WarningType = WarningType.Article,
-                              SourceId = postResult.ArticleId,
-                              MemberId = post.Warning.Authorid,
-                              WarnerId = post.Warning.Operatorid,
-                              Reason = post.Warning.Reason,
-                              CreationDate = warningDate,
-                              ModificationDate = warningDate,
-                              CreatorId = post.Warning.Operatorid,
-                          };
+        var warningDate = DateTimeOffset.FromUnixTimeSeconds(post.Warning.Dateline);
 
-            warningSb.Append($"{warning.Id}{Setting.D}{(int) warning.WarningType}{Setting.D}{warning.SourceId}{Setting.D}{warning.MemberId}{Setting.D}{warning.WarnerId}{Setting.D}{warning.Reason}{Setting.D}" +
-                             $"{warning.CreationDate}{Setting.D}{warning.CreatorId}{Setting.D}{warning.ModificationDate}{Setting.D}{warning.ModifierId}{Setting.D}{warning.Version}\n");
-        }
+        var warning = new Warning
+                      {
+                          Id = _snowflake.Generate(),
+                          WarningType = WarningType.Article,
+                          SourceId = postResult.ArticleId,
+                          MemberId = post.Warning.Authorid,
+                          WarnerId = post.Warning.Operatorid,
+                          Reason = post.Warning.Reason,
+                          CreationDate = warningDate,
+                          ModificationDate = warningDate,
+                          CreatorId = post.Warning.Operatorid,
+                      };
+
+        warningSb.AppendCopyValues(warning.Id, (int) warning.WarningType, warning.SourceId, warning.MemberId, warning.WarnerId, warning.Reason,
+                                   warning.CreationDate, warning.CreatorId, warning.ModificationDate, warning.ModifierId, warning.Version);
     }
 }
