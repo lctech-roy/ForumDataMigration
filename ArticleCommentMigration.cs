@@ -18,9 +18,9 @@ public class ArticleCommentMigration
     private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
     private const string HIDE_PATTERN = @"(\[\/?hide[^\]]*\]|{[^}]*})";
 
-    public static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    public static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    public static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     
     private static readonly Dictionary<int, string?> ColorDic = new()
                                                                 {
@@ -69,7 +69,7 @@ public class ArticleCommentMigration
 
         #region 轉檔前準備相關資料
 
-        var articleDic = RelationContainer.ArticleIdDic;
+        var dic = RelationContainer.ArticleIdDic;
         var boardDic = RelationHelper.GetBoardDic();
         var categoryDic = RelationHelper.GetCategoryDic();
         var memberUidDic = RelationHelper.GetMemberUidDic();
@@ -143,25 +143,25 @@ public class ArticleCommentMigration
                                      if (!posts.Any())
                                          return;
 
-                                     var articleSb = new StringBuilder();
-                                     var articleCoverSb = new StringBuilder();
+                                     var sb = new StringBuilder();
+                                     var coverSb = new StringBuilder();
                                      var commentSb = new StringBuilder();
                                      var commentExtendDataSb = new StringBuilder();
                                      var commentReplySb = new StringBuilder();
                                      var warningSb = new StringBuilder();
-                                     var articleRewardSb = new StringBuilder();
+                                     var rewardSb = new StringBuilder();
 
                                      var rewardDic = new Dictionary<int, ArticleReward>(); //有解決的懸賞文章要暫存
 
                                      foreach (var post in posts)
                                      {
                                          //髒資料放過他
-                                         if (!articleDic.ContainsKey(post.Tid) || !boardDic.ContainsKey(post.Fid))
+                                         if (!dic.ContainsKey(post.Tid) || !boardDic.ContainsKey(post.Fid))
                                              continue;
 
                                          var postResult = new PostResult
                                                           {
-                                                              ArticleId = articleDic[post.Tid],
+                                                              ArticleId = dic[post.Tid],
                                                               BoardId = boardDic[post.Fid],
                                                               MemberId = memberUidDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? memberUidDic[Convert.ToInt32(post.Authorid)] : 0,
                                                               CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
@@ -178,44 +178,44 @@ public class ArticleCommentMigration
                                          
                                          if (post.First) //文章
                                          {
-                                             //SetArticle(postResult, articleSb, articleCoverSb);
-                                             SetArticleReward(postResult, articleRewardSb, rewardDic);
+                                             SetArticle(postResult, sb, coverSb);
+                                             SetArticleReward(postResult, rewardSb, rewardDic);
                                              //SetArticleWarning(postResult,warningSb);
-                                             //SetCommentFirst(postResult, commentSb, commentExtendDataSb, period, postTableId, commentSql);
+                                             SetCommentFirst(postResult, commentSb, commentExtendDataSb, period, postTableId, commentSql);
                                          }
                                          else if (post.Position != 1) //留言
                                          {
                                              var commentId = _snowflake.Generate();
-                                             SetArticleRewardSolved(postResult, articleRewardSb, rewardDic, commentId);
-                                             //SetComment(postResult, commentSb, commentExtendDataSb, commentReplySb, period, postTableId, commentSql, commentId);
+                                             SetArticleRewardSolved(postResult, rewardSb, rewardDic, commentId);
+                                             SetComment(postResult, commentSb, commentExtendDataSb, commentReplySb, period, postTableId, commentSql, commentId);
                                          }
                                      }
 
-                                     if (articleSb.Length > 0)
+                                     if (sb.Length > 0)
                                      {
-                                         var articlePath = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}";
-                                         Directory.CreateDirectory(articlePath);
-                                         var fullPath = $"{articlePath}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(articleSql, articleSb.ToString()));
+                                         var path = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}";
+                                         Directory.CreateDirectory(path);
+                                         var fullPath = $"{path}/{postTableId}.sql";
+                                         File.WriteAllText(fullPath, string.Concat(articleSql, sb.ToString()));
 
                                          Console.WriteLine(fullPath);
                                      }
 
-                                     if (articleCoverSb.Length > 0)
+                                     if (coverSb.Length > 0)
                                      {
-                                         var articleCoverPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}";
-                                         Directory.CreateDirectory(articleCoverPath);
-                                         var fullPath = $"{articleCoverPath}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(articleCoverRelationSql, articleCoverSb.ToString()));
+                                         var coverPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}";
+                                         Directory.CreateDirectory(coverPath);
+                                         var fullPath = $"{coverPath}/{postTableId}.sql";
+                                         File.WriteAllText(fullPath, string.Concat(articleCoverRelationSql, coverSb.ToString()));
                                          Console.WriteLine(fullPath);
                                      }
 
-                                     if (articleRewardSb.Length > 0)
+                                     if (rewardSb.Length > 0)
                                      {
-                                         var articleRewardPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}";
-                                         Directory.CreateDirectory(articleRewardPath);
-                                         var fullPath = $"{articleRewardPath}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(articleRewardSql, articleRewardSb.ToString()));
+                                         var rewardPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}";
+                                         Directory.CreateDirectory(rewardPath);
+                                         var fullPath = $"{rewardPath}/{postTableId}.sql";
+                                         File.WriteAllText(fullPath, string.Concat(articleRewardSql, rewardSb.ToString()));
                                          Console.WriteLine(fullPath);
                                      }
 
@@ -260,7 +260,7 @@ public class ArticleCommentMigration
         }
     }
 
-    private static void SetArticle(PostResult postResult, StringBuilder articleSb, StringBuilder articleCoverSb)
+    private static void SetArticle(PostResult postResult, StringBuilder sb, StringBuilder coverSb)
     {
         var post = postResult.Post;
 
@@ -311,7 +311,7 @@ public class ArticleCommentMigration
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = !string.IsNullOrEmpty(post.Lastposter) && postResult.MemberDisplayNameDic.ContainsKey(post.Lastposter) ? postResult.MemberDisplayNameDic[post.Lastposter] : null,
                           PinPriority = post.Displayorder,
-                          Cover = SetArticleCoverRelation(postResult, articleCoverSb)?.Id,
+                          Cover = SetArticleCoverRelation(postResult, coverSb)?.Id,
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
@@ -330,7 +330,7 @@ public class ArticleCommentMigration
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
                           SchedulePublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : null,
-                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message!) ? postResult.CreateDate.AddDays(postResult.HideExpirationDay) : null,
+                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? postResult.CreateDate.AddDays(postResult.HideExpirationDay) : null,
                           PinExpirationDate = modDic.ContainsKey((post.Tid, "EST")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EST")]) : null,
                           RecommendExpirationDate = modDic.ContainsKey((post.Tid, "EDI")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EDI")]) : null,
                           HighlightExpirationDate = modDic.ContainsKey((post.Tid, "EHL")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EHL")]) : null,
@@ -345,7 +345,7 @@ public class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate
                       };
 
-        articleSb.Append($"{article.Id}{Setting.D}{article.BoardId}{Setting.D}{article.CategoryId}{Setting.D}{(int) article.Status}{Setting.D}{(int) article.VisibleType}{Setting.D}" +
+        sb.Append($"{article.Id}{Setting.D}{article.BoardId}{Setting.D}{article.CategoryId}{Setting.D}{(int) article.Status}{Setting.D}{(int) article.VisibleType}{Setting.D}" +
                          $"{(int) article.Type}{Setting.D}{(int) article.ContentType}{Setting.D}{(int) article.PinType}{Setting.D}{article.Title.ToCopyText()}{Setting.D}" +
                          $"{article.Content.ToCopyText()}{Setting.D}{article.ViewCount}{Setting.D}{article.ReplyCount}{Setting.D}{article.SortingIndex}{Setting.D}{article.LastReplyDate.ToCopyValue()}{Setting.D}" +
                          $"{article.LastReplierId.ToCopyValue()}{Setting.D}{article.PinPriority}{Setting.D}" +
@@ -359,7 +359,7 @@ public class ArticleCommentMigration
                          $"{article.CreationDate}{Setting.D}{article.CreatorId}{Setting.D}{article.ModificationDate}{Setting.D}{article.ModifierId}{Setting.D}{article.Version}\n");
     }
 
-    private static ArticleCoverRelation? SetArticleCoverRelation(PostResult postResult, StringBuilder articleCoverSb)
+    private static ArticleCoverRelation? SetArticleCoverRelation(PostResult postResult, StringBuilder coverSb)
     {
         var post = postResult.Post;
 
@@ -368,7 +368,7 @@ public class ArticleCommentMigration
 
         if (string.IsNullOrEmpty(coverPath)) return null;
 
-        var articleCoverRelation = new ArticleCoverRelation
+        var coverRelation = new ArticleCoverRelation
                                    {
                                        Id = postResult.ArticleId,
                                        OriginCover = isCover ? post.Cover : post.Thumb,
@@ -377,18 +377,18 @@ public class ArticleCommentMigration
                                        AttachmentUrl = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb)
                                    };
 
-        articleCoverSb.Append($"{articleCoverRelation.Id}{Setting.D}{articleCoverRelation.OriginCover}{Setting.D}{articleCoverRelation.Tid}{Setting.D}{articleCoverRelation.Pid}{Setting.D}{articleCoverRelation.AttachmentUrl}\n");
+        coverSb.Append($"{coverRelation.Id}{Setting.D}{coverRelation.OriginCover}{Setting.D}{coverRelation.Tid}{Setting.D}{coverRelation.Pid}{Setting.D}{coverRelation.AttachmentUrl}\n");
 
-        return articleCoverRelation;
+        return coverRelation;
     }
 
-    private static void SetArticleReward(PostResult postResult, StringBuilder articleRewardSb, IDictionary<int, ArticleReward> rewardDic)
+    private static void SetArticleReward(PostResult postResult, StringBuilder rewardSb, IDictionary<int, ArticleReward> rewardDic)
     {
         var post = postResult.Post;
 
         if (post.Special != 3) return;
 
-        var articleReward = new ArticleReward
+        var reward = new ArticleReward
                             {
                                 Id = postResult.ArticleId,
                                 Point = post.Price,
@@ -404,30 +404,30 @@ public class ArticleCommentMigration
 
         if (post.Price >= 0) //未解決
         {
-            articleRewardSb.Append($"{articleReward.Id}{Setting.D}{articleReward.Point}{Setting.D}{articleReward.ExpirationDate}{Setting.D}" +
-                                   $"{articleReward.SolveCommentId.ToCopyValue()}{Setting.D}{articleReward.SolveDate.ToCopyValue()}{Setting.D}{articleReward.AllowAdminSolveDate}{Setting.D}" +
-                                   $"{articleReward.CreationDate}{Setting.D}{articleReward.CreatorId}{Setting.D}{articleReward.ModificationDate}{Setting.D}{articleReward.ModifierId}{Setting.D}{articleReward.Version}\n");
+            rewardSb.Append($"{reward.Id}{Setting.D}{reward.Point}{Setting.D}{reward.ExpirationDate}{Setting.D}" +
+                                   $"{reward.SolveCommentId.ToCopyValue()}{Setting.D}{reward.SolveDate.ToCopyValue()}{Setting.D}{reward.AllowAdminSolveDate}{Setting.D}" +
+                                   $"{reward.CreationDate}{Setting.D}{reward.CreatorId}{Setting.D}{reward.ModificationDate}{Setting.D}{reward.ModifierId}{Setting.D}{reward.Version}\n");
         }
         else
         {
-            rewardDic.Add(post.Tid, articleReward);
+            rewardDic.Add(post.Tid, reward);
         }
     }
 
-    private static void SetArticleRewardSolved(PostResult postResult, StringBuilder articleRewardSb, IDictionary<int, ArticleReward> rewardDic, long commentId)
+    private static void SetArticleRewardSolved(PostResult postResult, StringBuilder rewardSb, IDictionary<int, ArticleReward> rewardDic, long commentId)
     {
         var post = postResult.Post;
 
         if (!rewardDic.ContainsKey(post.Tid) || rewardDic[post.Tid].CreationDate.AddSeconds(1) != postResult.CreateDate) return;
 
-        var articleReward = rewardDic[post.Tid];
-        articleReward.Point = Math.Abs(articleReward.Point);
-        articleReward.SolveDate = postResult.CreateDate;
-        articleReward.SolveCommentId = commentId;
+        var reward = rewardDic[post.Tid];
+        reward.Point = Math.Abs(reward.Point);
+        reward.SolveDate = postResult.CreateDate;
+        reward.SolveCommentId = commentId;
 
-        articleRewardSb.Append($"{articleReward.Id}{Setting.D}{articleReward.Point}{Setting.D}{articleReward.ExpirationDate}{Setting.D}" +
-                               $"{articleReward.SolveCommentId.ToCopyValue()}{Setting.D}{articleReward.SolveDate.ToCopyValue()}{Setting.D}{articleReward.AllowAdminSolveDate}{Setting.D}" +
-                               $"{articleReward.CreationDate}{Setting.D}{articleReward.CreatorId}{Setting.D}{articleReward.ModificationDate}{Setting.D}{articleReward.ModifierId}{Setting.D}{articleReward.Version}\n");
+        rewardSb.Append($"{reward.Id}{Setting.D}{reward.Point}{Setting.D}{reward.ExpirationDate}{Setting.D}" +
+                               $"{reward.SolveCommentId.ToCopyValue()}{Setting.D}{reward.SolveDate.ToCopyValue()}{Setting.D}{reward.AllowAdminSolveDate}{Setting.D}" +
+                               $"{reward.CreationDate}{Setting.D}{reward.CreatorId}{Setting.D}{reward.ModificationDate}{Setting.D}{reward.ModifierId}{Setting.D}{reward.Version}\n");
 
         rewardDic.Remove(post.Tid);
     }
@@ -450,13 +450,13 @@ public class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate,
                       };
 
-        AppendCommentSb(comment, commentSb, period, postTableId, commentSql);
+        AppendCommentSb(comment, ref commentSb, period, postTableId, commentSql);
 
         commentExtendDataSb.Append($"{postResult.ArticleId}{Setting.D}{Setting.EXTEND_DATA_BOARD_ID}{Setting.D}{postResult.BoardId}{Setting.D}" +
                                    $"{comment.CreationDate}{Setting.D}{comment.CreatorId}{Setting.D}{comment.ModificationDate}{Setting.D}{comment.ModifierId}{Setting.D}{comment.Version}\n");
     }
 
-    private void SetComment(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentReplySb, Period period, int postTableId, string commentSql, long commentId)
+    private void SetComment(PostResult postResult,  StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentReplySb, Period period, int postTableId, string commentSql, long commentId)
     {
         var post = postResult.Post;
 
@@ -482,7 +482,7 @@ public class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate,
                       };
 
-        AppendCommentSb(comment, commentSb, period, postTableId, commentSql);
+        AppendCommentSb(comment, ref commentSb, period, postTableId, commentSql);
 
         if (post.StickDateline.HasValue)
         {
@@ -527,7 +527,7 @@ public class ArticleCommentMigration
         }
     }
 
-    private static void AppendCommentSb(Comment comment, StringBuilder commentSb, Period period, int postTableId, string commentSql)
+    private static void AppendCommentSb(Comment comment, ref StringBuilder commentSb, Period period, int postTableId, string commentSql)
     {
         var commentAppendStr = $"{comment.Id}{Setting.D}{comment.RootId}{Setting.D}{comment.ParentId.ToCopyValue()}{Setting.D}{comment.Level}{Setting.D}{comment.Hierarchy}{Setting.D}{comment.SortingIndex}{Setting.D}" +
                                $"{comment.Content.ToCopyText()}{Setting.D}{(int) comment.VisibleType}{Setting.D}{comment.Ip}{Setting.D}{comment.Sequence}{Setting.D}" +
