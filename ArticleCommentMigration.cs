@@ -14,6 +14,7 @@ namespace ForumDataMigration;
 public class ArticleCommentMigration
 {
     private readonly ISnowflake _snowflake;
+    
     private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
     private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
     private const string HIDE_PATTERN = @"(\[\/?hide[^\]]*\]|{[^}]*})";
@@ -26,6 +27,15 @@ public class ArticleCommentMigration
                                                                 {
                                                                     { 0, null }, { 1, "#EE1B2E" }, { 2, "#EE5023" }, { 3, "#996600" }, { 4, "#3C9D40" }, { 5, "#2897C5" }, { 6, "#2B65B7" }, { 7, "#8F2A90" }, { 8, "#EC1282" }
                                                                 };
+
+    private static readonly Dictionary<int,long> BoardDic = RelationHelper.GetBoardDic();
+    private static readonly Dictionary<int,long> CategoryDic = RelationHelper.GetCategoryDic();
+    private static readonly Dictionary<(int, string),int> ModDic = ArticleHelper.GetModDic();
+    private static readonly Dictionary<long,Read> ReadDic = ArticleHelper.GetReadDic();
+    private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
+    private static readonly List<Period> Periods = PeriodHelper.GetPeriods();
+    private static readonly List<int> PostTableIds = ArticleHelper.GetPostTableIds(150);
+
 
     public ArticleCommentMigration(ISnowflake snowflake)
     {
@@ -71,21 +81,14 @@ public class ArticleCommentMigration
         #region 轉檔前準備相關資料
 
         var dic = RelationContainer.ArticleIdDic;
-        var boardDic = RelationHelper.GetBoardDic();
-        var categoryDic = RelationHelper.GetCategoryDic();
         var memberUidDic = RelationHelper.GetMemberUidDic();
         var memberDisplayNameDic = RelationHelper.GetMemberDisplayNameDic();
-        var modDic = ArticleHelper.GetModDic();
-        var readDic = ArticleHelper.GetReadDic();
-        var periods = PeriodHelper.GetPeriods();
-        var postTableIds = ArticleHelper.GetPostTableIds(150);
-        var commonSetting = ArticleHelper.GetCommonSetting();
 
         #endregion
 
-        foreach (var period in periods)
+        foreach (var period in Periods)
         {
-            Parallel.ForEach(postTableIds, //new ParallelOptions { MaxDegreeOfParallelism = 1 },
+            Parallel.ForEach(PostTableIds, //new ParallelOptions { MaxDegreeOfParallelism = 1 },
                              postTableId =>
                              {
                                  var sql = $@"SELECT 
@@ -158,23 +161,18 @@ public class ArticleCommentMigration
                                      foreach (var post in posts)
                                      {
                                          //髒資料放過他
-                                         if (!dic.ContainsKey(post.Tid) || !boardDic.ContainsKey(post.Fid))
+                                         if (!dic.ContainsKey(post.Tid) || !BoardDic.ContainsKey(post.Fid))
                                              continue;
 
                                          var postResult = new PostResult
                                                           {
                                                               ArticleId = dic[post.Tid],
-                                                              BoardId = boardDic[post.Fid],
+                                                              BoardId = BoardDic[post.Fid],
                                                               MemberId = memberUidDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? memberUidDic[Convert.ToInt32(post.Authorid)] : 0,
                                                               CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                                               CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
-                                                              HideExpirationDay = commonSetting.HideExpirationDay,
-                                                              RewardExpirationDay = commonSetting.RewardExpirationDay,
                                                               MemberDisplayNameDic = memberDisplayNameDic,
                                                               MemberUidDic = memberUidDic,
-                                                              ModDic = modDic,
-                                                              CategoryDic = categoryDic,
-                                                              ReadDic = readDic,
                                                               Post = post
                                                           };
 
@@ -269,10 +267,9 @@ public class ArticleCommentMigration
 
         var isScheduling = post.PostTime < post.Dateline;
         var highlightInt = post.Highlight % 10; //只要取個位數
-        var read = postResult.ReadDic.ContainsKey(post.Tid) ? postResult.ReadDic[post.Tid] : null;
+        var read = ReadDic.ContainsKey(post.Tid) ? ReadDic[post.Tid] : null;
         var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
         var videoCount = BbCodeVideoRegex.Matches(post.Message).Count;
-        var modDic = postResult.ModDic;
 
         var article = new Article()
                       {
@@ -309,7 +306,7 @@ public class ArticleCommentMigration
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
                           BoardId = postResult.BoardId,
-                          CategoryId = postResult.CategoryDic.ContainsKey(post.Typeid) ? postResult.CategoryDic[post.Typeid] : 0,
+                          CategoryId = CategoryDic.ContainsKey(post.Typeid) ? CategoryDic[post.Typeid] : 0,
                           SortingIndex = postResult.CreateMilliseconds,
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = !string.IsNullOrEmpty(post.Lastposter) && postResult.MemberDisplayNameDic.ContainsKey(post.Lastposter) ? postResult.MemberDisplayNameDic[post.Lastposter] : null,
@@ -333,13 +330,13 @@ public class ArticleCommentMigration
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
                           SchedulePublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : null,
-                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? postResult.CreateDate.AddDays(postResult.HideExpirationDay) : null,
-                          PinExpirationDate = modDic.ContainsKey((post.Tid, "EST")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EST")]) : null,
-                          RecommendExpirationDate = modDic.ContainsKey((post.Tid, "EDI")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EDI")]) : null,
-                          HighlightExpirationDate = modDic.ContainsKey((post.Tid, "EHL")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "EHL")]) : null,
-                          CommentDisabledExpirationDate = modDic.ContainsKey((post.Tid, "ECL")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "ECL")]) : null,
-                          InVisibleArticleExpirationDate = modDic.ContainsKey((post.Tid, "BNP")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "BNP")]) :
-                                                           modDic.ContainsKey((post.Tid, "UBN")) ? DateTimeOffset.FromUnixTimeSeconds(modDic[(post.Tid, "UBN")]) : null,
+                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? postResult.CreateDate.AddDays(CommonSetting.HideExpirationDay) : null,
+                          PinExpirationDate = ModDic.ContainsKey((post.Tid, "EST")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "EST")]) : null,
+                          RecommendExpirationDate = ModDic.ContainsKey((post.Tid, "EDI")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "EDI")]) : null,
+                          HighlightExpirationDate = ModDic.ContainsKey((post.Tid, "EHL")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "EHL")]) : null,
+                          CommentDisabledExpirationDate = ModDic.ContainsKey((post.Tid, "ECL")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "ECL")]) : null,
+                          InVisibleArticleExpirationDate = ModDic.ContainsKey((post.Tid, "BNP")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "BNP")]) :
+                                                           ModDic.ContainsKey((post.Tid, "UBN")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "UBN")]) : null,
                           Signature = post.Usesig,
                           Warning = post.Warning != null,
                           CreatorId = postResult.MemberId,
@@ -380,7 +377,7 @@ public class ArticleCommentMigration
                                 AttachmentUrl = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb)
                             };
 
-        coverSb.AppendCopyValues(coverRelation.Id,coverRelation.OriginCover,coverRelation.Tid, coverRelation.Pid, coverRelation.AttachmentUrl);
+        coverSb.AppendCopyValues(coverRelation.Id, coverRelation.OriginCover, coverRelation.Tid, coverRelation.Pid, coverRelation.AttachmentUrl);
 
         return coverRelation;
     }
@@ -395,7 +392,7 @@ public class ArticleCommentMigration
                      {
                          Id = postResult.ArticleId,
                          Point = post.Price,
-                         ExpirationDate = postResult.CreateDate.AddDays(postResult.RewardExpirationDay),
+                         ExpirationDate = postResult.CreateDate.AddDays(CommonSetting.RewardExpirationDay),
                          SolveCommentId = null,
                          SolveDate = null,
                          AllowAdminSolveDate = postResult.CreateDate.AddDays(1),
@@ -553,7 +550,7 @@ public class ArticleCommentMigration
                                    comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                    comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
-    
+
     public void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
     {
         var post = postResult.Post;
