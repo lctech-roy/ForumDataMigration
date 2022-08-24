@@ -176,4 +176,16 @@ public static class RelationHelper
 
         return simpleMemberDic;
     }
+
+    public static async Task<Dictionary<string, long>> GetMembersDisplayNameDicAsync(string[] displayNames, CancellationToken cancellationToken = default)
+    {
+        const string queryMemberSql = $"SELECT \"Id\",\"Value\" AS DisplayName FROM \"MemberProfile\" WHERE \"Key\"='DisplayName' AND \"Value\" = ANY(@displayNames)";
+
+        await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
+
+        var membersDisplayNmaeDic = (await conn.QueryAsync<(long id, string displayName)>(new CommandDefinition(queryMemberSql,new { displayNames },cancellationToken: cancellationToken)))
+           .ToDictionary(t =>t.displayName, t => t.id);
+
+        return membersDisplayNmaeDic;
+    }
 }

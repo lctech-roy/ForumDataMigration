@@ -127,16 +127,9 @@ public class Migration
         var periods = PeriodHelper.GetPeriods();
         var postTableIds = ArticleHelper.GetPostTableIds();
 
-        foreach (var period in periods)
+        foreach (var filePath in periods.SelectMany(_ => postTableIds, (period, postTableId) => $"{path}/{period.FolderName}/{postTableId}.sql").Where(File.Exists))
         {
-            foreach (var postTableId in postTableIds)
-            {
-                var filePath = $"{path}/{period.FolderName}/{postTableId}.sql";
-
-                if (!File.Exists(filePath)) continue;
-
-                cn.ExecuteAllTexts(filePath);
-            }
+            cn.ExecuteAllTexts(filePath);
         }
     }
 
@@ -204,7 +197,7 @@ public class Migration
     {
         const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
-        const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{Setting.COMMENT_EXTEND_DATA}";
+        const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
 
         await using var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
 

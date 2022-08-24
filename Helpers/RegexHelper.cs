@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Dapper;
 
-namespace ForumDataMigration.Helper;
+namespace ForumDataMigration.Helpers;
 
 public static class RegexHelper
 {

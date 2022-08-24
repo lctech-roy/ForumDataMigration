@@ -11,9 +11,6 @@ public static class Setting
     public const string NEW_COMMENT_CONNECTION = "Host=35.234.11.73;Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_comment;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     
     public const string D = "";
-    public const string EXTEND_DATA_RECOMMEND_COMMENT = "RecommendComment";
-    public const string EXTEND_DATA_BOARD_ID = "BoardId";
-    public const string COMMENT_EXTEND_DATA = "CommentExtendData";
     public const string FORUM_URL = "https://www.jkforum.net/";
     public const string ATTACHMENT_URL = "https://www.mymypic.net/";
     public const string ATTACHMENT_PATH = "data/attachment/forum/";

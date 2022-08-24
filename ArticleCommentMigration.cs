@@ -1,8 +1,8 @@
 using System.Text;
-using System.Text.RegularExpressions;
 using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
+using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Lctech.Jkf.Domain.Entities;
 using Lctech.Jkf.Domain.Enums;
@@ -11,254 +11,104 @@ using Netcorext.Algorithms;
 
 namespace ForumDataMigration;
 
-public class ArticleCommentMigration
+public partial class ArticleCommentMigration
 {
     private readonly ISnowflake _snowflake;
-    
-    private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
-    private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
-    private const string HIDE_PATTERN = @"(\[\/?hide[^\]]*\]|{[^}]*})";
-
-    private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-    private static readonly Dictionary<int, string?> ColorDic = new()
-                                                                {
-                                                                    { 0, null }, { 1, "#EE1B2E" }, { 2, "#EE5023" }, { 3, "#996600" }, { 4, "#3C9D40" }, { 5, "#2897C5" }, { 6, "#2B65B7" }, { 7, "#8F2A90" }, { 8, "#EC1282" }
-                                                                };
-
-    private static readonly Dictionary<int,long> BoardDic = RelationHelper.GetBoardDic();
-    private static readonly Dictionary<int,long> CategoryDic = RelationHelper.GetCategoryDic();
-    private static readonly Dictionary<(int, string),int> ModDic = ArticleHelper.GetModDic();
-    private static readonly Dictionary<long,Read> ReadDic = ArticleHelper.GetReadDic();
-    private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
-    private static readonly List<Period> Periods = PeriodHelper.GetPeriods();
-    private static readonly List<int> PostTableIds = ArticleHelper.GetPostTableIds(150);
-
 
     public ArticleCommentMigration(ISnowflake snowflake)
     {
         _snowflake = snowflake;
     }
 
-    public void Migration()
+    public async Task MigrationAsync(CancellationToken cancellationToken)
     {
-        const string articleSql = $"COPY \"{nameof(Article)}\" " +
-                                  $"(\"{nameof(Article.Id)}\",\"{nameof(Article.BoardId)}\",\"{nameof(Article.CategoryId)}\",\"{nameof(Article.Status)}\"" +
-                                  $",\"{nameof(Article.VisibleType)}\",\"{nameof(Article.Type)}\",\"{nameof(Article.ContentType)}\",\"{nameof(Article.PinType)}\"" +
-                                  $",\"{nameof(Article.Title)}\",\"{nameof(Article.Content)}\",\"{nameof(Article.ViewCount)}\",\"{nameof(Article.ReplyCount)}\"" +
-                                  $",\"{nameof(Article.SortingIndex)}\",\"{nameof(Article.LastReplyDate)}\",\"{nameof(Article.LastReplierId)}\",\"{nameof(Article.PinPriority)}\"" +
-                                  $",\"{nameof(Article.Cover)}\",\"{nameof(Article.Tag)}\",\"{nameof(Article.RatingCount)}\"" +
-                                  $",\"{nameof(Article.ShareCount)}\",\"{nameof(Article.ImageCount)}\",\"{nameof(Article.VideoCount)}\",\"{nameof(Article.DonatePoint)}\"" +
-                                  $",\"{nameof(Article.Highlight)}\",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.Recommend)}\",\"{nameof(Article.ReadPermission)}\"" +
-                                  $",\"{nameof(Article.CommentDisabled)}\",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
-                                  $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.SchedulePublishDate)}\"" +
-                                  $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
-                                  $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.Warning)}\"" +
-                                  Setting.COPY_ENTITY_SUFFIX;
-
-        const string articleCoverRelationSql = $"COPY \"{nameof(ArticleCoverRelation)}\" " +
-                                               $"(\"{nameof(ArticleCoverRelation.Id)}\",\"{nameof(ArticleCoverRelation.OriginCover)}\",\"{nameof(ArticleCoverRelation.Tid)}\",\"{nameof(ArticleCoverRelation.Pid)}\",\"{nameof(ArticleCoverRelation.AttachmentUrl)}\"" + Setting.COPY_SUFFIX;
-
-        const string articleRewardSql = $"COPY \"{nameof(ArticleReward)}\" " +
-                                        $"(\"{nameof(ArticleReward.Id)}\",\"{nameof(ArticleReward.Point)}\",\"{nameof(ArticleReward.ExpirationDate)}\"" +
-                                        $",\"{nameof(ArticleReward.SolveCommentId)}\",\"{nameof(ArticleReward.SolveDate)}\",\"{nameof(ArticleReward.AllowAdminSolveDate)}\"" + Setting.COPY_ENTITY_SUFFIX;
-
-        const string warningSql = $"COPY \"{nameof(Warning)}\" " +
-                                  $"(\"{nameof(Warning.Id)}\",\"{nameof(Warning.WarningType)}\",\"{nameof(Warning.SourceId)}\",\"{nameof(Warning.MemberId)}\"" +
-                                  $",\"{nameof(Warning.WarnerId)}\",\"{nameof(Warning.Reason)}\"" + Setting.COPY_ENTITY_SUFFIX;
-
-        const string commentSql = $"COPY \"{nameof(Comment)}\" " +
-                                  $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
-                                  $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
-                                  $",\"{nameof(Comment.Sequence)}\",\"{nameof(Comment.RelatedScore)}\",\"{nameof(Comment.ReplyCount)}\",\"{nameof(Comment.LikeCount)}\"" +
-                                  $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.IsDeleted)}\"" + Setting.COPY_ENTITY_SUFFIX;
-
-        const string commentExtendDataSql = $"COPY \"{Setting.COMMENT_EXTEND_DATA}\" (\"Id\",\"Key\",\"Value\"" + Setting.COPY_ENTITY_SUFFIX;
-
-
-        #region 轉檔前準備相關資料
-
-        var dic = RelationContainer.ArticleIdDic;
-        var memberUidDic = RelationHelper.GetMemberUidDic();
-        var memberDisplayNameDic = RelationHelper.GetMemberDisplayNameDic();
-
-        #endregion
-
         foreach (var period in Periods)
         {
-            Parallel.ForEach(PostTableIds, //new ParallelOptions { MaxDegreeOfParallelism = 1 },
-                             postTableId =>
-                             {
-                                 var sql = $@"SELECT 
-                                    thread.displayorder , thread.special , thread.subject ,  
-                                    thread.closed, thread.views , thread.replies,  
-                                    thread.lastpost,thread.lastposter, thread.sharetimes,  
-                                    thread.typeid, thread.highlight, thread.price,
-                                    thread.digest, thread.readperm,thread.cover,thread.thumb,
-                                    post.tid AS Tid,
-                                    post.pid AS Pid,
-                                    post.fid AS Fid,
-                                    post.authorid,
-                                    post.dateline,
-                                    post.message,
-                                    post.ratetimes,
-                                    post.useip,
-                                    post.usesig,
-                                    post.position,
-                                    post.tags,
-                                    post.status,
-                                    post.first,
-                                    post.comment,
-                                    post.likescore,
-                                    post.invisible,
-                                    thankCount.count AS thankCount,
-                                    postDelay.post_time AS postTime,
-                                    postStick.dateline AS stickDateline
-                                    -- warning.pid AS {nameof(ThreadWarning)}_Pid,
-                                    -- warning.authorid AS {nameof(ThreadWarning)}_authorid,
-                                    -- warning.operatorid AS {nameof(ThreadWarning)}_operatorid,
-                                    -- warning.reason AS {nameof(ThreadWarning)}_reason,
-                                    -- warning.dateline AS {nameof(ThreadWarning)}_dateline
-                                    FROM (
-                                      SELECT tid,pid,fid,message,ratetimes,useip,usesig,position,tags,status,first,comment,likescore,invisible,authorid,dateline
-                                      -- FROM pre_forum_post
-                                      FROM `pre_forum_post{(postTableId != 0 ? $"_{postTableId}" : "")}`
-                                      WHERE dateline >= @Start AND dateline < @End --  AND position = 1 AND first = true
-                                      -- FROM pre_forum_post_96 where tid = 11229114
-                                    ) AS post
-                                    LEFT JOIN pre_forum_thread AS thread ON thread.tid = post.tid AND post.first = true
-                                    LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = post.tid  AND post.first = true
-                                    LEFT JOIN pre_post_delay AS postDelay ON postDelay.tid = thread.tid AND post.first = true
-                                    LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-                                    -- LEFT JOIN pre_forum_warning as warning on warning.pid = post.pid
-                                    ";
+            await Parallel.ForEachAsync(PostTableIds, cancellationToken,
+                                        async (postTableId, token) =>
+                                        {
+                                            List<Post> posts;
 
-                                 {
-                                     List<Post> posts;
+                                            await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+                                            {
+                                                var postTableSuffix = postTableId != 0 ? $"_{postTableId}" : "";
 
-                                     using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
-                                     {
-                                         posts = cn.Query<Post>(sql, new { Start = period.StartSeconds, End = period.EndSeconds }).ToList();
+                                                var sql = string.Format(QUERY_ARTICLE_COMMENT_SQL, postTableSuffix);
 
-                                         //posts = Slapper.AutoMapper.MapDynamic<Post>(dynamicPosts, false).ToList();
-                                     }
+                                                var command = new CommandDefinition(sql, new { Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
 
-                                     if (!posts.Any())
-                                         return;
+                                                posts = (await cn.QueryAsync<Post>(command)).ToList();
+                                            }
 
-                                     var sb = new StringBuilder();
-                                     var coverSb = new StringBuilder();
-                                     var commentSb = new StringBuilder();
-                                     var commentExtendDataSb = new StringBuilder();
-                                     var commentReplySb = new StringBuilder();
-                                     var warningSb = new StringBuilder();
-                                     var rewardSb = new StringBuilder();
+                                            if (!posts.Any())
+                                                return;
 
-                                     var rewardDic = new Dictionary<int, ArticleReward>(); //有解決的懸賞文章要暫存
-
-                                     foreach (var post in posts)
-                                     {
-                                         //髒資料放過他
-                                         if (!dic.ContainsKey(post.Tid) || !BoardDic.ContainsKey(post.Fid))
-                                             continue;
-
-                                         var postResult = new PostResult
-                                                          {
-                                                              ArticleId = dic[post.Tid],
-                                                              BoardId = BoardDic[post.Fid],
-                                                              MemberId = memberUidDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? memberUidDic[Convert.ToInt32(post.Authorid)] : 0,
-                                                              CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
-                                                              CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
-                                                              MemberDisplayNameDic = memberDisplayNameDic,
-                                                              MemberUidDic = memberUidDic,
-                                                              Post = post
-                                                          };
-
-                                         if (post.First) //文章
-                                         {
-                                             SetArticle(postResult, sb, coverSb);
-                                             SetArticleReward(postResult, rewardSb, rewardDic);
-
-                                             //SetArticleWarning(postResult,warningSb);
-                                             SetCommentFirst(postResult, commentSb, commentExtendDataSb, period, postTableId, commentSql);
-                                         }
-                                         else if (post.Position != 1) //留言
-                                         {
-                                             var commentId = _snowflake.Generate();
-                                             SetArticleRewardSolved(postResult, rewardSb, rewardDic, commentId);
-                                             SetComment(postResult, commentSb, commentExtendDataSb, commentReplySb, period, postTableId, commentSql, commentId);
-                                         }
-                                     }
-
-                                     if (sb.Length > 0)
-                                     {
-                                         var path = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}";
-                                         Directory.CreateDirectory(path);
-                                         var fullPath = $"{path}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(articleSql, sb.ToString()));
-
-                                         Console.WriteLine(fullPath);
-                                     }
-
-                                     if (coverSb.Length > 0)
-                                     {
-                                         var coverPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}";
-                                         Directory.CreateDirectory(coverPath);
-                                         var fullPath = $"{coverPath}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(articleCoverRelationSql, coverSb.ToString()));
-                                         Console.WriteLine(fullPath);
-                                     }
-
-                                     if (rewardSb.Length > 0)
-                                     {
-                                         var rewardPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}";
-                                         Directory.CreateDirectory(rewardPath);
-                                         var fullPath = $"{rewardPath}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(articleRewardSql, rewardSb.ToString()));
-                                         Console.WriteLine(fullPath);
-                                     }
-
-                                     if (warningSb.Length > 0)
-                                     {
-                                         var warningPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Warning)}/{period.FolderName}";
-                                         Directory.CreateDirectory(warningPath);
-                                         var fullPath = $"{warningPath}/{postTableId}.sql";
-                                         File.WriteAllText(fullPath, string.Concat(warningSql, warningSb.ToString()));
-
-                                         Console.WriteLine(fullPath);
-                                     }
-
-                                     if (commentSb.Length > 0)
-                                     {
-                                         var commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}";
-                                         Directory.CreateDirectory(commentPath);
-                                         var fullPath = $"{commentPath}/{postTableId}.sql";
-
-                                         if (File.Exists(fullPath) && File.ReadLines(fullPath).Any())
-                                             File.AppendAllText(fullPath, commentSb.ToString());
-                                         else
-                                             File.WriteAllText(fullPath, string.Concat(commentSql, commentSb.ToString()));
-
-                                         if (commentReplySb.Length > 0)
-                                             File.AppendAllText(fullPath, commentReplySb.ToString());
-
-                                         Console.WriteLine(fullPath);
-                                     }
-
-                                     if (commentExtendDataSb.Length > 0)
-                                     {
-                                         var commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{Setting.COMMENT_EXTEND_DATA}/{period.FolderName}";
-                                         Directory.CreateDirectory(commentExtendDataPath);
-                                         var fullPath = $"{commentExtendDataPath}/{postTableId}.sql";
-
-                                         File.WriteAllText(fullPath, string.Concat(commentExtendDataSql, commentExtendDataSb.ToString()));
-                                         Console.WriteLine(fullPath);
-                                     }
-                                 }
-                             });
+                                            await ExecuteAsync(posts, postTableId, period, cancellationToken);
+                                        });
         }
+    }
+
+    private async Task ExecuteAsync(List<Post> posts, int postTableId, Period period, CancellationToken cancellationToken = default)
+    {
+        var sb = new StringBuilder();
+        var coverSb = new StringBuilder();
+        var commentSb = new StringBuilder();
+        var commentExtendDataSb = new StringBuilder();
+        var warningSb = new StringBuilder();
+        var rewardSb = new StringBuilder();
+
+        var dic = await RelationHelper.GetArticleIdDicAsync(posts.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
+        var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(posts.Select(x => x.Authorid.ToString()).Distinct().ToArray(), cancellationToken);
+        var lastPosterNames = posts.Select(x => x.Lastposter).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToArray();
+
+        var memberDisplayNameDic = new Dictionary<string, long>();
+
+        if (lastPosterNames.Any())
+            memberDisplayNameDic = await RelationHelper.GetMembersDisplayNameDicAsync(lastPosterNames!, cancellationToken);
+
+        var rewardDic = new Dictionary<int, ArticleReward>(); //有解決的懸賞文章要暫存
+
+        foreach (var post in posts)
+        {
+            //髒資料放過他
+            if (!dic.ContainsKey(post.Tid) || !BoardDic.ContainsKey(post.Fid))
+                continue;
+
+            var postResult = new PostResult
+                             {
+                                 ArticleId = dic[post.Tid],
+                                 BoardId = BoardDic[post.Fid],
+                                 MemberId = simpleMemberDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? simpleMemberDic[Convert.ToInt32(post.Authorid)].Item1 : 0,
+                                 CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
+                                 CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
+                                 MemberDisplayNameDic = memberDisplayNameDic,
+                                 SimpleMemberDic = simpleMemberDic,
+                                 Post = post
+                             };
+
+            if (post.First) //文章
+            {
+                SetArticle(postResult, sb, coverSb);
+                SetArticleReward(postResult, rewardSb, rewardDic);
+                //SetArticleWarning(postResult,warningSb);
+                commentSb = await SetCommentFirstAsync(postResult, commentSb, commentExtendDataSb, period, postTableId, cancellationToken);
+            }
+            else if (post.Position != 1) //留言
+            {
+                var commentId = _snowflake.Generate();
+                SetArticleRewardSolved(postResult, rewardSb, rewardDic, commentId);
+                commentSb = await SetCommentAsync(postResult, commentSb, commentExtendDataSb, period, postTableId, commentId, cancellationToken);
+            }
+        }
+
+        var task = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb, cancellationToken);
+        var coverTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}", $"{postTableId}.sql", COVER_RELATION_PREFIX, coverSb, cancellationToken);
+        var rewardTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}", $"{postTableId}.sql", COPY_REWARD_PREFIX, rewardSb, cancellationToken);
+        var warningTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Warning)}/{period.FolderName}", $"{postTableId}.sql", COPY_WARNING_PREFIX, warningSb, cancellationToken);
+        var commentTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb, cancellationToken);
+        var commentExtendDataTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb, cancellationToken);
+
+        await Task.WhenAll(task, coverTask, rewardTask, warningTask, commentTask, commentExtendDataTask);
     }
 
     private static void SetArticle(PostResult postResult, StringBuilder sb, StringBuilder coverSb)
@@ -271,7 +121,7 @@ public class ArticleCommentMigration
         var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
         var videoCount = BbCodeVideoRegex.Matches(post.Message).Count;
 
-        var article = new Article()
+        var article = new Article
                       {
                           Id = postResult.ArticleId,
                           Status = post.Displayorder == -1 ? ArticleStatus.Deleted :
@@ -432,7 +282,7 @@ public class ArticleCommentMigration
         rewardDic.Remove(post.Tid);
     }
 
-    private static void SetCommentFirst(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId, string commentSql)
+    private static async Task<StringBuilder> SetCommentFirstAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId, CancellationToken cancellationToken)
     {
         var comment = new Comment
                       {
@@ -450,13 +300,15 @@ public class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate,
                       };
 
-        AppendCommentSb(comment, ref commentSb, period, postTableId, commentSql);
+        commentSb = await AppendCommentSbAsync(comment, commentSb, period, postTableId, cancellationToken);
 
-        commentExtendDataSb.AppendCopyValues(postResult.ArticleId, Setting.EXTEND_DATA_BOARD_ID, postResult.BoardId,
+        commentExtendDataSb.AppendCopyValues(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
                                              comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
+
+        return commentSb;
     }
 
-    private void SetComment(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentReplySb, Period period, int postTableId, string commentSql, long commentId)
+    private async Task<StringBuilder> SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
     {
         var post = postResult.Post;
 
@@ -482,19 +334,23 @@ public class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate,
                       };
 
-        AppendCommentSb(comment, ref commentSb, period, postTableId, commentSql);
+        commentSb = await AppendCommentSbAsync(comment, commentSb, period, postTableId, cancellationToken);
 
         if (post.StickDateline.HasValue)
         {
             var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
-            commentExtendDataSb.AppendCopyValues(commentId, Setting.EXTEND_DATA_RECOMMEND_COMMENT, true,
+            commentExtendDataSb.AppendCopyValues(commentId, EXTEND_DATA_RECOMMEND_COMMENT, true,
                                                  stickDate, 0, stickDate, 0, 0);
         }
 
-        if (!post.Comment) return;
+        if (!post.Comment) return commentSb;
 
-        var postComments = CommentHelper.GetPostComments(post.Tid, post.Pid);
+        var postComments = (await CommentHelper.GetPostCommentsAsync(post.Tid, post.Pid, cancellationToken)).ToArray();
+
+        if (!postComments.Any())
+            return commentSb;
+
         var sequence = 1;
 
         foreach (var postComment in postComments)
@@ -516,31 +372,21 @@ public class ArticleCommentMigration
                                    SortingIndex = Convert.ToInt64(postComment.Dateline) * 1000,
                                    RelatedScore = 0,
                                    CreationDate = replyDate,
-                                   CreatorId = postResult.MemberUidDic.ContainsKey(postComment.Authorid) ? postResult.MemberUidDic[postComment.Authorid] : 0,
+                                   CreatorId = postResult.SimpleMemberDic.ContainsKey(postComment.Authorid) ? postResult.SimpleMemberDic[postComment.Authorid].Item1 : 0,
                                    ModificationDate = replyDate,
                                };
 
-            commentReplySb.AppendCopyValues(commentReply.Id, commentReply.RootId, commentReply.ParentId, commentReply.Level, commentReply.Hierarchy, commentReply.SortingIndex,
-                                            commentReply.Content.ToCopyText(), (int) commentReply.VisibleType, commentReply.Ip, commentReply.Sequence,
-                                            commentReply.RelatedScore, commentReply.ReplyCount, commentReply.LikeCount, commentReply.DislikeCount, commentReply.IsDeleted,
-                                            commentReply.CreationDate, commentReply.CreatorId, commentReply.ModificationDate, commentReply.ModifierId, commentReply.Version);
+           commentSb = await AppendCommentSbAsync(commentReply, commentSb, period, postTableId, cancellationToken);
         }
+
+        return commentSb;
     }
 
-    private static void AppendCommentSb(Comment comment, ref StringBuilder commentSb, Period period, int postTableId, string commentSql)
+    private static async Task<StringBuilder> AppendCommentSbAsync(Comment comment, StringBuilder commentSb, Period period, int postTableId, CancellationToken cancellationToken)
     {
         if (commentSb.Length > 30000)
         {
-            var path = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}";
-            var fullPath = $"{path}/{postTableId}.sql";
-
-            if (File.Exists(fullPath) && File.ReadLines(fullPath).Any())
-                File.AppendAllText(fullPath, commentSb.ToString());
-            else
-            {
-                Directory.CreateDirectory(path);
-                File.WriteAllText(fullPath, string.Concat(commentSql, commentSb.ToString()));
-            }
+            await WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb, cancellationToken);
 
             commentSb = new StringBuilder();
         }
@@ -549,9 +395,11 @@ public class ArticleCommentMigration
                                    comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
                                    comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                    comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
+
+        return commentSb;
     }
 
-    public void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
+    private void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
     {
         var post = postResult.Post;
 
@@ -574,5 +422,25 @@ public class ArticleCommentMigration
 
         warningSb.AppendCopyValues(warning.Id, (int) warning.WarningType, warning.SourceId, warning.MemberId, warning.WarnerId, warning.Reason,
                                    warning.CreationDate, warning.CreatorId, warning.ModificationDate, warning.ModifierId, warning.Version);
+    }
+
+    private static async Task WriteToFileAsync(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb, CancellationToken cancellationToken)
+    {
+        if (valueSb.Length == 0)
+            return;
+
+        Directory.CreateDirectory(directoryPath);
+        var fullPath = $"{directoryPath}/{fileName}";
+
+        if (File.Exists(fullPath))
+        {
+            await File.AppendAllTextAsync(fullPath, valueSb.ToString(), cancellationToken);
+            Console.WriteLine($"Append {fullPath}");
+        }
+        else
+        {
+            await File.WriteAllTextAsync(fullPath, string.Concat(copyPrefix, valueSb.ToString()), cancellationToken);
+            Console.WriteLine(fullPath);
+        }
     }
 }

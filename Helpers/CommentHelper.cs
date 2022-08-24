@@ -6,12 +6,12 @@ namespace ForumDataMigration.Helper;
 
 public static class CommentHelper
 {
-    public static IEnumerable<PreForumPostcomment> GetPostComments(int tid,uint pid)
-    { 
+    public static async Task<IEnumerable<PreForumPostcomment>> GetPostCommentsAsync(int tid, uint pid, CancellationToken cancellationToken)
+    {
         const string querySql = $"SELECT * FROM pre_forum_postcomment WHERE tid = @tid AND pid= @pid";
 
-        using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+        await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-        return cn.Query<PreForumPostcomment>(querySql, new { tid,pid }).ToList();
+        return (await cn.QueryAsync<PreForumPostcomment>(new CommandDefinition(querySql, new { tid, pid }, cancellationToken: cancellationToken))).ToList();
     }
 }
