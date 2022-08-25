@@ -1,5 +1,6 @@
 using System.Text;
 using Dapper;
+using ForumDataMigration.Enums;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
@@ -51,10 +52,13 @@ public partial class ArticleCommentMigration
     private async Task ExecuteAsync(List<Post> posts, int postTableId, Period period, CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
+        var jsonSb = new StringBuilder();
         var coverSb = new StringBuilder();
         var commentSb = new StringBuilder();
+        var commentJsonSb = new StringBuilder();
         var commentExtendDataSb = new StringBuilder();
-        var warningSb = new StringBuilder();
+
+        //var warningSb = new StringBuilder();
         var rewardSb = new StringBuilder();
 
         var dic = await RelationHelper.GetArticleIdDicAsync(posts.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
@@ -74,45 +78,50 @@ public partial class ArticleCommentMigration
             if (!dic.ContainsKey(post.Tid) || !BoardDic.ContainsKey(post.Fid))
                 continue;
 
+            var (memberId, memberName) = simpleMemberDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? simpleMemberDic[Convert.ToInt32(post.Authorid)] : (0, "");
+
             var postResult = new PostResult
                              {
                                  ArticleId = dic[post.Tid],
                                  BoardId = BoardDic[post.Fid],
-                                 MemberId = simpleMemberDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? simpleMemberDic[Convert.ToInt32(post.Authorid)].Item1 : 0,
+                                 MemberId = memberId,
+                                 MemberName = memberName,
+                                 LastPosterId = !string.IsNullOrEmpty(post.Lastposter) && memberDisplayNameDic.ContainsKey(post.Lastposter) ? memberDisplayNameDic[post.Lastposter] : null,
                                  CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                  CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
-                                 MemberDisplayNameDic = memberDisplayNameDic,
-                                 SimpleMemberDic = simpleMemberDic,
                                  Post = post
                              };
 
             if (post.First) //文章
             {
-                SetArticle(postResult, sb, coverSb);
+                await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken);
                 SetArticleReward(postResult, rewardSb, rewardDic);
 
                 //SetArticleWarning(postResult,warningSb);
-                SetCommentFirst(postResult, ref commentSb, commentExtendDataSb, period, postTableId);
+                (commentSb, commentJsonSb) = await SetCommentFirstAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, cancellationToken);
             }
             else if (post.Position != 1) //留言
             {
                 var commentId = _snowflake.Generate();
                 SetArticleRewardSolved(postResult, rewardSb, rewardDic, commentId);
-                commentSb = await SetCommentAsync(postResult, commentSb, commentExtendDataSb, period, postTableId, commentId, cancellationToken);
+                (commentSb, commentJsonSb) = await SetCommentAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, commentId, cancellationToken);
             }
         }
 
         var task = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
+        var jsonTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}/{period.FolderName}", $"{postTableId}.sql", "", jsonSb); });
         var coverTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}", $"{postTableId}.sql", COVER_RELATION_PREFIX, coverSb); });
         var rewardTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}", $"{postTableId}.sql", COPY_REWARD_PREFIX, rewardSb); });
-        var warningTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Warning)}/{period.FolderName}", $"{postTableId}.sql", COPY_WARNING_PREFIX, warningSb); });
+
+        // var warningTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Warning)}/{period.FolderName}", $"{postTableId}.sql", COPY_WARNING_PREFIX, warningSb); });
         var commentTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
         var commentExtendDataTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
+        var commentJsonTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.sql", "", commentJsonSb); });
 
-        await Task.WhenAll(task, coverTask, rewardTask, warningTask, commentTask, commentExtendDataTask);
+        await Task.WhenAll(task, jsonTask, coverTask, rewardTask, commentTask, commentExtendDataTask, commentJsonTask);
     }
 
-    private static void SetArticle(PostResult postResult, StringBuilder sb, StringBuilder coverSb)
+    private static async Task SetArticleAsync(PostResult postResult, StringBuilder sb, StringBuilder coverSb, StringBuilder jsonSb, CancellationToken cancellationToken)
     {
         var post = postResult.Post;
 
@@ -160,7 +169,7 @@ public partial class ArticleCommentMigration
                           CategoryId = CategoryDic.ContainsKey(post.Typeid) ? CategoryDic[post.Typeid] : 0,
                           SortingIndex = postResult.CreateMilliseconds,
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
-                          LastReplierId = !string.IsNullOrEmpty(post.Lastposter) && postResult.MemberDisplayNameDic.ContainsKey(post.Lastposter) ? postResult.MemberDisplayNameDic[post.Lastposter] : null,
+                          LastReplierId = postResult.LastPosterId,
                           PinPriority = post.Displayorder,
                           Cover = SetArticleCoverRelation(postResult, coverSb)?.Id,
                           Tag = post.Tags.ToNewTags(),
@@ -208,6 +217,19 @@ public partial class ArticleCommentMigration
                             article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                             article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
                             article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
+
+
+        #region Es文件檔
+
+        jsonSb.Append(ArticleEsIdPrefix).Append(article.Id).AppendLine(EsIdSuffix);
+
+        var document = SetArticleDocument(article, postResult);
+
+        var json = await JsonHelper.GetJsonAsync(document, cancellationToken);
+
+        jsonSb.AppendLine(json);
+
+        #endregion
     }
 
     private static ArticleCoverRelation? SetArticleCoverRelation(PostResult postResult, StringBuilder coverSb)
@@ -249,8 +271,8 @@ public partial class ArticleCommentMigration
                          AllowAdminSolveDate = postResult.CreateDate.AddDays(1),
                          CreationDate = postResult.CreateDate,
                          CreatorId = postResult.MemberId,
-                         ModifierId = postResult.MemberId,
-                         ModificationDate = postResult.CreateDate
+                         ModificationDate = postResult.CreateDate,
+                         ModifierId = postResult.MemberId
                      };
 
         if (post.Price >= 0) //未解決
@@ -283,7 +305,7 @@ public partial class ArticleCommentMigration
         rewardDic.Remove(post.Tid);
     }
 
-    private static void SetCommentFirst(PostResult postResult, ref StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId)
+    private static async Task<(StringBuilder, StringBuilder)> SetCommentFirstAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
     {
         var comment = new Comment
                       {
@@ -291,6 +313,7 @@ public partial class ArticleCommentMigration
                           RootId = postResult.ArticleId,
                           Level = 1,
                           Hierarchy = postResult.ArticleId.ToString(),
+                          Title = postResult.Post.Subject,
                           Content = string.Empty,
                           VisibleType = VisibleType.Public,
                           Ip = postResult.Post.Useip,
@@ -299,15 +322,18 @@ public partial class ArticleCommentMigration
                           CreationDate = postResult.CreateDate,
                           CreatorId = postResult.MemberId,
                           ModificationDate = postResult.CreateDate,
+                          ModifierId = postResult.MemberId
                       };
 
-        AppendCommentSb(comment, ref commentSb, period, postTableId);
+        (commentSb, commentJsonSb) = await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         commentExtendDataSb.AppendCopyValues(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
                                              comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
+
+        return (commentSb, commentJsonSb);
     }
 
-    private async Task<StringBuilder> SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
+    private async Task<(StringBuilder, StringBuilder)> SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
     {
         var post = postResult.Post;
 
@@ -331,9 +357,10 @@ public partial class ArticleCommentMigration
                           CreationDate = postResult.CreateDate,
                           CreatorId = postResult.MemberId,
                           ModificationDate = postResult.CreateDate,
+                          ModifierId = postResult.MemberId,
                       };
 
-        AppendCommentSb(comment, ref commentSb, period, postTableId);
+        (commentSb, commentJsonSb) = await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         if (post.StickDateline.HasValue)
         {
@@ -343,12 +370,15 @@ public partial class ArticleCommentMigration
                                                  stickDate, 0, stickDate, 0, 0);
         }
 
-        if (!post.Comment) return commentSb;
+        if (!post.Comment) return (commentSb, commentJsonSb);
 
         var postComments = (await CommentHelper.GetPostCommentsAsync(post.Tid, post.Pid, cancellationToken)).ToArray();
 
         if (!postComments.Any())
-            return commentSb;
+            return (commentSb, commentJsonSb);
+
+        var authorIds = postComments.Select(x => x.Authorid.ToString()).Distinct().ToArray();
+        var membersUidDic = await RelationHelper.GetMembersUidDicAsync(authorIds, cancellationToken);
 
         var sequence = 1;
 
@@ -356,6 +386,10 @@ public partial class ArticleCommentMigration
         {
             var commentReplyId = _snowflake.Generate();
             var replyDate = DateTimeOffset.FromUnixTimeSeconds(postComment.Dateline);
+            var memberId = membersUidDic.ContainsKey(postComment.Authorid) ? membersUidDic[postComment.Authorid] : 0;
+
+            postResult.ReplyMemberUid = postComment.Authorid;
+            postResult.ReplyMemberName = postComment.Author ?? string.Empty;
 
             var commentReply = new Comment
                                {
@@ -371,54 +405,162 @@ public partial class ArticleCommentMigration
                                    SortingIndex = Convert.ToInt64(postComment.Dateline) * 1000,
                                    RelatedScore = 0,
                                    CreationDate = replyDate,
-                                   CreatorId = postResult.SimpleMemberDic.ContainsKey(postComment.Authorid) ? postResult.SimpleMemberDic[postComment.Authorid].Item1 : 0,
+                                   CreatorId = memberId,
                                    ModificationDate = replyDate,
+                                   ModifierId = memberId,
                                };
 
-            AppendCommentSb(commentReply, ref commentSb, period, postTableId);
+            (commentSb, commentJsonSb) = await AppendCommentSbAsync(postResult, commentReply, commentSb, commentJsonSb, period, postTableId, cancellationToken);
         }
 
-        return commentSb;
+        return (commentSb, commentJsonSb);
     }
 
-    private static void AppendCommentSb(Comment comment, ref StringBuilder commentSb, Period period, int postTableId)
+    private static async Task<(StringBuilder, StringBuilder)> AppendCommentSbAsync(PostResult postResult, Comment comment, StringBuilder commentSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
     {
-        if (commentSb.Length > 30000)
-        { 
+        const int maxStringBuilderLength = 60000;
+
+        if (commentSb.Length > maxStringBuilderLength)
+        {
             WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
 
             commentSb.Clear();
         }
 
         commentSb.AppendCopyValues(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
-                                   comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
+                                   comment.Title.ToCopyText(), comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
                                    comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                    comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
+
+
+        #region Es文件檔
+
+        if (commentJsonSb.Length > maxStringBuilderLength)
+        {
+            WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.sql", "", commentJsonSb);
+
+            commentJsonSb.Clear();
+        }
+
+        commentJsonSb.Append(CommentEsIdPrefix).Append(comment.Id).Append(CommentEsRootIdPrefix).Append(comment.RootId).AppendLine(EsIdSuffix);
+
+        var commentDocument = SetCommentDocument(comment, postResult);
+
+        var commentJson = await JsonHelper.GetJsonAsync(commentDocument, cancellationToken);
+
+        commentJsonSb.AppendLine(commentJson);
+
+        #endregion
+
+        return (commentSb, commentJsonSb);
     }
 
-    private void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
+    // private void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
+    // {
+    //     var post = postResult.Post;
+    //
+    //     if (post.Warning == null) return;
+    //
+    //     var warningDate = DateTimeOffset.FromUnixTimeSeconds(post.Warning.Dateline);
+    //
+    //     var warning = new Warning
+    //                   {
+    //                       Id = _snowflake.Generate(),
+    //                       WarningType = WarningType.Article,
+    //                       SourceId = postResult.ArticleId,
+    //                       MemberId = post.Warning.Authorid,
+    //                       WarnerId = post.Warning.Operatorid,
+    //                       Reason = post.Warning.Reason,
+    //                       CreationDate = warningDate,
+    //                       ModificationDate = warningDate,
+    //                       CreatorId = post.Warning.Operatorid,
+    //                   };
+    //
+    //     warningSb.AppendCopyValues(warning.Id, (int) warning.WarningType, warning.SourceId, warning.MemberId, warning.WarnerId, warning.Reason,
+    //                                warning.CreationDate, warning.CreatorId, warning.ModificationDate, warning.ModifierId, warning.Version);
+    // }
+
+    private static Document SetArticleDocument(Article article, PostResult postResult)
     {
-        var post = postResult.Post;
+        return new Document()
+               {
+                   //article part
+                   Id = article.Id,
+                   Title = RegexHelper.CleanText(article.Title) ?? string.Empty,
+                   Content = RegexHelper.CleanText(article.Content) ?? string.Empty,
+                   ReadPermission = article.ReadPermission,
+                   Tag = article.Tag,
+                   ThumbnailId = article.Cover,
+                   BoardId = article.BoardId,
+                   CategoryId = article.CategoryId,
+                   Sequence = 1,
+                   SortingIndex = article.SortingIndex,
+                   Score = 0,
+                   Ip = article.Ip,
+                   PinType = (int) article.PinType,
+                   PinPriority = 0,
+                   VisibleType = (int) article.VisibleType,
+                   Status = (int) article.Status,
+                   LastReplyDate = article.LastReplyDate,
+                   LastReplierId = article.LastReplierId,
+                   CreationDate = article.CreationDate,
+                   CreatorId = article.CreatorId,
+                   ModificationDate = article.ModificationDate,
+                   ModifierId = article.ModifierId,
 
-        if (post.Warning == null) return;
+                   //document part
+                   Type = DocumentType.Thread,
+                   Deleted = article.Status == ArticleStatus.Deleted,
+                   CreatorUid = postResult.Post.Authorid,
+                   CreatorName = postResult.MemberName,
+                   ModifierUid = postResult.Post.Authorid,
+                   ModifierName = postResult.MemberName,
+                   Relationship = new Relationship()
+                                  {
+                                      Name = ArticleRelationShipName
+                                  }
+               };
+    }
 
-        var warningDate = DateTimeOffset.FromUnixTimeSeconds(post.Warning.Dateline);
+    private static Document SetCommentDocument(Comment comment, PostResult postResult)
+    {
+        long? memberUid = comment.Level != 3 ? postResult.Post.Authorid : postResult.ReplyMemberUid;
+        var memberName = comment.Level != 3 ? postResult.MemberName : postResult.ReplyMemberName;
 
-        var warning = new Warning
-                      {
-                          Id = _snowflake.Generate(),
-                          WarningType = WarningType.Article,
-                          SourceId = postResult.ArticleId,
-                          MemberId = post.Warning.Authorid,
-                          WarnerId = post.Warning.Operatorid,
-                          Reason = post.Warning.Reason,
-                          CreationDate = warningDate,
-                          ModificationDate = warningDate,
-                          CreatorId = post.Warning.Operatorid,
-                      };
+        return new Document()
+               {
+                   //article part
+                   Id = comment.Id,
+                   Title = RegexHelper.CleanText(comment.Title),
+                   Content = RegexHelper.CleanText(comment.Content) ?? string.Empty,
+                   ReadPermission = 0,
+                   RootId = comment.RootId,
+                   ParentId = comment.ParentId,
+                   Sequence = Convert.ToInt32(comment.Sequence),
+                   SortingIndex = comment.SortingIndex,
+                   Score = comment.RelatedScore,
+                   Ip = comment.Ip,
+                   PinType = 0,
+                   PinPriority = 0,
+                   VisibleType = (int) comment.VisibleType,
+                   CreationDate = comment.CreationDate,
+                   CreatorId = comment.CreatorId,
+                   ModificationDate = comment.ModificationDate,
+                   ModifierId = comment.ModifierId,
 
-        warningSb.AppendCopyValues(warning.Id, (int) warning.WarningType, warning.SourceId, warning.MemberId, warning.WarnerId, warning.Reason,
-                                   warning.CreationDate, warning.CreatorId, warning.ModificationDate, warning.ModifierId, warning.Version);
+                   //document part
+                   Type = DocumentType.Comment,
+                   Deleted = comment.IsDeleted,
+                   CreatorUid = memberUid,
+                   CreatorName = memberName,
+                   ModifierUid = memberUid,
+                   ModifierName = memberName,
+                   Relationship = new Relationship()
+                                  {
+                                      Name = CommentRelationShipName,
+                                      Parent = CommentRelationShipParentPrefix + comment.RootId
+                                  }
+               };
     }
 
     private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)

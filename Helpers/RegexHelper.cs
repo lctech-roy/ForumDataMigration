@@ -9,6 +9,13 @@ public static class RegexHelper
     private static Dictionary<string, Func<Match, int, string>> BbcodeDic { get; set; }
     private static string Pattern { get; }
     private static Regex Regex { get; }
+    
+    private static readonly IEnumerable<Regex> RegexTrims = new[]
+                                                            {
+                                                                new Regex(@"<[^>]+>|\[[^\]]+\]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
+                                                                new Regex(@"[（）【】「」『』《》：；！？，。｜、～·﹍——]+", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
+                                                                new Regex(@"[\s\x20-\x2f\x3a-\x40\x5b-\x60]+", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
+                                                            };
 
     static RegexHelper()
     {
@@ -114,5 +121,12 @@ public static class RegexHelper
                                                 });
 
         return newMessage;
+    }
+    
+    public static string? CleanText(string? text)
+    {
+        return string.IsNullOrWhiteSpace(text)
+                   ? null
+                   : RegexTrims.Aggregate(text, (current, regex) => regex.Replace(current, " "));
     }
 }

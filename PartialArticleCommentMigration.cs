@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ForumDataMigration.Enums;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
 using Lctech.Jkf.Domain.Entities;
@@ -58,11 +59,21 @@ public partial class ArticleCommentMigration
 
     private const string COPY_COMMENT_PREFIX = $"COPY \"{nameof(Comment)}\" " +
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
-                                               $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
+                                               $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Title)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
                                                $",\"{nameof(Comment.Sequence)}\",\"{nameof(Comment.RelatedScore)}\",\"{nameof(Comment.ReplyCount)}\",\"{nameof(Comment.LikeCount)}\"" +
                                                $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.IsDeleted)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_COMMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(CommentExtendData)}\" (\"{nameof(CommentExtendData.Id)}\",\"{nameof(CommentExtendData.Key)}\",\"{nameof(CommentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
+    
+    private const string ARTICLE_JSON = "ArticleJson";
+    private const string COMMENT_JSON = "CommentJson";
+    private static readonly string ArticleEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Thread).ToLower()}-";
+    private static readonly string CommentEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Comment).ToLower()}-";
+    private static readonly string CommentEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
+    private static readonly string EsIdSuffix = $"\" }}}}";
+    private static readonly string ArticleRelationShipName = DocumentType.Thread.ToString().ToLower();
+    private static readonly string CommentRelationShipName = DocumentType.Comment.ToString().ToLower();
+    private static readonly string CommentRelationShipParentPrefix = DocumentType.Thread.ToString().ToLower() + "-";
 
     private const string QUERY_ARTICLE_COMMENT_SQL = $@"SELECT 
                                     thread.displayorder , thread.special , thread.subject ,  

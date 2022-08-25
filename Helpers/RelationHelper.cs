@@ -188,4 +188,16 @@ public static class RelationHelper
 
         return membersDisplayNmaeDic;
     }
+    
+    public static async Task<Dictionary<int, long>> GetMembersUidDicAsync(string[] uids, CancellationToken cancellationToken = default)
+    {
+        const string queryMemberSql = $"SELECT \"Id\",\"Value\" ::INTEGER AS  Uid FROM \"MemberProfile\" WHERE \"Key\"='PanUid' AND \"Value\" = ANY(@uids)";
+
+        await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
+
+        var membersUidDic = (await conn.QueryAsync<(long id, int uid)>(new CommandDefinition(queryMemberSql,new { uids },cancellationToken: cancellationToken)))
+           .ToDictionary(t =>t.uid, t => t.id);
+
+        return membersUidDic;
+    }
 }
