@@ -90,8 +90,9 @@ public partial class ArticleCommentMigration
             {
                 SetArticle(postResult, sb, coverSb);
                 SetArticleReward(postResult, rewardSb, rewardDic);
+
                 //SetArticleWarning(postResult,warningSb);
-                commentSb = await SetCommentFirstAsync(postResult, commentSb, commentExtendDataSb, period, postTableId, cancellationToken);
+                SetCommentFirst(postResult, ref commentSb, commentExtendDataSb, period, postTableId);
             }
             else if (post.Position != 1) //留言
             {
@@ -101,12 +102,12 @@ public partial class ArticleCommentMigration
             }
         }
 
-        var task = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb, cancellationToken);
-        var coverTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}", $"{postTableId}.sql", COVER_RELATION_PREFIX, coverSb, cancellationToken);
-        var rewardTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}", $"{postTableId}.sql", COPY_REWARD_PREFIX, rewardSb, cancellationToken);
-        var warningTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Warning)}/{period.FolderName}", $"{postTableId}.sql", COPY_WARNING_PREFIX, warningSb, cancellationToken);
-        var commentTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb, cancellationToken);
-        var commentExtendDataTask = WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb, cancellationToken);
+        var task = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
+        var coverTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{period.FolderName}", $"{postTableId}.sql", COVER_RELATION_PREFIX, coverSb); });
+        var rewardTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}/{period.FolderName}", $"{postTableId}.sql", COPY_REWARD_PREFIX, rewardSb); });
+        var warningTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Warning)}/{period.FolderName}", $"{postTableId}.sql", COPY_WARNING_PREFIX, warningSb); });
+        var commentTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
+        var commentExtendDataTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
 
         await Task.WhenAll(task, coverTask, rewardTask, warningTask, commentTask, commentExtendDataTask);
     }
@@ -282,7 +283,7 @@ public partial class ArticleCommentMigration
         rewardDic.Remove(post.Tid);
     }
 
-    private static async Task<StringBuilder> SetCommentFirstAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private static void SetCommentFirst(PostResult postResult, ref StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId)
     {
         var comment = new Comment
                       {
@@ -300,12 +301,10 @@ public partial class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate,
                       };
 
-        commentSb = await AppendCommentSbAsync(comment, commentSb, period, postTableId, cancellationToken);
+        AppendCommentSb(comment, ref commentSb, period, postTableId);
 
         commentExtendDataSb.AppendCopyValues(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
                                              comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
-
-        return commentSb;
     }
 
     private async Task<StringBuilder> SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
@@ -334,7 +333,7 @@ public partial class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate,
                       };
 
-        commentSb = await AppendCommentSbAsync(comment, commentSb, period, postTableId, cancellationToken);
+        AppendCommentSb(comment, ref commentSb, period, postTableId);
 
         if (post.StickDateline.HasValue)
         {
@@ -376,27 +375,25 @@ public partial class ArticleCommentMigration
                                    ModificationDate = replyDate,
                                };
 
-           commentSb = await AppendCommentSbAsync(commentReply, commentSb, period, postTableId, cancellationToken);
+            AppendCommentSb(commentReply, ref commentSb, period, postTableId);
         }
 
         return commentSb;
     }
 
-    private static async Task<StringBuilder> AppendCommentSbAsync(Comment comment, StringBuilder commentSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private static void AppendCommentSb(Comment comment, ref StringBuilder commentSb, Period period, int postTableId)
     {
         if (commentSb.Length > 30000)
-        {
-            await WriteToFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb, cancellationToken);
+        { 
+            WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
 
-            commentSb = new StringBuilder();
+            commentSb.Clear();
         }
 
         commentSb.AppendCopyValues(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
                                    comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
                                    comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                    comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
-
-        return commentSb;
     }
 
     private void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
@@ -424,22 +421,22 @@ public partial class ArticleCommentMigration
                                    warning.CreationDate, warning.CreatorId, warning.ModificationDate, warning.ModifierId, warning.Version);
     }
 
-    private static async Task WriteToFileAsync(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb, CancellationToken cancellationToken)
+    private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
     {
         if (valueSb.Length == 0)
             return;
 
-        Directory.CreateDirectory(directoryPath);
         var fullPath = $"{directoryPath}/{fileName}";
 
         if (File.Exists(fullPath))
         {
-            await File.AppendAllTextAsync(fullPath, valueSb.ToString(), cancellationToken);
+            File.AppendAllText(fullPath, valueSb.ToString());
             Console.WriteLine($"Append {fullPath}");
         }
         else
         {
-            await File.WriteAllTextAsync(fullPath, string.Concat(copyPrefix, valueSb.ToString()), cancellationToken);
+            Directory.CreateDirectory(directoryPath);
+            File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
             Console.WriteLine(fullPath);
         }
     }
