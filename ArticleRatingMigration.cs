@@ -38,18 +38,20 @@ public class ArticleRatingMigration
                                                 Setting.COPY_ENTITY_SUFFIX;
 
     private const string POST0_RATING_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}/0";
-    private const string POST0_RATING_JASON_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/0";
+    private const string POST0_RATING_JASON_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_RATING_JSON}/0";
     private const string POST0_RATING_ITEM_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}/0";
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<int, long> CategoryDic = RelationHelper.GetCategoryDic();
+    private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
 
+    private const string ARTICLE_RATING_JSON = "ArticleRatingJson";
     private static readonly string RateEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Rating).ToLower()}-";
     private static readonly string RateEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
     private static readonly string RateEsRootIdSuffix = $"\" }}}}";
+    private static readonly string RelationShipName = DocumentType.Rating.ToString().ToLower();
+    private static readonly string RelationShipParentPrefix = DocumentType.Thread.ToString().ToLower() + "-";
     
-    private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
-
     public ArticleRatingMigration(ISnowflake snowflake)
     {
         Directory.CreateDirectory(POST0_RATING_DIRECTORY_PATH);
@@ -89,7 +91,7 @@ public class ArticleRatingMigration
                                                                          await ExecuteAsync(rateLogs, postTableId, cancellationToken: cancellationToken);
                                                                      });
 
-        await FileHelper.CombineMultipleFilesIntoSingleFileAsync($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}",
+        await FileHelper.CombineMultipleFilesIntoSingleFileAsync($"{Setting.INSERT_DATA_PATH}/{ARTICLE_RATING_JSON}",
                                                                  "*.json",
                                                                  $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}.json",
                                                                  cancellationToken);
@@ -128,7 +130,7 @@ public class ArticleRatingMigration
 
                 var id = idDic[rateLog.Tid];
 
-                var rating = new ArticleRatingJson()
+                var rating = new ArticleRating()
                              {
                                  Id = ratingId,
                                  ArticleId = id,
@@ -138,24 +140,23 @@ public class ArticleRatingMigration
                                  CreatorId = memberId,
                                  ModificationDate = rateCreateDate,
                                  ModifierId = memberId,
-
-                                 //for search json
-                                 RootId = id,
-                                 BoardId = BoardDic.ContainsKey(rateLog.Fid) ? BoardDic[rateLog.Fid] : 0,
-                                 CategoryId = CategoryDic.ContainsKey(rateLog.Typeid) ? CategoryDic[rateLog.Typeid] : 0,
-                                 CreatorUid = rateLog.Uid,
-                                 CreatorName = memberName,
-                                 ModifierUid = rateLog.Uid,
-                                 ModifierName = memberName
                              };
 
                 ratingSb.AppendCopyValues(rating.Id, rating.ArticleId, (int) rating.VisibleType, rating.Content.ToCopyText(),
                                           rating.CreationDate, rating.CreatorId, rating.ModificationDate, rating.ModifierId, rating.Version);
 
+                #region Es文件檔
 
                 ratingJsonSb.Append(RateEsIdPrefix).Append(ratingId).Append(RateEsRootIdPrefix).Append(id).AppendLine(RateEsRootIdSuffix);
-                var json = await JsonHelper.GetJsonAsync(rating, cancellationToken);
-                ratingJsonSb.AppendLine(json);
+
+                var ratingDocumnet = SetRatingDocument(rating, rateLog, memberName);
+                
+                var ratingJson = await JsonHelper.GetJsonAsync(ratingDocumnet, cancellationToken);
+                
+                ratingJsonSb.AppendLine(ratingJson);
+
+                #endregion
+              
 
                 var ratingItem = new ArticleRatingItem()
                                  {
@@ -198,7 +199,7 @@ public class ArticleRatingMigration
         if (ratingSb.Length == 0) return;
 
         var ratingPath = postTableId == 0 ? $"{POST0_RATING_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}/{postTableId}.sql";
-        var ratingJsonPath = postTableId == 0 ? $"{POST0_RATING_JASON_DIRECTORY_PATH}/{period!.FolderName}.json" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingJson)}/{postTableId}.json";
+        var ratingJsonPath = postTableId == 0 ? $"{POST0_RATING_JASON_DIRECTORY_PATH}/{period!.FolderName}.json" : $"{Setting.INSERT_DATA_PATH}/{ARTICLE_RATING_JSON}/{postTableId}.json";
         var ratingItemPath = postTableId == 0 ? $"{POST0_RATING_ITEM_DIRECTORY_PATH}/{period!.FileName}" : $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}/{postTableId}.sql";
 
         var ratingTask = new Task(() =>
@@ -224,5 +225,35 @@ public class ArticleRatingMigration
         Console.WriteLine(ratingPath);
         Console.WriteLine(ratingJsonPath);
         Console.WriteLine(ratingItemPath);
+    }
+
+    private static Document SetRatingDocument(ArticleRating rating,RateLog rateLog, string memberName)
+    {
+        return new Document()
+               {
+                   //rating part
+                   Id = rating.Id,
+                   VisibleType = (int) rating.VisibleType,
+                   Content = rating.Content,
+                   CreationDate = rating.CreationDate,
+                   CreatorId = rating.CreatorId,
+                   ModificationDate = rating.ModificationDate,
+                   ModifierId = rating.ModifierId,
+
+                   //document part
+                   Type = DocumentType.Rating,
+                   RootId = rating.ArticleId,
+                   BoardId = BoardDic.ContainsKey(rateLog.Fid) ? BoardDic[rateLog.Fid] : 0,
+                   CategoryId = CategoryDic.ContainsKey(rateLog.Typeid) ? CategoryDic[rateLog.Typeid] : 0,
+                   CreatorUid = rateLog.Uid,
+                   CreatorName = memberName,
+                   ModifierUid = rateLog.Uid,
+                   ModifierName = memberName,
+                   Relationship = new Relationship()
+                                  {
+                                      Name = RelationShipName,
+                                      Parent = RelationShipParentPrefix + rating.ArticleId
+                                  }
+               };
     }
 }

@@ -10,7 +10,7 @@ public static class JsonHelper
     private static readonly JsonSerializerOptions JsonOptions = new()
                                                           {
                                                               PropertyNameCaseInsensitive = true,
-                                                              DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+                                                              DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
                                                               WriteIndented = false,
                                                               PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                                                               ReferenceHandler = ReferenceHandler.IgnoreCycles
