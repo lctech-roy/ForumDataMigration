@@ -10,6 +10,10 @@ namespace ForumDataMigration;
 
 public class AttachmentMigration
 {
+    private const string COPY_ATTACHMENT_SQL = $"COPY \"{nameof(ExternalAttachmentUrl)}\" " +
+                                               $"(\"{nameof(ExternalAttachmentUrl.AttachmentId)}\",\"{nameof(ExternalAttachmentUrl.Tid)}\",\"{nameof(ExternalAttachmentUrl.Pid)}\",\"{nameof(ExternalAttachmentUrl.AttachmentUrl)}\""
+                                             + Setting.COPY_SUFFIX;
+
     private readonly ISnowflake _snowflake;
     private readonly DatabaseContext _context;
 
@@ -21,10 +25,7 @@ public class AttachmentMigration
 
     public void Migration()
     {
-        const string copyAttachmentSql = $"COPY \"{nameof(ExternalAttachmentUrl)}\" " +
-                                         $"(\"{nameof(ExternalAttachmentUrl.AttachmentId)}\",\"{nameof(ExternalAttachmentUrl.Tid)}\",\"{nameof(ExternalAttachmentUrl.Pid)}\",\"{nameof(ExternalAttachmentUrl.AttachmentUrl)}\"" + Setting.COPY_SUFFIX;
-
-        var periods = PeriodHelper.GetPeriods(2013,07);
+        var periods = PeriodHelper.GetPeriods(2013, 07);
         var postTableIds = ArticleHelper.GetPostTableIds();
 
         foreach (var period in periods)
@@ -56,7 +57,7 @@ public class AttachmentMigration
 
                                      if (attachmentSb.Length == 0) return;
 
-                                     var insertAttachmentSql = string.Concat(copyAttachmentSql, attachmentSb);
+                                     var insertAttachmentSql = string.Concat(COPY_ATTACHMENT_SQL, attachmentSb);
 
 
                                      var fullPath = $"{externalAttachmentUrlPath}/{postTableId}.sql";

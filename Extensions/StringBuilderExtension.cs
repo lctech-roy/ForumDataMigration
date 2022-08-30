@@ -6,7 +6,7 @@ public static class StringBuilderExtension
 {
     private const char DELIMITER = '';
     
-    public static void AppendCopyValues(this StringBuilder sb, params object[] values)
+    public static void AppendValueLine(this StringBuilder sb, params object[] values)
     {
         sb.Append(values[0]);
         

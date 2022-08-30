@@ -223,7 +223,7 @@ public partial class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate
                       };
 
-        sb.AppendCopyValues(article.Id, article.BoardId, article.CategoryId, (int) article.Status, (int) article.VisibleType,
+        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId, (int) article.Status, (int) article.VisibleType,
                             (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                             article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
                             article.LastReplierId.ToCopyValue(), article.PinPriority,
@@ -268,7 +268,7 @@ public partial class ArticleCommentMigration
                                 AttachmentUrl = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb)
                             };
 
-        coverSb.AppendCopyValues(coverRelation.Id, coverRelation.OriginCover, coverRelation.Tid, coverRelation.Pid, coverRelation.AttachmentUrl);
+        coverSb.AppendValueLine(coverRelation.Id, coverRelation.OriginCover, coverRelation.Tid, coverRelation.Pid, coverRelation.AttachmentUrl);
 
         return coverRelation;
     }
@@ -295,7 +295,7 @@ public partial class ArticleCommentMigration
 
         if (post.Price >= 0) //未解決
         {
-            rewardSb.AppendCopyValues(reward.Id, reward.Point, reward.ExpirationDate,
+            rewardSb.AppendValueLine(reward.Id, reward.Point, reward.ExpirationDate,
                                       reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
                                       reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
         }
@@ -316,7 +316,7 @@ public partial class ArticleCommentMigration
         reward.SolveDate = postResult.CreateDate;
         reward.SolveCommentId = commentId;
 
-        rewardSb.AppendCopyValues(reward.Id, reward.Point, reward.ExpirationDate,
+        rewardSb.AppendValueLine(reward.Id, reward.Point, reward.ExpirationDate,
                                   reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
                                   reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
 
@@ -345,7 +345,7 @@ public partial class ArticleCommentMigration
 
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
-        commentExtendDataSb.AppendCopyValues(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
+        commentExtendDataSb.AppendValueLine(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
                                              comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 
@@ -382,7 +382,7 @@ public partial class ArticleCommentMigration
         {
             var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
-            commentExtendDataSb.AppendCopyValues(commentId, EXTEND_DATA_RECOMMEND_COMMENT, true,
+            commentExtendDataSb.AppendValueLine(commentId, EXTEND_DATA_RECOMMEND_COMMENT, true,
                                                  stickDate, 0, stickDate, 0, 0);
         }
 
@@ -441,7 +441,7 @@ public partial class ArticleCommentMigration
             commentSb.Clear();
         }
 
-        commentSb.AppendCopyValues(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
+        commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
                                    comment.Title.ToCopyText(), comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
                                    comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                    comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);

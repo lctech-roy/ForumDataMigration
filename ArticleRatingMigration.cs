@@ -142,7 +142,7 @@ public class ArticleRatingMigration
                                  ModifierId = memberId,
                              };
 
-                ratingSb.AppendCopyValues(rating.Id, rating.ArticleId, (int) rating.VisibleType, rating.Content.ToCopyText(),
+                ratingSb.AppendValueLine(rating.Id, rating.ArticleId, (int) rating.VisibleType, rating.Content.ToCopyText(),
                                           rating.CreationDate, rating.CreatorId, rating.ModificationDate, rating.ModifierId, rating.Version);
 
                 #region Es文件檔
@@ -169,7 +169,7 @@ public class ArticleRatingMigration
                                      ModifierId = memberId
                                  };
 
-                ratingItemSb.AppendCopyValues(ratingItem.Id, ratingItem.CreditId, ratingItem.Point,
+                ratingItemSb.AppendValueLine(ratingItem.Id, ratingItem.CreditId, ratingItem.Point,
                                               ratingItem.CreationDate, ratingItem.CreatorId, ratingItem.ModificationDate, ratingItem.ModifierId, ratingItem.Version);
             }
             else
@@ -191,7 +191,7 @@ public class ArticleRatingMigration
                                      ModifierId = memberId
                                  };
 
-                ratingItemSb.AppendCopyValues(ratingItem.Id, ratingItem.CreditId, ratingItem.Point,
+                ratingItemSb.AppendValueLine(ratingItem.Id, ratingItem.CreditId, ratingItem.Point,
                                               ratingItem.CreationDate, ratingItem.CreatorId, ratingItem.ModificationDate, ratingItem.ModifierId, ratingItem.Version);
             }
         }
