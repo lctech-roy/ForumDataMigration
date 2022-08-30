@@ -16,7 +16,21 @@ public class CommonHelper
          Console.WriteLine($"{actionName} Time => {answer}");
     }
     
-    public static async Task WatchTimeAsync(string actionName,Func<Task> action)
+    public static T WatchTime<T>(string actionName,Func<T> action)
+    {
+        var sw = new Stopwatch();
+        sw.Start();
+        var result = action();
+        sw.Stop();
+        Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
+        var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
+        var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
+        Console.WriteLine($"{actionName} Time => {answer}");
+
+        return result;
+    }
+
+    public static async Task WatchTimeAsync(string actionName, Func<Task> action)
     {
         var sw = new Stopwatch();
         sw.Start();
@@ -26,5 +40,19 @@ public class CommonHelper
         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
         Console.WriteLine($"{actionName} Time => {answer}");
+    }
+
+    public static async Task<T> WatchTimeAsync<T>(string actionName,Func<Task<T>> action)
+    {
+        var sw = new Stopwatch();
+        sw.Start();
+        var result = await action();
+        sw.Stop();
+        Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
+        var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
+        var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
+        Console.WriteLine($"{actionName} Time => {answer}");
+
+        return result;
     }
 }

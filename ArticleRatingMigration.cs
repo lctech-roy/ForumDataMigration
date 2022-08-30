@@ -106,7 +106,7 @@ public class ArticleRatingMigration
         if (!idDic.Any())
             return;
 
-        var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(rateLogs.Select(x => x.Uid.ToString()).Distinct().ToArray(), cancellationToken);
+        var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(rateLogs.Select(x => x.Uid).Distinct().ToArray(), cancellationToken);
 
         var ratingSb = new StringBuilder();
         var ratingJsonSb = new StringBuilder();

@@ -1,1 +1,3 @@
-CREATE UNIQUE INDEX tid_idx ON "ArticleRelation" ("tid");
+CREATE UNIQUE INDEX tid_idx ON "ArticleRelation" ("Tid");
+
+

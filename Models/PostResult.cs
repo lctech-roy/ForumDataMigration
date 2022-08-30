@@ -14,4 +14,5 @@ public class PostResult
     public DateTimeOffset CreateDate { get; set; }
     public long CreateMilliseconds { get; set; }
     public Post Post { get; set; } = default!;
+    public Dictionary<int, string> AttachPathDic { get; set; } = new();
 }

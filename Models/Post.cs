@@ -29,12 +29,10 @@ public class Post
     public uint? Lastpost { get; set; }
     public string? Lastposter { get; set; }
     public uint? PostTime { get; set; }
-    public uint Authorid { get; set; }
+    public int Authorid { get; set; }
     public uint Dateline { get; set; }
     public string Useip { get; set; } = null!;
     public short Price { get; set; }
-    // public int ReadFloor { get; set; }
-    // public int ReadUid { get; set; }
     public bool Usesig { get; set; }
     public bool First { get; set; }
     public bool Comment { get; set; }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Dapper;
 using ForumDataMigration.Enums;
@@ -62,7 +63,7 @@ public partial class ArticleCommentMigration
         var rewardSb = new StringBuilder();
 
         var dic = await RelationHelper.GetArticleIdDicAsync(posts.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
-        var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(posts.Select(x => x.Authorid.ToString()).Distinct().ToArray(), cancellationToken);
+        var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(posts.Select(x => x.Authorid).Distinct().ToArray(), cancellationToken);
         var lastPosterNames = posts.Select(x => x.Lastposter).Where(x => !string.IsNullOrEmpty(x)).Distinct().ToArray();
 
         var memberDisplayNameDic = new Dictionary<string, long>();
@@ -71,6 +72,14 @@ public partial class ArticleCommentMigration
             memberDisplayNameDic = await RelationHelper.GetMembersDisplayNameDicAsync(lastPosterNames!, cancellationToken);
 
         var rewardDic = new Dictionary<int, ArticleReward>(); //有解決的懸賞文章要暫存
+
+        var sw = new Stopwatch();
+        sw.Start();
+
+        var attachPathDic = RegexHelper.GetAttachFileNameDic(posts);
+
+        sw.Stop();
+        Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
 
         foreach (var post in posts)
         {
@@ -89,22 +98,23 @@ public partial class ArticleCommentMigration
                                  LastPosterId = !string.IsNullOrEmpty(post.Lastposter) && memberDisplayNameDic.ContainsKey(post.Lastposter) ? memberDisplayNameDic[post.Lastposter] : null,
                                  CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                  CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
-                                 Post = post
+                                 Post = post,
+                                 AttachPathDic = attachPathDic
                              };
 
             if (post.First) //文章
             {
-                await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken);
-                SetArticleReward(postResult, rewardSb, rewardDic);
+                await CommonHelper.WatchTimeAsync("SetArticleAsync", async () => await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken));
+                CommonHelper.WatchTime("SetArticleReward", () => SetArticleReward(postResult, rewardSb, rewardDic));
 
                 //SetArticleWarning(postResult,warningSb);
-                (commentSb, commentJsonSb) = await SetCommentFirstAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, cancellationToken);
+                await CommonHelper.WatchTimeAsync("SetCommentFirstAsync", async () => await SetCommentFirstAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, cancellationToken));
             }
             else if (post.Position != 1) //留言
             {
                 var commentId = _snowflake.Generate();
-                SetArticleRewardSolved(postResult, rewardSb, rewardDic, commentId);
-                (commentSb, commentJsonSb) = await SetCommentAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, commentId, cancellationToken);
+                CommonHelper.WatchTime("SetArticleRewardSolved", () => SetArticleRewardSolved(postResult, rewardSb, rewardDic, commentId));
+                await CommonHelper.WatchTimeAsync("SetCommentAsync", async () => await SetCommentAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, commentId, cancellationToken));
             }
         }
 
@@ -118,6 +128,14 @@ public partial class ArticleCommentMigration
         var commentExtendDataTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
         var commentJsonTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.sql", "", commentJsonSb); });
 
+        task.Start();
+        jsonTask.Start();
+        coverTask.Start();
+        rewardTask.Start();
+        commentTask.Start();
+        commentExtendDataTask.Start();
+        commentJsonTask.Start();
+        
         await Task.WhenAll(task, jsonTask, coverTask, rewardTask, commentTask, commentExtendDataTask, commentJsonTask);
     }
 
@@ -130,7 +148,7 @@ public partial class ArticleCommentMigration
         var read = ReadDic.ContainsKey(post.Tid) ? ReadDic[post.Tid] : null;
         var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
         var videoCount = BbCodeVideoRegex.Matches(post.Message).Count;
-
+        
         var article = new Article
                       {
                           Id = postResult.ArticleId,
@@ -162,7 +180,7 @@ public partial class ArticleCommentMigration
                                     },
                           VisibleType = isScheduling ? VisibleType.Private : VisibleType.Public,
                           Title = post.Subject,
-                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid),
+                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.AttachPathDic),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
                           BoardId = postResult.BoardId,
@@ -305,7 +323,7 @@ public partial class ArticleCommentMigration
         rewardDic.Remove(post.Tid);
     }
 
-    private static async Task<(StringBuilder, StringBuilder)> SetCommentFirstAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private static async Task SetCommentFirstAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
     {
         var comment = new Comment
                       {
@@ -325,15 +343,13 @@ public partial class ArticleCommentMigration
                           ModifierId = postResult.MemberId
                       };
 
-        (commentSb, commentJsonSb) = await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
+        await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         commentExtendDataSb.AppendCopyValues(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
                                              comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
-
-        return (commentSb, commentJsonSb);
     }
 
-    private async Task<(StringBuilder, StringBuilder)> SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
+    private async Task SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
     {
         var post = postResult.Post;
 
@@ -344,7 +360,7 @@ public partial class ArticleCommentMigration
                           ParentId = postResult.ArticleId,
                           Level = 2,
                           Hierarchy = $"{postResult.ArticleId}/{commentId}",
-                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid),
+                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.AttachPathDic),
                           VisibleType = post.Status == 1 ? VisibleType.Private : VisibleType.Public,
                           Ip = post.Useip,
                           Sequence = (int) post.Position - 1,
@@ -360,7 +376,7 @@ public partial class ArticleCommentMigration
                           ModifierId = postResult.MemberId,
                       };
 
-        (commentSb, commentJsonSb) = await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
+        await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         if (post.StickDateline.HasValue)
         {
@@ -370,14 +386,14 @@ public partial class ArticleCommentMigration
                                                  stickDate, 0, stickDate, 0, 0);
         }
 
-        if (!post.Comment) return (commentSb, commentJsonSb);
+        if (!post.Comment) return;
 
         var postComments = (await CommentHelper.GetPostCommentsAsync(post.Tid, post.Pid, cancellationToken)).ToArray();
 
         if (!postComments.Any())
-            return (commentSb, commentJsonSb);
+            return;
 
-        var authorIds = postComments.Select(x => x.Authorid.ToString()).Distinct().ToArray();
+        var authorIds = postComments.Select(x => x.Authorid).Distinct().ToArray();
         var membersUidDic = await RelationHelper.GetMembersUidDicAsync(authorIds, cancellationToken);
 
         var sequence = 1;
@@ -398,7 +414,7 @@ public partial class ArticleCommentMigration
                                    ParentId = commentId,
                                    Level = 3,
                                    Hierarchy = $"{postResult.ArticleId}/{commentId}/{commentReplyId}",
-                                   Content = RegexHelper.GetNewMessage(postComment.Comment, post.Tid),
+                                   Content = RegexHelper.GetNewMessage(postComment.Comment, post.Tid, postResult.AttachPathDic),
                                    VisibleType = VisibleType.Public,
                                    Ip = postComment.Useip,
                                    Sequence = sequence++,
@@ -410,13 +426,11 @@ public partial class ArticleCommentMigration
                                    ModifierId = memberId,
                                };
 
-            (commentSb, commentJsonSb) = await AppendCommentSbAsync(postResult, commentReply, commentSb, commentJsonSb, period, postTableId, cancellationToken);
+            await AppendCommentSbAsync(postResult, commentReply, commentSb, commentJsonSb, period, postTableId, cancellationToken);
         }
-
-        return (commentSb, commentJsonSb);
     }
 
-    private static async Task<(StringBuilder, StringBuilder)> AppendCommentSbAsync(PostResult postResult, Comment comment, StringBuilder commentSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private static async Task AppendCommentSbAsync(PostResult postResult, Comment comment, StringBuilder commentSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
     {
         const int maxStringBuilderLength = 60000;
 
@@ -451,8 +465,6 @@ public partial class ArticleCommentMigration
         commentJsonSb.AppendLine(commentJson);
 
         #endregion
-
-        return (commentSb, commentJsonSb);
     }
 
     // private void SetArticleWarning(PostResult postResult, StringBuilder warningSb)
