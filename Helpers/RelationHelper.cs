@@ -91,82 +91,50 @@ public static class RelationHelper
         return categoryDic;
     }
 
-    public static Dictionary<int, long> GetMemberUidDic()
+    public static Dictionary<long, long> GetMemberUidDic()
     {
-        const string queryMemberSql = $"SELECT \"Id\",\"Value\" AS Uid FROM \"MemberProfile\" WHERE \"Key\"='PanUid'";
+        const string queryMemberSql = $"SELECT \"Id\",\"Uid\" FROM \"Member\"";
 
-        var memberDic = new Dictionary<int, long>();
+        using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
-        using (var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION))
-        {
-            conn.Open();
-
-            using (var command = new NpgsqlCommand(queryMemberSql, conn))
-            {
-                var reader = command.ExecuteReader();
-
-                while (reader.Read())
-                {
-                    memberDic.Add(Convert.ToInt32(reader.GetString(1)), reader.GetInt64(0));
-                }
-
-                reader.Close();
-            }
-        }
-
+        var idDic = conn.Query<(long id, long uid)>(queryMemberSql).ToDictionary(t => t.uid, t => t.id);
+        
         Console.WriteLine("Finish Import MemberUidDic!");
 
-        return memberDic;
+        return idDic;
     }
 
-    public static Dictionary<string, long> GetMemberDisplayNameDic()
+    public static Dictionary<long, long> GetGameItemRelationDic()
     {
-        const string queryMemberSql = $"SELECT \"Id\",\"Value\" AS DisplayName FROM \"MemberProfile\" WHERE \"Key\"='DisplayName'";
+        const string queryGameItemRelationSql = @"SELECT ""Id"",""MaterialId"" FROM ""GameItemRelation""";
+        
+        using var conn = new NpgsqlConnection(Setting.NEW_GAME_CENTER_CONNECTION);
 
-        var memberDic = new Dictionary<string, long>();
+        var idDic = conn.Query<(long id, long materialId)>(queryGameItemRelationSql).ToDictionary(t => t.materialId, t => t.id);
 
-        using (var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION))
-        {
-            conn.Open();
-
-            using (var command = new NpgsqlCommand(queryMemberSql, conn))
-            {
-                var reader = command.ExecuteReader();
-
-                while (reader.Read())
-                {
-                    memberDic.Add(reader.GetString(1), reader.GetInt64(0));
-                }
-
-                reader.Close();
-            }
-        }
-
-        Console.WriteLine("Finish Import MemberDisplayNameDic!");
-
-        return memberDic;
+        return idDic;
     }
 
-    public static async Task<Dictionary<int, long>> GetArticleIdDicAsync(int[] tids,CancellationToken cancellationToken =default)
+    public static async Task<Dictionary<int, long>> GetArticleIdDicAsync(int[] tids, CancellationToken cancellationToken = default)
     {
         const string queryArticleIdSql = @"SELECT ""Id"",""Tid"" FROM ""ArticleRelation"" WHERE ""Tid"" =ANY(@tids)";
 
         await using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
-        var idDic = (await conn.QueryAsync<(long id, int tid)>(new CommandDefinition(queryArticleIdSql,new { tids },cancellationToken: cancellationToken)))
-                                  .ToDictionary(t =>t.tid, t => t.id);
+        var idDic = (await conn.QueryAsync<(long id, int tid)>(new CommandDefinition(queryArticleIdSql, new { tids }, cancellationToken: cancellationToken)))
+           .ToDictionary(t => t.tid, t => t.id);
 
         return idDic;
     }
-    
-    public static async Task<Dictionary<int, (long, string)>> GetSimpleMemberDicAsync(int[] uids,CancellationToken cancellationToken =default)
+
+    public static async Task<Dictionary<int, (long, string)>> GetSimpleMemberDicAsync(int[] uids, CancellationToken cancellationToken = default)
     {
         const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\" WHERE \"Uid\" = ANY(@uids)";
 
         await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
-        var simpleMemberDic = (await conn.QueryAsync<(long id, int uid, string displayName)>(new CommandDefinition(queryMemberSql,new { uids },cancellationToken: cancellationToken)))
-                                  .ToDictionary(t =>t.uid, t => (t.id, t.displayName));
+        var simpleMemberDic = (await conn.QueryAsync<(long id, int uid, string displayName)>(new CommandDefinition(queryMemberSql, new { uids }, cancellationToken: cancellationToken)))
+           .ToDictionary(t => t.uid, t => (t.id, t.displayName));
 
         return simpleMemberDic;
     }
@@ -177,20 +145,20 @@ public static class RelationHelper
 
         await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
-        var membersDisplayNmaeDic = (await conn.QueryAsync<(long id, string displayName)>(new CommandDefinition(queryMemberSql,new { displayNames },cancellationToken: cancellationToken)))
-           .ToDictionary(t =>t.displayName, t => t.id);
+        var membersDisplayNmaeDic = (await conn.QueryAsync<(long id, string displayName)>(new CommandDefinition(queryMemberSql, new { displayNames }, cancellationToken: cancellationToken)))
+           .ToDictionary(t => t.displayName, t => t.id);
 
         return membersDisplayNmaeDic;
     }
-    
+
     public static async Task<Dictionary<int, long>> GetMembersUidDicAsync(int[] uids, CancellationToken cancellationToken = default)
     {
         const string queryMemberSql = $"SELECT \"Id\",\"Uid\" FROM \"Member\" WHERE \"Uid\" = ANY(@uids)";
-        
+
         await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
-        var membersUidDic = (await conn.QueryAsync<(long id, int uid)>(new CommandDefinition(queryMemberSql,new { uids },cancellationToken: cancellationToken)))
-           .ToDictionary(t =>t.uid, t => t.id);
+        var membersUidDic = (await conn.QueryAsync<(long id, int uid)>(new CommandDefinition(queryMemberSql, new { uids }, cancellationToken: cancellationToken)))
+           .ToDictionary(t => t.uid, t => t.id);
 
         return membersUidDic;
     }

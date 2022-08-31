@@ -1,11 +1,11 @@
 ALTER TABLE "Comment"
-   ADD CONSTRAINT "PK_Comment" PRIMARY KEY ("Id"),
-   ADD CONSTRAINT "FK_Comment_Comment_ParentId" FOREIGN KEY ("ParentId") REFERENCES "Comment" ("Id"),
-   ADD CONSTRAINT "FK_Comment_Comment_RootId" FOREIGN KEY ("RootId") REFERENCES "Comment" ("Id") ON DELETE CASCADE;
+    ADD CONSTRAINT "PK_Comment" PRIMARY KEY ("Id"),
+    ADD CONSTRAINT "FK_Comment_Comment_ParentId" FOREIGN KEY ("ParentId") REFERENCES "Comment" ("Id"),
+    ADD CONSTRAINT "FK_Comment_Comment_RootId" FOREIGN KEY ("RootId") REFERENCES "Comment" ("Id") ON DELETE CASCADE;
 
 ALTER TABLE "CommentExtendData"
-   ADD CONSTRAINT "PK_CommentExtendData" PRIMARY KEY ("Id", "Key"),
-   ADD CONSTRAINT "FK_CommentExtendData_Comment_Id" FOREIGN KEY ("Id") REFERENCES "Comment" ("Id") ON DELETE CASCADE;
+    ADD CONSTRAINT "PK_CommentExtendData" PRIMARY KEY ("Id", "Key"),
+    ADD CONSTRAINT "FK_CommentExtendData_Comment_Id" FOREIGN KEY ("Id") REFERENCES "Comment" ("Id") ON DELETE CASCADE;
 
 ALTER TABLE "Like"
     ADD CONSTRAINT "FK_Like_Comment_Id" FOREIGN KEY ("Id") REFERENCES "Comment" ("Id") ON DELETE CASCADE;

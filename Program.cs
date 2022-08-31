@@ -1,4 +1,5 @@
 ﻿// See https://aka.ms/new-console-template for more information
+
 using System.Globalization;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
@@ -15,9 +16,12 @@ serviceCollection.AddSingleton<ArticleRelationMigration>();
 serviceCollection.AddSingleton<ArticleCommentMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
+serviceCollection.AddSingleton<GameItemMigration>();
 
 // 建立依賴服務提供者
 var serviceProvider = serviceCollection.BuildServiceProvider();
+
+Directory.CreateDirectory(Setting.INSERT_DATA_PATH);
 
 // 3. 執行主服務
 var migration = serviceProvider.GetRequiredService<Migration>();
@@ -25,6 +29,7 @@ var relationMigration = serviceProvider.GetRequiredService<ArticleRelationMigrat
 var commentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
+var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
 
 var token = new CancellationTokenSource().Token;
 
@@ -39,7 +44,7 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // RelationContainer.ArticleIdDic = RelationHelper.GetArticleDic();
 //
 // //3.文章,留言
-// commentMigration.Migration();
+// await commentMigration.MigrationAsync(token);
 // await migration.ExecuteArticleAsync(token);
 // await migration.ExecuteArticleRewardAsync(token);
 // await migration.ExecuteCommentAsync(token);
@@ -51,5 +56,9 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // //5.文章投票
 // voteMigration.Migration();
 // await migration.ExecuteArticleVoteAsync(token);
+
+//6.遊戲中心
+//CommonHelper.WatchTime(nameof(gameItemMigration),()=> gameItemMigration.Migration());
+//await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteGameItemAsync), async () => await migration.ExecuteGameItemAsync());
 
 Console.WriteLine("Hello, World!");
