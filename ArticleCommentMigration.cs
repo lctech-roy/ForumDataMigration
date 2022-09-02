@@ -83,16 +83,22 @@ public partial class ArticleCommentMigration
 
         foreach (var post in posts)
         {
+            var id = dic.GetValueOrDefault(post.Tid);
+            var boardId = BoardDic.GetValueOrDefault(post.Fid);
+            
             //髒資料放過他
-            if (!dic.ContainsKey(post.Tid) || !BoardDic.ContainsKey(post.Fid))
+            if (id == 0 || boardId == 0)
                 continue;
 
-            var (memberId, memberName) = simpleMemberDic.ContainsKey(Convert.ToInt32(post.Authorid)) ? simpleMemberDic[Convert.ToInt32(post.Authorid)] : (0, "");
+            var (memberId, memberName) = simpleMemberDic.GetValueOrDefault(post.Authorid);
 
+            if (memberId == 0)
+                continue;
+            
             var postResult = new PostResult
                              {
-                                 ArticleId = dic[post.Tid],
-                                 BoardId = BoardDic[post.Fid],
+                                 ArticleId = id,
+                                 BoardId = boardId,
                                  MemberId = memberId,
                                  MemberName = memberName,
                                  LastPosterId = !string.IsNullOrEmpty(post.Lastposter) && memberDisplayNameDic.ContainsKey(post.Lastposter) ? memberDisplayNameDic[post.Lastposter] : null,
@@ -135,7 +141,7 @@ public partial class ArticleCommentMigration
         commentTask.Start();
         commentExtendDataTask.Start();
         commentJsonTask.Start();
-        
+
         await Task.WhenAll(task, jsonTask, coverTask, rewardTask, commentTask, commentExtendDataTask, commentJsonTask);
     }
 
@@ -148,7 +154,7 @@ public partial class ArticleCommentMigration
         var read = ReadDic.ContainsKey(post.Tid) ? ReadDic[post.Tid] : null;
         var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
         var videoCount = BbCodeVideoRegex.Matches(post.Message).Count;
-        
+
         var article = new Article
                       {
                           Id = postResult.ArticleId,
@@ -224,17 +230,17 @@ public partial class ArticleCommentMigration
                       };
 
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId, (int) article.Status, (int) article.VisibleType,
-                            (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
-                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
-                            article.LastReplierId.ToCopyValue(), article.PinPriority,
-                            article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.ShareCount,
-                            article.ImageCount, article.VideoCount, article.DonatePoint, article.Highlight, article.HighlightColor.ToCopyValue(),
-                            article.Recommend, article.ReadPermission, article.CommentDisabled, (int) article.CommentVisibleType, article.LikeCount,
-                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
-                            article.SchedulePublishDate.ToCopyValue(), article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
-                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
-                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
-                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
+                           (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
+                           article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
+                           article.LastReplierId.ToCopyValue(), article.PinPriority,
+                           article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.ShareCount,
+                           article.ImageCount, article.VideoCount, article.DonatePoint, article.Highlight, article.HighlightColor.ToCopyValue(),
+                           article.Recommend, article.ReadPermission, article.CommentDisabled, (int) article.CommentVisibleType, article.LikeCount,
+                           article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
+                           article.SchedulePublishDate.ToCopyValue(), article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+                           article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
+                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
+                           article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
 
 
         #region Es文件檔
@@ -296,8 +302,8 @@ public partial class ArticleCommentMigration
         if (post.Price >= 0) //未解決
         {
             rewardSb.AppendValueLine(reward.Id, reward.Point, reward.ExpirationDate,
-                                      reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
-                                      reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
+                                     reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
+                                     reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
         }
         else
         {
@@ -317,8 +323,8 @@ public partial class ArticleCommentMigration
         reward.SolveCommentId = commentId;
 
         rewardSb.AppendValueLine(reward.Id, reward.Point, reward.ExpirationDate,
-                                  reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
-                                  reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
+                                 reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
+                                 reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
 
         rewardDic.Remove(post.Tid);
     }
@@ -346,7 +352,7 @@ public partial class ArticleCommentMigration
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         commentExtendDataSb.AppendValueLine(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
-                                             comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
+                                            comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 
     private async Task SetCommentAsync(PostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, long commentId, CancellationToken cancellationToken)
@@ -383,7 +389,7 @@ public partial class ArticleCommentMigration
             var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
             commentExtendDataSb.AppendValueLine(commentId, EXTEND_DATA_RECOMMEND_COMMENT, true,
-                                                 stickDate, 0, stickDate, 0, 0);
+                                                stickDate, 0, stickDate, 0, 0);
         }
 
         if (!post.Comment) return;
@@ -442,9 +448,9 @@ public partial class ArticleCommentMigration
         }
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
-                                   comment.Title.ToCopyText(), comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
-                                   comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
-                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
+                                  comment.Title.ToCopyText(), comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
+                                  comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
+                                  comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
 
 
         #region Es文件檔

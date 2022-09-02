@@ -149,9 +149,9 @@ public class ArticleRatingMigration
 
                 ratingJsonSb.Append(RateEsIdPrefix).Append(ratingId).Append(RateEsRootIdPrefix).Append(id).AppendLine(RateEsRootIdSuffix);
 
-                var ratingDocumnet = SetRatingDocument(rating, rateLog, memberName);
+                var ratingDocument = SetRatingDocument(rating, rateLog, memberName);
                 
-                var ratingJson = await JsonHelper.GetJsonAsync(ratingDocumnet, cancellationToken);
+                var ratingJson = await JsonHelper.GetJsonAsync(ratingDocument, cancellationToken);
                 
                 ratingJsonSb.AppendLine(ratingJson);
 

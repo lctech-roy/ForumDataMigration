@@ -127,13 +127,13 @@ public static class RelationHelper
         return idDic;
     }
 
-    public static async Task<Dictionary<int, (long, string)>> GetSimpleMemberDicAsync(int[] uids, CancellationToken cancellationToken = default)
+    public static async Task<Dictionary<long, (long, string)>> GetSimpleMemberDicAsync(int[] uids, CancellationToken cancellationToken = default)
     {
         const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\" WHERE \"Uid\" = ANY(@uids)";
 
         await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
-        var simpleMemberDic = (await conn.QueryAsync<(long id, int uid, string displayName)>(new CommandDefinition(queryMemberSql, new { uids }, cancellationToken: cancellationToken)))
+        var simpleMemberDic = (await conn.QueryAsync<(long id, long uid, string displayName)>(new CommandDefinition(queryMemberSql, new { uids }, cancellationToken: cancellationToken)))
            .ToDictionary(t => t.uid, t => (t.id, t.displayName));
 
         return simpleMemberDic;
@@ -141,7 +141,7 @@ public static class RelationHelper
 
     public static async Task<Dictionary<string, long>> GetMembersDisplayNameDicAsync(string[] displayNames, CancellationToken cancellationToken = default)
     {
-        const string queryMemberSql = $"SELECT \"Id\",\"DisplayName\" FROM \"Member\" WHERE \"DisplayName\" = ANY(@displayNames) AND \"IsEmailConfirmed\" = true";
+        const string queryMemberSql = $"SELECT \"Id\",\"DisplayName\" FROM \"Member\" WHERE \"DisplayName\" = ANY(@displayNames)";
 
         await using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
