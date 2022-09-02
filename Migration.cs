@@ -271,4 +271,25 @@ public class Migration
         
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(BagGameItem)}/{AFTER_FILE_NAME}");
     }
+    
+    public async Task ExecuteMemberBagAsync()
+    {
+        await using var connection = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
+        
+        connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(MemberBagItem)}/{BEFORE_FILE_NAME}");
+        
+        var bagTask = new Task(() => connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(MemberBag)}.sql"));
+
+        var bagItemTask = new Task(() =>
+                                   {
+                                       using var connection2 = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
+                                       connection2.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(MemberBagItem)}.sql");
+                                   });
+        
+        bagTask.Start();
+        bagItemTask.Start();
+        await Task.WhenAll(bagTask, bagItemTask);
+        
+        connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(MemberBagItem)}/{AFTER_FILE_NAME}");
+    }
 }

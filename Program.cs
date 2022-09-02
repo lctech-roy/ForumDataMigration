@@ -17,6 +17,7 @@ serviceCollection.AddSingleton<ArticleCommentMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
 serviceCollection.AddSingleton<GameItemMigration>();
+serviceCollection.AddSingleton<MemberBagMigration>();
 
 // 建立依賴服務提供者
 var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -30,6 +31,7 @@ var commentMigration = serviceProvider.GetRequiredService<ArticleCommentMigratio
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
 var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
+var memberBagMigration = serviceProvider.GetRequiredService<MemberBagMigration>();
 
 var token = new CancellationTokenSource().Token;
 
@@ -60,5 +62,7 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 //6.遊戲中心
 //CommonHelper.WatchTime(nameof(gameItemMigration),()=> gameItemMigration.Migration());
 //await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteGameItemAsync), async () => await migration.ExecuteGameItemAsync());
+// CommonHelper.WatchTime(nameof(memberBagMigration),()=> memberBagMigration.Migration());
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteMemberBagAsync), async () => await migration.ExecuteMemberBagAsync());
 
 Console.WriteLine("Hello, World!");

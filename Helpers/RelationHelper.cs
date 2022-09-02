@@ -114,6 +114,17 @@ public static class RelationHelper
 
         return idDic;
     }
+    
+    public static Dictionary<long, long> GetMedalRelationDic()
+    {
+        const string queryMedalRelationSql = @"SELECT ""Id"",""OriMedalId"" FROM ""MedalRelation""";
+        
+        using var conn = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
+
+        var idDic = conn.Query<(long id, long medalId)>(queryMedalRelationSql).ToDictionary(t => t.medalId, t => t.id);
+
+        return idDic;
+    }
 
     public static async Task<Dictionary<int, long>> GetArticleIdDicAsync(int[] tids, CancellationToken cancellationToken = default)
     {
