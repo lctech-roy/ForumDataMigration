@@ -1,5 +1,6 @@
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
+using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Lctech.Jkf.Domain.Entities;
 using Npgsql;
@@ -42,49 +43,16 @@ public class Migration
         await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
         await cn.ExecuteCommandByPathAsync($"{articleCoverRelationSchemaPath}/{BEFORE_FILE_NAME}", token);
 
-        var periods = PeriodHelper.GetPeriods();
-        var postTableIds = ArticleHelper.GetPostTableIds();
+        var task = new Task(() => { FileHelper.ExecuteAllSqlFiles(articlePath, Setting.NEW_FORUM_CONNECTION); });
 
-        foreach (var period in periods)
-        {
-            // Parallel.ForEach(postTableIds,
-            //                  postTableId =>
-            //                  {
-            //                      var filePath = $"{articlePath}/{period.FolderName}/{postTableId}.sql";
-            //
-            //                      if (!File.Exists(filePath)) return;
-            //
-            //                      using var connection = new NpgsqlConnection(CONNECTION_STR);
-            //
-            //                      connection.ExecuteAllTexts(filePath);
-            //                  });
-            //
-            // Parallel.ForEach(postTableIds,
-            //                  postTableId =>
-            //                  {
-            //                      var filePath = $"{articleCoverRelationPath}/{period.FolderName}/{postTableId}.sql";
-            //
-            //                      if (!File.Exists(filePath)) return;
-            //
-            //                      using var connection = new NpgsqlConnection(CONNECTION_STR);
-            //
-            //                      connection.ExecuteAllTexts(filePath);
-            //                  });
+        var coverTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(articleCoverRelationPath, Setting.NEW_FORUM_CONNECTION); });
 
-            Parallel.ForEach(postTableIds,
-                             postTableId =>
-                             {
-                                 var filePath = $"{articleRewardPath}/{period.FolderName}/{postTableId}.sql";
+        task.Start();
+        coverTask.Start();
 
-                                 if (!File.Exists(filePath)) return;
+        await Task.WhenAll(task, coverTask);
 
-                                 using var connection = new NpgsqlConnection(CONNECTION_STR);
-
-                                 connection.ExecuteAllTexts(filePath);
-                             });
-        }
-
-        await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{AFTER_FILE_NAME}", token);
+        Console.WriteLine($"{nameof(ExecuteArticleAsync)} Done!");
     }
 
     public async Task ExecuteArticleRewardAsync(CancellationToken token)
@@ -170,29 +138,30 @@ public class Migration
         const string ratingSchemaPath = $"{SCHEMA_PATH}/Rating";
         const string ratingPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}";
         const string ratingItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}";
-        
+
         await using (var cn = new NpgsqlConnection(CONNECTION_STR))
             await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{BEFORE_FILE_NAME}", token);
-        
+
         var copyRatingTask = new Task(() =>
-                                   {
-                                       using var cn = new NpgsqlConnection(CONNECTION_STR);
-                                       cn.ExecuteAllCopyFiles(ratingPath);
-                                   });
-        
-        var copyRatingItemTask = new Task(() =>
                                       {
                                           using var cn = new NpgsqlConnection(CONNECTION_STR);
-                                          cn.ExecuteAllCopyFiles(ratingItemPath);
+                                          cn.ExecuteAllCopyFiles(ratingPath);
                                       });
+
+        var copyRatingItemTask = new Task(() =>
+                                          {
+                                              using var cn = new NpgsqlConnection(CONNECTION_STR);
+                                              cn.ExecuteAllCopyFiles(ratingItemPath);
+                                          });
+
         copyRatingTask.Start();
         copyRatingItemTask.Start();
         await Task.WhenAll(copyRatingTask, copyRatingItemTask);
-        
+
         await using (var cn = new NpgsqlConnection(CONNECTION_STR))
             await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{AFTER_FILE_NAME}", token);
     }
-    
+
     public async Task ExecuteCommentAsync(CancellationToken token)
     {
         const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
@@ -254,9 +223,9 @@ public class Migration
     public async Task ExecuteGameItemAsync()
     {
         await using var connection = new NpgsqlConnection(Setting.NEW_GAME_CENTER_CONNECTION);
-        
+
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(BagGameItem)}/{BEFORE_FILE_NAME}");
-        
+
         var bagTask = new Task(() => connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Bag)}.sql"));
 
         var bagItemTask = new Task(() =>
@@ -264,20 +233,20 @@ public class Migration
                                        using var connection2 = new NpgsqlConnection(Setting.NEW_GAME_CENTER_CONNECTION);
                                        connection2.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(BagGameItem)}.sql");
                                    });
-        
+
         bagTask.Start();
         bagItemTask.Start();
         await Task.WhenAll(bagTask, bagItemTask);
-        
+
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(BagGameItem)}/{AFTER_FILE_NAME}");
     }
-    
+
     public async Task ExecuteMemberBagAsync()
     {
         await using var connection = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
-        
+
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(MemberBagItem)}/{BEFORE_FILE_NAME}");
-        
+
         var bagTask = new Task(() => connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(MemberBag)}.sql"));
 
         var bagItemTask = new Task(() =>
@@ -285,11 +254,11 @@ public class Migration
                                        using var connection2 = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
                                        connection2.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(MemberBagItem)}.sql");
                                    });
-        
+
         bagTask.Start();
         bagItemTask.Start();
         await Task.WhenAll(bagTask, bagItemTask);
-        
+
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(MemberBagItem)}/{AFTER_FILE_NAME}");
     }
 }

@@ -57,8 +57,8 @@ public static class StringExtension
                 newTagStr += string.Concat(tagStr.AsSpan(starPoint, i - starPoint), "\t");
         }
 
-        newTagStr = newTagStr[..^1];
-
+        newTagStr = newTagStr.TrimEnd('\t');
+        
         return newTagStr;
     }
 }

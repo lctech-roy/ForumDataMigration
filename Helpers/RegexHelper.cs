@@ -8,7 +8,7 @@ namespace ForumDataMigration.Helpers;
 public static class RegexHelper
 {
     private const string EMBED = "embed";
-    private static Dictionary<string, Func<Match, int, Dictionary<int, string>, string>> BbcodeDic { get; set; }
+    private static Dictionary<string, Func<Match, int, Dictionary<(int,int), string>, string>> BbcodeDic { get; set; }
     private static string Pattern { get; }
     private static Regex Regex { get; }
 
@@ -25,14 +25,14 @@ public static class RegexHelper
 
     static RegexHelper()
     {
-        var bbcodeDic = new Dictionary<string, Func<Match, int, Dictionary<int, string>, string>>();
+        var bbcodeDic = new Dictionary<string, Func<Match, int, Dictionary<(int,int), string>, string>>();
 
-        string GetBbcode(Match match, int tid, Dictionary<int, string> attachPathDic)
+        string GetBbcode(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
         {
             return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Value;
         }
 
-        string GetAttachBbcode(Match match, int tid, Dictionary<int, string> attachPathDic)
+        string GetAttachBbcode(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
         {
             var content = match.Groups["content"].Value;
 
@@ -43,17 +43,17 @@ public static class RegexHelper
 
             if (!isInt) return match.Value;
 
-            var fullPath = attachPathDic.ContainsKey(aid) ? attachPathDic[aid] : string.Empty;
+            var fullPath = attachPathDic.GetValueOrDefault((tid % 10, aid)) ?? string.Empty;
 
             return fullPath;
         }
 
-        string GetUrlBbcode(Match match, int tid, Dictionary<int, string> attachPathDic)
+        string GetUrlBbcode(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
         {
             return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Result("[url=${content}]${content}[/url]");
         }
 
-        string GetNextMedia(Match match, int tid, Dictionary<int, string> attachPathDic)
+        string GetNextMedia(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
         {
             var content = match.Groups["content"].Value;
             var attr = match.Groups["attr"].Value;
@@ -101,7 +101,7 @@ public static class RegexHelper
         Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     }
 
-    public static string GetNewMessage(string message, int tid, Dictionary<int, string> attachPathDic)
+    public static string GetNewMessage(string message, int tid, Dictionary<(int,int), string> attachPathDic)
     {
         var newMessage = Regex.Replace(message, m =>
                                                 {
@@ -131,8 +131,10 @@ public static class RegexHelper
     }
 
 
-    public static Dictionary<int, string> GetAttachFileNameDic(IEnumerable<Post> posts)
+ public static async Task<Dictionary<(int,int), string>> GetAttachFileNameDicAsync(IEnumerable<Post> posts, CancellationToken cancellationToken)
     {
+        // var sw = new Stopwatch();
+        // sw.Start();
         var attachFileGroups = posts.GroupBy(x => x.Tid % 10,
                                              x => BbCodeAttachTagRegex.Matches(x.Message).Select(match =>
                                                                                                  {
@@ -144,63 +146,191 @@ public static class RegexHelper
                                                                                                      return -1;
                                                                                                  })).Where(x => x.Key != -1).ToArray();
 
-
-        int[] GetValueByKey(int key) => attachFileGroups.FirstOrDefault(x => x.Key == key)?.SelectMany(x=>x).Distinct()?.ToArray() ?? new[] { -1 };
+        var hasValue = false;
         
-        using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+        int[]? GetValueByKey(int key)
+        {
+            var attachGroup = attachFileGroups.FirstOrDefault(x => x.Key == key)?.SelectMany(x => x).Distinct()?.ToArray();
 
-        var attacheDic = cn.Query<(int, string, bool, bool)>($@"SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_1 WHERE aid IN @Groups1
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_2 WHERE aid IN @Groups2
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_3 WHERE aid IN @Groups3
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_4 WHERE aid IN @Groups4
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_5 WHERE aid IN @Groups5
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_6 WHERE aid IN @Groups6
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_7 WHERE aid IN @Groups7
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_8 WHERE aid IN @Groups8
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_9 WHERE aid IN @Groups9
-                                                                                      UNION ALL
-                                                                                      SELECT aid,attachment,remote,isimage 
-                                                                                      FROM pre_forum_attachment_0 WHERE aid IN @Groups0"
-                                                           , new
-                                                             {
-                                                                 Groups1 = GetValueByKey(1),
-                                                                 Groups2 = GetValueByKey(2),
-                                                                 Groups3 = GetValueByKey(3),
-                                                                 Groups4 = GetValueByKey(4),
-                                                                 Groups5 = GetValueByKey(5),
-                                                                 Groups6 = GetValueByKey(6),
-                                                                 Groups7 = GetValueByKey(7),
-                                                                 Groups8 = GetValueByKey(8),
-                                                                 Groups9 = GetValueByKey(9),
-                                                                 Groups0 = GetValueByKey(0),
-                                                             }).ToDictionary(x => x.Item1, x =>
-                                                                                           {
-                                                                                               var (_, path, isRemote, isImage) = x;
+            if (!attachGroup?.Any() ?? true)
+                return new[] { -1 };
 
-                                                                                               var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
+            hasValue = true;
+            
+            return attachGroup;
+        }
 
-                                                                                               var tag = isImage ? "img" : "file";
+        // sw.Stop();
+        // Console.WriteLine($"get param Time => {sw.ElapsedMilliseconds}ms");
+        
+        // sw.Restart();
+        
+        await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-                                                                                               return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
-                                                                                           });
+        var param = new
+                    {
+                        Groups1 = GetValueByKey(1),
+                        Groups2 = GetValueByKey(2),
+                        Groups3 = GetValueByKey(3),
+                        Groups4 = GetValueByKey(4),
+                        Groups5 = GetValueByKey(5),
+                        Groups6 = GetValueByKey(6),
+                        Groups7 = GetValueByKey(7),
+                        Groups8 = GetValueByKey(8),
+                        Groups9 = GetValueByKey(9),
+                        Groups0 = GetValueByKey(0),
+                    };
+        
+        if (!hasValue)
+            return new Dictionary<(int,int), string>();
+        
+        var command = new CommandDefinition(@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                                                         SELECT 1 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_1 WHERE aid IN @Groups1
+                                                         UNION ALL
+                                                         SELECT 2 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_2 WHERE aid IN @Groups2
+                                                         UNION ALL
+                                                         SELECT 3 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_3 WHERE aid IN @Groups3
+                                                         UNION ALL
+                                                         SELECT 4 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_4 WHERE aid IN @Groups4
+                                                         UNION ALL
+                                                         SELECT 5 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_5 WHERE aid IN @Groups5
+                                                         UNION ALL
+                                                         SELECT 6 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_6 WHERE aid IN @Groups6
+                                                         UNION ALL
+                                                         SELECT 7 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_7 WHERE aid IN @Groups7
+                                                         UNION ALL
+                                                         SELECT 8 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_8 WHERE aid IN @Groups8
+                                                         UNION ALL
+                                                         SELECT 9 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_9 WHERE aid IN @Groups9
+                                                         UNION ALL
+                                                         SELECT 0 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_0 WHERE aid IN @Groups0;", param, cancellationToken: cancellationToken);
 
+        var attacheDic = (await cn.QueryAsync<(int,int, string, bool, bool)>(command))
+           .ToDictionary(x => (x.Item1,x.Item2), x =>
+                                       {
+                                           var (_,_, path, isRemote, isImage) = x;
+
+                                           var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
+
+                                           var tag = isImage ? "img" : "file";
+
+                                           return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
+                                       });
+
+        // sw.Stop();
+        // Console.WriteLine($"query attachment Time => {sw.ElapsedMilliseconds}ms");
+        
+        return attacheDic;
+    }
+    public static async Task<Dictionary<(int,int), string>> GetAttachFileNameDicAsync(IEnumerable<ArticlePost> posts, CancellationToken cancellationToken)
+    {
+        // var sw = new Stopwatch();
+        // sw.Start();
+        var attachFileGroups = posts.GroupBy(x => x.Tid % 10,
+                                             x => BbCodeAttachTagRegex.Matches(x.Message).Select(match =>
+                                                                                                 {
+                                                                                                     var content = match.Groups[1].Value;
+
+                                                                                                     if (int.TryParse(content, out var attachmentId))
+                                                                                                         return attachmentId;
+
+                                                                                                     return -1;
+                                                                                                 })).Where(x => x.Key != -1).ToArray();
+
+        var hasValue = false;
+        
+        int[]? GetValueByKey(int key)
+        {
+            var attachGroup = attachFileGroups.FirstOrDefault(x => x.Key == key)?.SelectMany(x => x).Distinct()?.ToArray();
+
+            if (!attachGroup?.Any() ?? true)
+                return new[] { -1 };
+
+            hasValue = true;
+            
+            return attachGroup;
+        }
+
+        // sw.Stop();
+        // Console.WriteLine($"get param Time => {sw.ElapsedMilliseconds}ms");
+        
+        // sw.Restart();
+        
+        await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+
+        var param = new
+                    {
+                        Groups1 = GetValueByKey(1),
+                        Groups2 = GetValueByKey(2),
+                        Groups3 = GetValueByKey(3),
+                        Groups4 = GetValueByKey(4),
+                        Groups5 = GetValueByKey(5),
+                        Groups6 = GetValueByKey(6),
+                        Groups7 = GetValueByKey(7),
+                        Groups8 = GetValueByKey(8),
+                        Groups9 = GetValueByKey(9),
+                        Groups0 = GetValueByKey(0),
+                    };
+        
+        if (!hasValue)
+            return new Dictionary<(int,int), string>();
+        
+        var command = new CommandDefinition(@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                                                         SELECT 1 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_1 WHERE aid IN @Groups1
+                                                         UNION ALL
+                                                         SELECT 2 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_2 WHERE aid IN @Groups2
+                                                         UNION ALL
+                                                         SELECT 3 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_3 WHERE aid IN @Groups3
+                                                         UNION ALL
+                                                         SELECT 4 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_4 WHERE aid IN @Groups4
+                                                         UNION ALL
+                                                         SELECT 5 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_5 WHERE aid IN @Groups5
+                                                         UNION ALL
+                                                         SELECT 6 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_6 WHERE aid IN @Groups6
+                                                         UNION ALL
+                                                         SELECT 7 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_7 WHERE aid IN @Groups7
+                                                         UNION ALL
+                                                         SELECT 8 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_8 WHERE aid IN @Groups8
+                                                         UNION ALL
+                                                         SELECT 9 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_9 WHERE aid IN @Groups9
+                                                         UNION ALL
+                                                         SELECT 0 as tableId,aid,attachment,remote,isimage 
+                                                         FROM pre_forum_attachment_0 WHERE aid IN @Groups0;", param, cancellationToken: cancellationToken);
+
+        var attacheDic = (await cn.QueryAsync<(int,int, string, bool, bool)>(command))
+           .ToDictionary(x => (x.Item1,x.Item2), x =>
+                                       {
+                                           var (_,_, path, isRemote, isImage) = x;
+
+                                           var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
+
+                                           var tag = isImage ? "img" : "file";
+
+                                           return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
+                                       });
+
+        // sw.Stop();
+        // Console.WriteLine($"query attachment Time => {sw.ElapsedMilliseconds}ms");
+        
         return attacheDic;
     }
 }

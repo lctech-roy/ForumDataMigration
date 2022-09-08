@@ -76,7 +76,7 @@ public partial class ArticleCommentMigration
         var sw = new Stopwatch();
         sw.Start();
 
-        var attachPathDic = RegexHelper.GetAttachFileNameDic(posts);
+        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(posts,cancellationToken);
 
         sw.Stop();
         Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
@@ -85,7 +85,7 @@ public partial class ArticleCommentMigration
         {
             var id = dic.GetValueOrDefault(post.Tid);
             var boardId = BoardDic.GetValueOrDefault(post.Fid);
-            
+
             //髒資料放過他
             if (id == 0 || boardId == 0)
                 continue;
@@ -94,7 +94,7 @@ public partial class ArticleCommentMigration
 
             if (memberId == 0)
                 continue;
-            
+
             var postResult = new PostResult
                              {
                                  ArticleId = id,
@@ -190,7 +190,7 @@ public partial class ArticleCommentMigration
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
                           BoardId = postResult.BoardId,
-                          CategoryId = CategoryDic.ContainsKey(post.Typeid) ? CategoryDic[post.Typeid] : 0,
+                          CategoryId = CategoryDic.GetValueOrDefault(post.Typeid),
                           SortingIndex = postResult.CreateMilliseconds,
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = postResult.LastPosterId,
@@ -203,7 +203,7 @@ public partial class ArticleCommentMigration
                           VideoCount = videoCount,
                           DonatePoint = 0,
                           Highlight = post.Highlight != 0,
-                          HighlightColor = ColorDic.ContainsKey(highlightInt) ? ColorDic[highlightInt] : null,
+                          HighlightColor =ColorDic.GetValueOrDefault(highlightInt),
                           Recommend = post.Digest,
                           ReadPermission = post.Readperm,
                           CommentDisabled = post.Closed == 1,
@@ -213,14 +213,14 @@ public partial class ArticleCommentMigration
                           Price = post.Price,
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
-                          SchedulePublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : null,
+                          PublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : postResult.CreateDate,
                           HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? postResult.CreateDate.AddDays(CommonSetting.HideExpirationDay) : null,
-                          PinExpirationDate = ModDic.ContainsKey((post.Tid, "EST")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "EST")]) : null,
-                          RecommendExpirationDate = ModDic.ContainsKey((post.Tid, "EDI")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "EDI")]) : null,
-                          HighlightExpirationDate = ModDic.ContainsKey((post.Tid, "EHL")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "EHL")]) : null,
-                          CommentDisabledExpirationDate = ModDic.ContainsKey((post.Tid, "ECL")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "ECL")]) : null,
-                          InVisibleArticleExpirationDate = ModDic.ContainsKey((post.Tid, "BNP")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "BNP")]) :
-                                                           ModDic.ContainsKey((post.Tid, "UBN")) ? DateTimeOffset.FromUnixTimeSeconds(ModDic[(post.Tid, "UBN")]) : null,
+                          PinExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
+                          RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset(),
+                          HighlightExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset(),
+                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset(),
+                          InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
+                                                           ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           Signature = post.Usesig,
                           Warning = post.Warning != null,
                           CreatorId = postResult.MemberId,
@@ -229,7 +229,7 @@ public partial class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate
                       };
 
-        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId, (int) article.Status, (int) article.VisibleType,
+        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.VisibleType,
                            (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
                            article.LastReplierId.ToCopyValue(), article.PinPriority,
@@ -237,7 +237,7 @@ public partial class ArticleCommentMigration
                            article.ImageCount, article.VideoCount, article.DonatePoint, article.Highlight, article.HighlightColor.ToCopyValue(),
                            article.Recommend, article.ReadPermission, article.CommentDisabled, (int) article.CommentVisibleType, article.LikeCount,
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
-                           article.SchedulePublishDate.ToCopyValue(), article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+                           article.PublishDate, article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);

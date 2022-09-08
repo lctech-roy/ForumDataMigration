@@ -25,8 +25,8 @@ public partial class ArticleCommentMigration
                                                                 };
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
-    private static readonly Dictionary<int, long> CategoryDic = RelationHelper.GetCategoryDic();
-    private static readonly Dictionary<(int, string), int> ModDic = ArticleHelper.GetModDic();
+    private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
+    private static readonly Dictionary<(int, string), int?> ModDic = ArticleHelper.GetModDic();
     private static readonly Dictionary<long, Read> ReadDic = ArticleHelper.GetReadDic();
     private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
     private static readonly List<Period> Periods = PeriodHelper.GetPeriods();
@@ -41,7 +41,7 @@ public partial class ArticleCommentMigration
                                        $",\"{nameof(Article.ShareCount)}\",\"{nameof(Article.ImageCount)}\",\"{nameof(Article.VideoCount)}\",\"{nameof(Article.DonatePoint)}\"" +
                                        $",\"{nameof(Article.Highlight)}\",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.Recommend)}\",\"{nameof(Article.ReadPermission)}\"" +
                                        $",\"{nameof(Article.CommentDisabled)}\",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
-                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.SchedulePublishDate)}\"" +
+                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
                                        $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.Warning)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;

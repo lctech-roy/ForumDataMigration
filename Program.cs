@@ -14,6 +14,7 @@ serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteg
 serviceCollection.AddSingleton<Migration>();
 serviceCollection.AddSingleton<ArticleRelationMigration>();
 serviceCollection.AddSingleton<ArticleCommentMigration>();
+serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
 serviceCollection.AddSingleton<GameItemMigration>();
@@ -28,6 +29,7 @@ Directory.CreateDirectory(Setting.INSERT_DATA_PATH);
 var migration = serviceProvider.GetRequiredService<Migration>();
 var relationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
 var commentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
+var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
 var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
@@ -46,6 +48,8 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // RelationContainer.ArticleIdDic = RelationHelper.GetArticleDic();
 //
 // //3.文章,留言
+// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await ArticleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await commentMigration.MigrationAsync(token);
 // await migration.ExecuteArticleAsync(token);
 // await migration.ExecuteArticleRewardAsync(token);

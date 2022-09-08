@@ -26,11 +26,11 @@ public static class ArticleHelper
         return id.HasValue ? new List<int> { id.Value } : PostTableIds;
     }
 
-    public static Dictionary<(int, string), int> GetModDic()
+    public static Dictionary<(int, string), int?> GetModDic()
     {
         const string queryModSql = $"select tid, action, max(expiration) as expiration from pre_forum_threadmod WHERE expiration != 0 AND action in ('EST','EDI','EHL','BNP','UBN','ECL') GROUP BY tid,`action`";
 
-        var modDic = new Dictionary<(int, string), int>();
+        var modDic = new Dictionary<(int, string), int?>();
 
         using (var conn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
         {

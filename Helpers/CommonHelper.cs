@@ -55,4 +55,9 @@ public class CommonHelper
 
         return result;
     }
+
+    public static ParallelOptions GetParallelOptions(CancellationToken cancellationToken = default)
+    {
+        return new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 2.0)), CancellationToken = cancellationToken};
+    }
 }

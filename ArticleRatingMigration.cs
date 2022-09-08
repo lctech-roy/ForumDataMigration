@@ -42,7 +42,7 @@ public class ArticleRatingMigration
     private const string POST0_RATING_ITEM_DIRECTORY_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}/0";
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
-    private static readonly Dictionary<int, long> CategoryDic = RelationHelper.GetCategoryDic();
+    private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
     private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
 
     private const string ARTICLE_RATING_JSON = "ArticleRatingJson";

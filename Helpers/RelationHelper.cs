@@ -63,11 +63,11 @@ public static class RelationHelper
         return boardDic;
     }
 
-    public static Dictionary<int, long> GetCategoryDic()
+    public static Dictionary<int, long?> GetCategoryDic()
     {
         const string queryCategorySql = $"SELECT \"Id\",\"TypeId\" FROM \"ArticleCategoryRelation\"";
 
-        var categoryDic = new Dictionary<int, long>();
+        var categoryDic = new Dictionary<int, long?>();
 
         using (var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
         {
@@ -138,6 +138,17 @@ public static class RelationHelper
         return idDic;
     }
 
+    public static Dictionary<long, (long, string)> GetSimpleMemberDic(CancellationToken cancellationToken = default)
+    {
+        const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\"";
+        
+        using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
+
+        var simpleMemberDic = conn.Query<(long id, long uid, string displayName)>(queryMemberSql).ToDictionary(t => t.uid, t => (t.id, t.displayName));
+
+        return simpleMemberDic;
+    }
+    
     public static async Task<Dictionary<long, (long, string)>> GetSimpleMemberDicAsync(int[] uids, CancellationToken cancellationToken = default)
     {
         const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\" WHERE \"Uid\" = ANY(@uids)";

@@ -1,6 +1,6 @@
 namespace ForumDataMigration.Models;
 
-public class Post
+public class ArticlePost
 {
     //[Slapper.AutoMapper.Id]
     public uint Pid { get; set; }
@@ -20,24 +20,21 @@ public class Post
     public short Highlight { get; set; }
     public bool Digest { get; set; }
     public uint Views { get; set; }
-    public uint Position { get; set; }
+    // public uint Position { get; set; }
     public uint Replies { get; set; }
     public uint Sharetimes { get; set; }
     public int? ThankCount { get; set; }
     public uint? Ratetimes { get; set; }
     public uint? Lastpost { get; set; }
-    public string? Lastposter { get; set; }
+    public int? Lastposter { get; set; }
     public uint? PostTime { get; set; }
     public int Authorid { get; set; }
     public uint Dateline { get; set; }
     public string Useip { get; set; } = null!;
     public short Price { get; set; }
     public bool Usesig { get; set; }
-    public bool First { get; set; }
-    public bool Comment { get; set; }
-    public int Likescore { get; set; }
-    public bool Invisible { get; set; }
-    
-    public uint? StickDateline { get; set; }
+    // public int Likescore { get; set; }
+    // public bool Invisible { get; set; }
+    // public uint? StickDateline { get; set; }
     public ThreadWarning? Warning { get; set; }
 }

@@ -18,4 +18,10 @@ public static class ValueTypeExtension
     {
         return value.HasValue ? value.ToString()! : COPY_NULL;
     }
+    
+    public static DateTimeOffset? ToDatetimeOffset(this int? value)
+    {
+        return value.HasValue ? DateTimeOffset.FromUnixTimeSeconds(value.Value)! : null;
+    }
+    
 }

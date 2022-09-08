@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using Dapper;
+using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
 using Npgsql;
 
