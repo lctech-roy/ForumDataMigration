@@ -116,7 +116,7 @@ public class ArticleMigration
 
         var sw = new Stopwatch();
         sw.Start();
-        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(posts, cancellationToken);
+        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(RegexHelper.GetAttachmentGroups(posts), cancellationToken);
         sw.Stop();
         Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
 

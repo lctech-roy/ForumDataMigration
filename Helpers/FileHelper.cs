@@ -29,12 +29,19 @@ public static class FileHelper
         var inputFilePaths = Directory.GetFiles(inputDirectoryPath, "*.sql", SearchOption.AllDirectories);
         Console.WriteLine("Number of files: {0}.", inputFilePaths.Length);
 
-        Parallel.ForEach(inputFilePaths, CommonHelper.GetParallelOptions(CancellationToken.None),
-                         inputFilePath =>
-                         {
-                             using var connection = new NpgsqlConnection(connectionStr);
+        using var connection = new NpgsqlConnection(connectionStr);
 
-                             connection.ExecuteAllTexts(inputFilePath);
-                         });
+        foreach (var inputFilePath in inputFilePaths)
+        {
+            connection.ExecuteAllTexts(inputFilePath);
+        }
+        //
+        // Parallel.ForEach(inputFilePaths, CommonHelper.GetParallelOptions(CancellationToken.None),
+        //                  inputFilePath =>
+        //                  {
+        //                      using var connection = new NpgsqlConnection(connectionStr);
+        //
+        //                      connection.ExecuteAllTexts(inputFilePath);
+        //                  });
     }
 }

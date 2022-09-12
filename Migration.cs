@@ -169,48 +169,10 @@ public class Migration
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
 
         await using var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
-
         await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
 
-        var periods = PeriodHelper.GetPeriods();
-        var postTableIds = ArticleHelper.GetPostTableIds();
-
-        var commentTask = new Task(() =>
-                                   {
-                                       foreach (var period in periods)
-                                       {
-                                           Parallel.ForEach(postTableIds,
-                                                            postTableId =>
-                                                            {
-                                                                var filePath = $"{commentPath}/{period.FolderName}/{postTableId}.sql";
-
-                                                                if (!File.Exists(filePath)) return;
-
-                                                                using var connection = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
-
-                                                                connection.ExecuteAllTexts(filePath);
-                                                            });
-                                       }
-                                   });
-
-
-        var commentExtendDataTask = new Task(() =>
-                                             {
-                                                 foreach (var period in periods)
-                                                 {
-                                                     Parallel.ForEach(postTableIds,
-                                                                      postTableId =>
-                                                                      {
-                                                                          var filePath = $"{commentExtendDataPath}/{period.FolderName}/{postTableId}.sql";
-
-                                                                          if (!File.Exists(filePath)) return;
-
-                                                                          using var connection = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
-
-                                                                          connection.ExecuteAllTexts(filePath);
-                                                                      });
-                                                 }
-                                             });
+        var commentTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentPath, Setting.NEW_COMMENT_CONNECTION); });
+        var commentExtendDataTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentExtendDataPath, Setting.NEW_COMMENT_CONNECTION); });
 
         commentTask.Start();
         commentExtendDataTask.Start();

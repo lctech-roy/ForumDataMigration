@@ -8,7 +8,7 @@ namespace ForumDataMigration.Helpers;
 public static class RegexHelper
 {
     private const string EMBED = "embed";
-    private static Dictionary<string, Func<Match, int, Dictionary<(int,int), string>, string>> BbcodeDic { get; set; }
+    private static Dictionary<string, Func<Match, int, Dictionary<(int, int), string>, string>> BbcodeDic { get; set; }
     private static string Pattern { get; }
     private static Regex Regex { get; }
 
@@ -25,14 +25,14 @@ public static class RegexHelper
 
     static RegexHelper()
     {
-        var bbcodeDic = new Dictionary<string, Func<Match, int, Dictionary<(int,int), string>, string>>();
+        var bbcodeDic = new Dictionary<string, Func<Match, int, Dictionary<(int, int), string>, string>>();
 
-        string GetBbcode(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
+        string GetBbcode(Match match, int tid, Dictionary<(int, int), string> attachPathDic)
         {
             return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Value;
         }
 
-        string GetAttachBbcode(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
+        string GetAttachBbcode(Match match, int tid, Dictionary<(int, int), string> attachPathDic)
         {
             var content = match.Groups["content"].Value;
 
@@ -48,12 +48,12 @@ public static class RegexHelper
             return fullPath;
         }
 
-        string GetUrlBbcode(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
+        string GetUrlBbcode(Match match, int tid, Dictionary<(int, int), string> attachPathDic)
         {
             return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Result("[url=${content}]${content}[/url]");
         }
 
-        string GetNextMedia(Match match, int tid, Dictionary<(int,int), string> attachPathDic)
+        string GetNextMedia(Match match, int tid, Dictionary<(int, int), string> attachPathDic)
         {
             var content = match.Groups["content"].Value;
             var attr = match.Groups["attr"].Value;
@@ -101,7 +101,7 @@ public static class RegexHelper
         Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     }
 
-    public static string GetNewMessage(string message, int tid, Dictionary<(int,int), string> attachPathDic)
+    public static string GetNewMessage(string message, int tid, Dictionary<(int, int), string> attachPathDic)
     {
         var newMessage = Regex.Replace(message, m =>
                                                 {
@@ -131,7 +131,7 @@ public static class RegexHelper
     }
 
 
- public static async Task<Dictionary<(int,int), string>> GetAttachFileNameDicAsync(IEnumerable<Post> posts, CancellationToken cancellationToken)
+    public static async Task<Dictionary<(int, int), string>> GetAttachFileNameDicAsync(IEnumerable<Post> posts, CancellationToken cancellationToken)
     {
         // var sw = new Stopwatch();
         // sw.Start();
@@ -147,7 +147,7 @@ public static class RegexHelper
                                                                                                  })).Where(x => x.Key != -1).ToArray();
 
         var hasValue = false;
-        
+
         int[]? GetValueByKey(int key)
         {
             var attachGroup = attachFileGroups.FirstOrDefault(x => x.Key == key)?.SelectMany(x => x).Distinct()?.ToArray();
@@ -156,15 +156,15 @@ public static class RegexHelper
                 return new[] { -1 };
 
             hasValue = true;
-            
+
             return attachGroup;
         }
 
         // sw.Stop();
         // Console.WriteLine($"get param Time => {sw.ElapsedMilliseconds}ms");
-        
+
         // sw.Restart();
-        
+
         await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
         var param = new
@@ -180,10 +180,10 @@ public static class RegexHelper
                         Groups9 = GetValueByKey(9),
                         Groups0 = GetValueByKey(0),
                     };
-        
+
         if (!hasValue)
-            return new Dictionary<(int,int), string>();
-        
+            return new Dictionary<(int, int), string>();
+
         var command = new CommandDefinition(@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                          SELECT 1 as tableId,aid,attachment,remote,isimage 
                                                          FROM pre_forum_attachment_1 WHERE aid IN @Groups1
@@ -215,27 +215,26 @@ public static class RegexHelper
                                                          SELECT 0 as tableId,aid,attachment,remote,isimage 
                                                          FROM pre_forum_attachment_0 WHERE aid IN @Groups0;", param, cancellationToken: cancellationToken);
 
-        var attacheDic = (await cn.QueryAsync<(int,int, string, bool, bool)>(command))
-           .ToDictionary(x => (x.Item1,x.Item2), x =>
-                                       {
-                                           var (_,_, path, isRemote, isImage) = x;
+        var attacheDic = (await cn.QueryAsync<(int, int, string, bool, bool)>(command))
+           .ToDictionary(x => (x.Item1, x.Item2), x =>
+                                                  {
+                                                      var (_, _, path, isRemote, isImage) = x;
 
-                                           var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
+                                                      var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
 
-                                           var tag = isImage ? "img" : "file";
+                                                      var tag = isImage ? "img" : "file";
 
-                                           return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
-                                       });
+                                                      return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
+                                                  });
 
         // sw.Stop();
         // Console.WriteLine($"query attachment Time => {sw.ElapsedMilliseconds}ms");
-        
+
         return attacheDic;
     }
-    public static async Task<Dictionary<(int,int), string>> GetAttachFileNameDicAsync(IEnumerable<ArticlePost> posts, CancellationToken cancellationToken)
+
+    public static IGrouping<int, IEnumerable<int>>[] GetAttachmentGroups(IEnumerable<ArticlePost> posts)
     {
-        // var sw = new Stopwatch();
-        // sw.Start();
         var attachFileGroups = posts.GroupBy(x => x.Tid % 10,
                                              x => BbCodeAttachTagRegex.Matches(x.Message).Select(match =>
                                                                                                  {
@@ -247,8 +246,31 @@ public static class RegexHelper
                                                                                                      return -1;
                                                                                                  })).Where(x => x.Key != -1).ToArray();
 
+        return attachFileGroups;
+    }
+    
+    public static IGrouping<int, IEnumerable<int>>[] GetAttachmentGroups(IEnumerable<CommentPost> posts)
+    {
+        var attachFileGroups = posts.GroupBy(x => x.Tid % 10,
+                                             x => BbCodeAttachTagRegex.Matches(x.Content).Select(match =>
+                                                                                                 {
+                                                                                                     var content = match.Groups[1].Value;
+
+                                                                                                     if (int.TryParse(content, out var attachmentId))
+                                                                                                         return attachmentId;
+
+                                                                                                     return -1;
+                                                                                                 })).Where(x => x.Key != -1).ToArray();
+
+        return attachFileGroups;
+    }
+
+    public static async Task<Dictionary<(int, int), string>> GetAttachFileNameDicAsync(IGrouping<int, IEnumerable<int>>[] attachFileGroups, CancellationToken cancellationToken)
+    {
+        // var sw = new Stopwatch();
+        // sw.Start();
         var hasValue = false;
-        
+
         int[]? GetValueByKey(int key)
         {
             var attachGroup = attachFileGroups.FirstOrDefault(x => x.Key == key)?.SelectMany(x => x).Distinct()?.ToArray();
@@ -257,15 +279,15 @@ public static class RegexHelper
                 return new[] { -1 };
 
             hasValue = true;
-            
+
             return attachGroup;
         }
 
         // sw.Stop();
         // Console.WriteLine($"get param Time => {sw.ElapsedMilliseconds}ms");
-        
+
         // sw.Restart();
-        
+
         await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
         var param = new
@@ -281,10 +303,10 @@ public static class RegexHelper
                         Groups9 = GetValueByKey(9),
                         Groups0 = GetValueByKey(0),
                     };
-        
+
         if (!hasValue)
-            return new Dictionary<(int,int), string>();
-        
+            return new Dictionary<(int, int), string>();
+
         var command = new CommandDefinition(@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                          SELECT 1 as tableId,aid,attachment,remote,isimage 
                                                          FROM pre_forum_attachment_1 WHERE aid IN @Groups1
@@ -316,21 +338,21 @@ public static class RegexHelper
                                                          SELECT 0 as tableId,aid,attachment,remote,isimage 
                                                          FROM pre_forum_attachment_0 WHERE aid IN @Groups0;", param, cancellationToken: cancellationToken);
 
-        var attacheDic = (await cn.QueryAsync<(int,int, string, bool, bool)>(command))
-           .ToDictionary(x => (x.Item1,x.Item2), x =>
-                                       {
-                                           var (_,_, path, isRemote, isImage) = x;
+        var attacheDic = (await cn.QueryAsync<(int, int, string, bool, bool)>(command))
+           .ToDictionary(x => (x.Item1, x.Item2), x =>
+                                                  {
+                                                      var (_, _, path, isRemote, isImage) = x;
 
-                                           var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
+                                                      var fullPath = string.Concat(isRemote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, path);
 
-                                           var tag = isImage ? "img" : "file";
+                                                      var tag = isImage ? "img" : "file";
 
-                                           return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
-                                       });
+                                                      return string.Concat("[", tag, "]", fullPath, "[/", tag, "]");
+                                                  });
 
         // sw.Stop();
         // Console.WriteLine($"query attachment Time => {sw.ElapsedMilliseconds}ms");
-        
+
         return attacheDic;
     }
 }
