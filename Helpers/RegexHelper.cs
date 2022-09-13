@@ -252,7 +252,7 @@ public static class RegexHelper
     public static IGrouping<int, IEnumerable<int>>[] GetAttachmentGroups(IEnumerable<CommentPost> posts)
     {
         var attachFileGroups = posts.GroupBy(x => x.Tid % 10,
-                                             x => BbCodeAttachTagRegex.Matches(x.Content).Select(match =>
+                                             x => BbCodeAttachTagRegex.Matches(x.Content ?? "").Select(match =>
                                                                                                  {
                                                                                                      var content = match.Groups[1].Value;
 

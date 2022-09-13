@@ -14,7 +14,7 @@ namespace ForumDataMigration;
 
 public class CommentMigration
 {
-    private static readonly List<Period> Periods = PeriodHelper.GetPeriods(2011, 6);
+    private static readonly List<Period> Periods = PeriodHelper.GetPeriods(2018,8);
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<long, (long, string)> MemberDIc = RelationHelper.GetSimpleMemberDic();
@@ -51,7 +51,7 @@ public class CommentMigration
                                                 FROM pre_forum_thread AS thread 
                                                 LEFT JOIN `pre_forum_post{{0}}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-                                                WHERE thread.posttableid = @postTableId AND post.tid IS NOT NULL
+                                                WHERE thread.posttableid = @postTableId -- AND post.tid IS NOT NULL
                                                 AND thread.dateline >= @Start AND thread.dateline < @End";
 
     private readonly ISnowflake _snowflake;
@@ -76,21 +76,21 @@ public class CommentMigration
                                                                                                               await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
                                                                                                               {
                                                                                                                   var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
-                                                                                                                  
+
                                                                                                                   await Policy
                                                                                                                         // 1. 處理甚麼樣的例外
                                                                                                                        .Handle<EndOfStreamException>()
                                                                                                                         // 2. 重試策略，包含重試次數
                                                                                                                        .RetryAsync(5, (ex, retryCount) =>
-                                                                                                                                 {
-                                                                                                                                     Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
-                                                                                                                                     Thread.Sleep(3000);
-                                                                                                                                 })
+                                                                                                                                      {
+                                                                                                                                          Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                                                                                          Thread.Sleep(3000);
+                                                                                                                                      })
                                                                                                                         // 3. 執行內容
                                                                                                                        .ExecuteAsync(async () =>
-                                                                                                                                {
-                                                                                                                                    posts = (await cn.QueryAsync<CommentPost>(command)).ToArray();
-                                                                                                                                });
+                                                                                                                                     {
+                                                                                                                                         posts = (await cn.QueryAsync<CommentPost>(command)).ToArray();
+                                                                                                                                     });
                                                                                                               }
 
                                                                                                               if (!posts.Any())
@@ -343,7 +343,7 @@ public class CommentMigration
         if (File.Exists(fullPath))
         {
             File.AppendAllText(fullPath, valueSb.ToString());
-            Console.WriteLine($"Append {fullPath}");
+            // Console.WriteLine($"Append {fullPath}");
         }
         else
         {
