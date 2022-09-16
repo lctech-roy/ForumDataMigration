@@ -35,9 +35,4 @@
       <None Remove="ScriptInsert\**" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="ScriptInsert\Article" />
-      <Folder Include="ScriptInsert\Error" />
-    </ItemGroup>
-
 </Project>

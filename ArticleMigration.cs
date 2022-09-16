@@ -279,7 +279,6 @@ public class ArticleMigration
                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
 
-
         #region Es文件檔
 
         jsonSb.Append(ArticleEsIdPrefix).Append(article.Id).AppendLine(ArticleEsIdSuffix);

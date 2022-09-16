@@ -1,6 +1,8 @@
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
+using ForumDataMigration.Models;
 using Npgsql;
+using Polly;
 
 namespace ForumDataMigration.Helpers;
 
@@ -20,21 +22,29 @@ public static class FileHelper
                 await inputStream.CopyToAsync(outputStream, cancellationToken);
             }
 
+            File.Delete(inputFilePath);
+
             Console.WriteLine("The file {0} has been processed.", inputFilePath);
         }
     }
-    
+
     public static void ExecuteAllSqlFiles(string inputDirectoryPath, string connectionStr)
     {
         var inputFilePaths = Directory.GetFiles(inputDirectoryPath, "*.sql", SearchOption.AllDirectories);
-        Console.WriteLine("Number of files: {0}.", inputFilePaths.Length);
+
+        var totalFileCount = inputFilePaths.Length;
+
+        Console.WriteLine("Number of files: {0}.", totalFileCount);
 
         using var connection = new NpgsqlConnection(connectionStr);
 
         foreach (var inputFilePath in inputFilePaths)
         {
             connection.ExecuteAllTexts(inputFilePath);
+
+            Console.WriteLine("Number of files left: {0}.", totalFileCount -- );
         }
+
         //
         // Parallel.ForEach(inputFilePaths, CommonHelper.GetParallelOptions(CancellationToken.None),
         //                  inputFilePath =>

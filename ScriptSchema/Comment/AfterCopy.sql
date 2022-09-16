@@ -1,3 +1,4 @@
+do $$
 ALTER TABLE "Comment"
     ADD CONSTRAINT "PK_Comment" PRIMARY KEY ("Id"),
     ADD CONSTRAINT "FK_Comment_Comment_ParentId" FOREIGN KEY ("ParentId") REFERENCES "Comment" ("Id"),
@@ -14,3 +15,4 @@ CREATE INDEX "IX_Comment_ParentId" ON "Comment" ("ParentId");
 CREATE INDEX "IX_Comment_RootId" ON "Comment" ("RootId");
 CREATE INDEX "IX_CommentExtendData_Key" ON "CommentExtendData" ("Key");
 CREATE INDEX "IX_CommentExtendData_Value" ON "CommentExtendData" ("Value");
+end$$;

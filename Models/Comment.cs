@@ -9,7 +9,7 @@ public class Comment : Entity
     public long? ParentId { get; set; }
     public int Level { get; set; }
     public string Hierarchy { get; set; } = default!;
-    public string Title { get; set; } = default!;
+    public string? Title { get; set; }
     public string Content { get; set; } = default!;
     public VisibleType VisibleType { get; set; }
     public string? Ip { get; set; }

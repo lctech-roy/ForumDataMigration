@@ -14,7 +14,7 @@ namespace ForumDataMigration;
 
 public class CommentMigration
 {
-    private static readonly List<Period> Periods = PeriodHelper.GetPeriods(2018,8);
+    private static readonly List<Period> Periods = PeriodHelper.GetPeriods(2018,6);
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<long, (long, string)> MemberDIc = RelationHelper.GetSimpleMemberDic();
@@ -28,8 +28,7 @@ public class CommentMigration
     private static readonly string EsIdSuffix = $"\" }}}}";
     private static readonly string CommentRelationShipName = DocumentType.Comment.ToString().ToLower();
     private static readonly string CommentRelationShipParentPrefix = DocumentType.Thread.ToString().ToLower() + "-";
-
-
+    
     private const string COPY_COMMENT_PREFIX = $"COPY \"{nameof(Comment)}\" " +
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
                                                $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Title)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
@@ -45,11 +44,12 @@ public class CommentMigration
     //                                             LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
     //                                             WHERE post.dateline >= @Start AND post.dateline < @End";
     
-    private const string QUERY_COMMENT_SQL = $@"SELECT post.fid,post.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
-                                                thread.subject AS Title,IF(`first`, '', message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
+    private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                                                SELECT post.fid,post.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
+                                                IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
-                                                LEFT JOIN `pre_forum_post{{0}}` AS post ON post.tid = thread.tid
+                                                LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
                                                 WHERE thread.posttableid = @postTableId -- AND post.tid IS NOT NULL
                                                 AND thread.dateline >= @Start AND thread.dateline < @End";
@@ -266,16 +266,15 @@ public class CommentMigration
         }
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
-                                  comment.Title.ToCopyText(), comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
-                                  comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
+                                  comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(), 
+                                  (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
-
 
         #region Es文件檔
 
         if (commentJsonSb.Length > maxStringBuilderLength)
         {
-            WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.sql", "", commentJsonSb);
+            WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb);
 
             commentJsonSb.Clear();
         }

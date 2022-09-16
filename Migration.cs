@@ -167,18 +167,24 @@ public class Migration
         const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
-
-        await using var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
-        await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
-
-        var commentTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentPath, Setting.NEW_COMMENT_CONNECTION); });
-        var commentExtendDataTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentExtendDataPath, Setting.NEW_COMMENT_CONNECTION); });
-
-        commentTask.Start();
-        commentExtendDataTask.Start();
-        await Task.WhenAll(commentTask, commentExtendDataTask);
-
-        await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
+        
+        FileHelper.ExecuteAllSqlFiles(commentPath, Setting.NEW_COMMENT_CONNECTION);
+        
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+        //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
+        
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+        //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        //
+        // var commentTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentPath, Setting.NEW_COMMENT_CONNECTION); });
+        // var commentExtendDataTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentExtendDataPath, Setting.NEW_COMMENT_CONNECTION); });
+        //
+        // commentTask.Start();
+        // commentExtendDataTask.Start();
+        // await Task.WhenAll(commentTask, commentExtendDataTask);
+        //
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+        //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
 

@@ -7,11 +7,11 @@ WHILE EXTRACT(YEAR FROM beginDate ) <= EXTRACT(Year FROM NOW() ) + 1 LOOP
     EXECUTE 'ALTER TABLE "' || tableName || '" ADD PRIMARY KEY ("Id");';
     beginDate = beginDate + interval '1 year';
 END loop;
-end$$;
-
 CREATE INDEX "IX_Article_PublishDate" ON "Article" ("PublishDate");
 CREATE INDEX "IX_Article_BoardId" ON "Article" ("BoardId");
 CREATE INDEX "IX_Article_CategoryId" ON "Article" ("CategoryId");
+end$$;
+
     
 --刪除重複的資料
 -- DELETE FROM "Article"

@@ -138,7 +138,7 @@ public static class RelationHelper
         return idDic;
     }
 
-    public static Dictionary<long, (long, string)> GetSimpleMemberDic(CancellationToken cancellationToken = default)
+    public static Dictionary<long, (long, string)> GetSimpleMemberDic()
     {
         const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\"";
         
