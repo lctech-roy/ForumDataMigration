@@ -2,12 +2,12 @@ namespace ForumDataMigration.Helper;
 
 public static class PeriodHelper
 {
-    public static List<Period>  Periods { get; }
+    public static List<Period> Periods { get; }
 
     static PeriodHelper()
     {
         var startDate = new DateTimeOffset(2007, 12, 1, 0, 0, 0, TimeSpan.FromHours(8));
-        
+
         var startSeconds = startDate.ToUnixTimeSeconds();
         var endDate = startDate.AddMonths(1);
         var endSeconds = endDate.ToUnixTimeSeconds();
@@ -26,6 +26,7 @@ public static class PeriodHelper
         while (endSeconds < finalSeconds)
         {
             var dateStr = $"{startDate.Year}{startDate.Month.ToString().PadLeft(2, '0')}";
+
             periods.Add(new Period
                         {
                             StartDate = startDate,
@@ -33,7 +34,7 @@ public static class PeriodHelper
                             StartSeconds = startSeconds,
                             EndSeconds = endSeconds,
                             FileName = $"{dateStr}.sql",
-                            FolderName =  dateStr
+                            FolderName = dateStr
                         });
 
             ToNextPeriod();
@@ -42,11 +43,22 @@ public static class PeriodHelper
         Periods = periods;
     }
 
-    public static List<Period> GetPeriods(int? year =null ,int? month = null)
+    public static List<Period> GetPeriods(string? dateStr = null)
+    {
+        if (dateStr == null)
+            return GetPeriods(null, null);
+        
+        var year = int.Parse(dateStr[..4]);
+        var month = int.Parse(dateStr.Substring(4, 2));
+
+        return GetPeriods(year, month);
+    }
+    
+    public static List<Period> GetPeriods(int? year, int? month)
     {
         if (!year.HasValue && !month.HasValue)
             return Periods;
-        
+
         var startDate = new DateTimeOffset(year!.Value, month!.Value, 1, 0, 0, 0, TimeSpan.FromHours(8));
         var startSeconds = startDate.ToUnixTimeSeconds();
 

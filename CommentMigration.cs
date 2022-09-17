@@ -14,7 +14,6 @@ namespace ForumDataMigration;
 
 public class CommentMigration
 {
-    private static readonly List<Period> Periods = PeriodHelper.GetPeriods(2018,6);
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<long, (long, string)> MemberDIc = RelationHelper.GetSimpleMemberDic();
@@ -23,12 +22,16 @@ public class CommentMigration
     private const string EXTEND_DATA_BOARD_ID = "BoardId";
     private const string COMMENT_JSON = "CommentJson";
 
+    private const string COMMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
+    private const string COMMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
+    private const string COMMENT_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}";
+
     private static readonly string CommentEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Comment).ToLower()}-";
     private static readonly string CommentEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
     private static readonly string EsIdSuffix = $"\" }}}}";
     private static readonly string CommentRelationShipName = DocumentType.Comment.ToString().ToLower();
     private static readonly string CommentRelationShipParentPrefix = DocumentType.Thread.ToString().ToLower() + "-";
-    
+
     private const string COPY_COMMENT_PREFIX = $"COPY \"{nameof(Comment)}\" " +
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
                                                $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Title)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
@@ -37,15 +40,8 @@ public class CommentMigration
 
     private const string COPY_COMMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(CommentExtendData)}\" (\"{nameof(CommentExtendData.Id)}\",\"{nameof(CommentExtendData.Key)}\",\"{nameof(CommentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
-    // private const string QUERY_COMMENT_SQL = $@"SELECT fid,post.tid,post.pid,authorid,post.dateline,first,status,comment,invisible AS IsDeleted,
-    //                                             subject AS Title,IF(`first`, '', message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
-    //                                             likescore AS RelatedScore,postStick.dateline AS stickDateline
-    //                                             FROM `pre_forum_post{{0}}` AS post
-    //                                             LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-    //                                             WHERE post.dateline >= @Start AND post.dateline < @End";
-    
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT post.fid,post.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
+                                                SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
@@ -63,47 +59,66 @@ public class CommentMigration
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
+        RetryHelper.CreateCommentRetryTable();
+        var (folderName, _) = RetryHelper.GetCommentRetry();
         var postTableIds = ArticleHelper.GetPostTableIds();
+        var periods = PeriodHelper.GetPeriods(folderName);
 
-        foreach (var period in Periods)
+        if(folderName != null)
+            RetryHelper.RemoveFilesByDate(new []{COMMENT_PATH,COMMENT_EXTEND_DATA_PATH,COMMENT_JSON_PATH},folderName);
+        
+        foreach (var period in periods)
         {
             await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
                                                                                                           {
-                                                                                                              CommentPost[] posts = Array.Empty<CommentPost>();
+                                                                                                              var posts = Array.Empty<CommentPost>();
 
                                                                                                               var sql = string.Format(QUERY_COMMENT_SQL, postTableId == 0 ? "" : $"_{postTableId}");
-
-                                                                                                              await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+                                                                                                              
+                                                                                                              try
                                                                                                               {
-                                                                                                                  var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
+                                                                                                                  await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+                                                                                                                  {
+                                                                                                                      var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
 
-                                                                                                                  await Policy
-                                                                                                                        // 1. 處理甚麼樣的例外
-                                                                                                                       .Handle<EndOfStreamException>()
-                                                                                                                        // 2. 重試策略，包含重試次數
-                                                                                                                       .RetryAsync(5, (ex, retryCount) =>
-                                                                                                                                      {
-                                                                                                                                          Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
-                                                                                                                                          Thread.Sleep(3000);
-                                                                                                                                      })
-                                                                                                                        // 3. 執行內容
-                                                                                                                       .ExecuteAsync(async () =>
-                                                                                                                                     {
-                                                                                                                                         posts = (await cn.QueryAsync<CommentPost>(command)).ToArray();
-                                                                                                                                     });
+                                                                                                                      await Policy
+
+                                                                                                                            // 1. 處理甚麼樣的例外
+                                                                                                                           .Handle<EndOfStreamException>()
+
+                                                                                                                            // 2. 重試策略，包含重試次數
+                                                                                                                           .RetryAsync(5, (ex, retryCount) =>
+                                                                                                                                          {
+                                                                                                                                              Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                                                                                              Thread.Sleep(3000);
+                                                                                                                                          })
+
+                                                                                                                            // 3. 執行內容
+                                                                                                                           .ExecuteAsync(async () => { posts = (await cn.QueryAsync<CommentPost>(command)).ToArray(); });
+                                                                                                                  }
+
+                                                                                                                  if (!posts.Any())
+                                                                                                                      return;
+
+                                                                                                                  await ExecuteAsync(posts, postTableId, period, cancellationToken);
                                                                                                               }
+                                                                                                              catch (Exception e)
+                                                                                                              {
+                                                                                                                  Console.WriteLine(e);
+                                                                                                                  await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}" , token);
+                                                                                                                  RetryHelper.SetCommentRetry(period.FolderName,null,e.ToString());
 
-                                                                                                              if (!posts.Any())
-                                                                                                                  return;
-
-                                                                                                              await ExecuteAsync(posts, postTableId, period, cancellationToken);
+                                                                                                                  throw;
+                                                                                                              }
                                                                                                           });
         }
 
-        await FileHelper.CombineMultipleFilesIntoSingleFileAsync($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}",
+        await FileHelper.CombineMultipleFilesIntoSingleFileAsync(COMMENT_JSON_PATH,
                                                                  "*.json",
                                                                  $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}.json",
                                                                  cancellationToken);
+        
+        RetryHelper.DropCommentRetryTable();
     }
 
     private async Task ExecuteAsync(CommentPost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
@@ -119,19 +134,34 @@ public class CommentMigration
         // sw.Stop();
         // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
 
+        var removedTid = 0;
+
         foreach (var post in posts)
         {
+            if (post.Tid == removedTid)
+                continue;
+
             var id = ArticleDic.GetValueOrDefault(post.Tid);
             var boardId = BoardDic.GetValueOrDefault(post.Fid);
 
             //髒資料放過他
             if (id == 0 || boardId == 0)
+            {
+                if (post.First && post.Sequence == 0)
+                    removedTid = post.Tid;
+
                 continue;
+            }
 
             var (memberId, memberName) = MemberDIc.GetValueOrDefault(post.Authorid);
 
             if (memberId == 0)
+            {
+                if (post.First && post.Sequence == 0)
+                    removedTid = post.Tid;
+
                 continue;
+            }
 
             var postResult = new CommentPostResult
                              {
@@ -155,9 +185,9 @@ public class CommentMigration
             }
         }
 
-        var commentTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
-        var commentExtendDataTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
-        var commentJsonTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb); });
+        var commentTask = new Task(() => { WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
+        var commentExtendDataTask = new Task(() => { WriteToFile($"{COMMENT_EXTEND_DATA_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
+        var commentJsonTask = new Task(() => { WriteToFile($"{COMMENT_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb); });
 
         commentTask.Start();
         commentExtendDataTask.Start();
@@ -194,7 +224,7 @@ public class CommentMigration
         comment.RootId = postResult.ArticleId;
         comment.ParentId = postResult.ArticleId;
         comment.Level = 2;
-        comment.Hierarchy = $"{postResult.ArticleId}/{commentId}";
+        comment.Hierarchy = string.Concat(postResult.ArticleId, "/", commentId);
         comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Tid, postResult.AttachPathDic);
         comment.VisibleType = comment.Status == 1 ? VisibleType.Private : VisibleType.Public;
         comment.SortingIndex = postResult.CreateMilliseconds;
@@ -219,7 +249,7 @@ public class CommentMigration
 
         if (!postComments.Any())
             return;
-        
+
         var sequence = 1;
 
         foreach (var postComment in postComments)
@@ -260,13 +290,13 @@ public class CommentMigration
 
         if (commentSb.Length > maxStringBuilderLength)
         {
-            WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
+            WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
 
             commentSb.Clear();
         }
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
-                                  comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(), 
+                                  comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(),
                                   (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
 
@@ -274,7 +304,7 @@ public class CommentMigration
 
         if (commentJsonSb.Length > maxStringBuilderLength)
         {
-            WriteToFile($"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb);
+            WriteToFile($"{COMMENT_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb);
 
             commentJsonSb.Clear();
         }
@@ -342,6 +372,7 @@ public class CommentMigration
         if (File.Exists(fullPath))
         {
             File.AppendAllText(fullPath, valueSb.ToString());
+
             // Console.WriteLine($"Append {fullPath}");
         }
         else

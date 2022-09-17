@@ -30,7 +30,7 @@ public static class FileHelper
 
     public static void ExecuteAllSqlFiles(string inputDirectoryPath, string connectionStr)
     {
-        var inputFilePaths = Directory.GetFiles(inputDirectoryPath, "*.sql", SearchOption.AllDirectories);
+        var inputFilePaths = Directory.GetFiles(inputDirectoryPath, "*.sql", SearchOption.AllDirectories).OrderBy(x=>x).ToArray();
 
         var totalFileCount = inputFilePaths.Length;
 
@@ -40,9 +40,9 @@ public static class FileHelper
 
         foreach (var inputFilePath in inputFilePaths)
         {
-            connection.ExecuteAllTexts(inputFilePath);
-
             Console.WriteLine("Number of files left: {0}.", totalFileCount -- );
+            
+            connection.ExecuteAllTexts(inputFilePath);
         }
 
         //

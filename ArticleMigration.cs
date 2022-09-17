@@ -72,13 +72,14 @@ public class ArticleMigration
                                               FROM pre_forum_thread AS thread
                                               LEFT JOIN pre_forum_post{0} post ON post.first = TRUE AND post.position = 1 AND post.tid = thread.tid
                                               LEFT JOIN pre_forum_post{0} postReply ON thread.replies > 0 AND postReply.tid = thread.tid AND postReply.dateline = thread.lastpost AND postReply.author = thread.lastposter
-                                              -- LEFT JOIN pre_forum_post{0} postReward ON thread.special = 3 AND thread.price < 0 AND postReward.tid = thread.tid AND post.dateline + 1 = postReward.dateline
                                               LEFT JOIN pre_post_delay AS postDelay ON postDelay.tid = thread.tid
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
                                               WHERE thread.posttableid = @postTableId AND post.dateline >= @Start AND post.dateline < @End";
     //WHERE thread.posttableid = @postTableId AND thread.tid = 8128927";
     public static async Task MigrationAsync(CancellationToken cancellationToken)
     {
+        //RetryHelper.CreateRetryTable();
+        
         var postTableIds = ArticleHelper.GetPostTableIds();
 
         foreach (var period in Periods)

@@ -12,11 +12,10 @@ public class Migration
     private const string SCHEMA_PATH = "../../../ScriptSchema";
     private const string BEFORE_FILE_NAME = "BeforeCopy.sql";
     private const string AFTER_FILE_NAME = "AfterCopy.sql";
-    private const string CONNECTION_STR = Setting.NEW_FORUM_CONNECTION;
 
     public void ExecuteRelation()
     {
-        using var cn = new NpgsqlConnection(CONNECTION_STR);
+        using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{BEFORE_FILE_NAME}");
 
@@ -38,7 +37,7 @@ public class Migration
         const string articleCoverRelationSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleCoverRelation)}";
         const string articleCoverRelationPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}";
 
-        await using var cn = new NpgsqlConnection(CONNECTION_STR);
+        await using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
         await cn.ExecuteCommandByPathAsync($"{articleCoverRelationSchemaPath}/{BEFORE_FILE_NAME}", token);
@@ -60,7 +59,7 @@ public class Migration
         const string articleRewardSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleReward)}";
         const string articleRewardPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}";
 
-        await using var cn = new NpgsqlConnection(CONNECTION_STR);
+        await using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{BEFORE_FILE_NAME}", token);
 
@@ -76,7 +75,7 @@ public class Migration
 
                                  if (!File.Exists(filePath)) return;
 
-                                 using var connection = new NpgsqlConnection(CONNECTION_STR);
+                                 using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
                                  connection.ExecuteAllTexts(filePath);
                              });
@@ -87,7 +86,7 @@ public class Migration
 
     public void ExecuteAttachment()
     {
-        using var cn = new NpgsqlConnection(CONNECTION_STR);
+        using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ExternalAttachmentUrl)}/{BEFORE_FILE_NAME}");
 
         const string path = $"{Setting.INSERT_DATA_PATH}/{nameof(ExternalAttachmentUrl)}";
@@ -108,12 +107,12 @@ public class Migration
         const string articleVoteItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItem)}";
         const string articleVoteItemHistoryPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItemHistory)}";
 
-        await using var connection = new NpgsqlConnection(CONNECTION_STR);
+        await using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
         await connection.ExecuteCommandByPathAsync($"{articleVoteSchemaPath}/{BEFORE_FILE_NAME}", token);
 
         var periods = PeriodHelper.GetPeriods();
 
-        await using var cn = new NpgsqlConnection(CONNECTION_STR);
+        await using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         foreach (var filePath in periods.Select(period => $"{articleVotePath}/{period.FileName}").Where(File.Exists))
         {
@@ -139,18 +138,18 @@ public class Migration
         const string ratingPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}";
         const string ratingItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}";
 
-        await using (var cn = new NpgsqlConnection(CONNECTION_STR))
+        await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
             await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{BEFORE_FILE_NAME}", token);
 
         var copyRatingTask = new Task(() =>
                                       {
-                                          using var cn = new NpgsqlConnection(CONNECTION_STR);
+                                          using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
                                           cn.ExecuteAllCopyFiles(ratingPath);
                                       });
 
         var copyRatingItemTask = new Task(() =>
                                           {
-                                              using var cn = new NpgsqlConnection(CONNECTION_STR);
+                                              using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
                                               cn.ExecuteAllCopyFiles(ratingItemPath);
                                           });
 
@@ -158,7 +157,7 @@ public class Migration
         copyRatingItemTask.Start();
         await Task.WhenAll(copyRatingTask, copyRatingItemTask);
 
-        await using (var cn = new NpgsqlConnection(CONNECTION_STR))
+        await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
             await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
@@ -170,9 +169,9 @@ public class Migration
         
         FileHelper.ExecuteAllSqlFiles(commentPath, Setting.NEW_COMMENT_CONNECTION);
         
-        // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
-        //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
-        
+        await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+            await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
+        //
         // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
         //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
         //
