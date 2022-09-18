@@ -80,4 +80,19 @@ public static class RetryHelper
                 file.Delete();
         }
     }
+
+    public static void RemoveFiles(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+            else if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

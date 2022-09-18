@@ -25,6 +25,7 @@ public class CommentMigration
     private const string COMMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
     private const string COMMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
     private const string COMMENT_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}";
+    private const string COMMENT_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}.json";
 
     private static readonly string CommentEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Comment).ToLower()}-";
     private static readonly string CommentEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
@@ -47,7 +48,7 @@ public class CommentMigration
                                                 FROM pre_forum_thread AS thread 
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-                                                WHERE thread.posttableid = @postTableId -- AND post.tid IS NOT NULL
+                                                WHERE thread.posttableid = @postTableId
                                                 AND thread.dateline >= @Start AND thread.dateline < @End";
 
     private readonly ISnowflake _snowflake;
@@ -66,6 +67,8 @@ public class CommentMigration
 
         if(folderName != null)
             RetryHelper.RemoveFilesByDate(new []{COMMENT_PATH,COMMENT_EXTEND_DATA_PATH,COMMENT_JSON_PATH},folderName);
+        else
+            RetryHelper.RemoveFiles(new []{COMMENT_PATH,COMMENT_EXTEND_DATA_PATH,COMMENT_JSON_PATH,COMMENT_COMBINE_JSON_PATH});
         
         foreach (var period in periods)
         {
@@ -115,7 +118,7 @@ public class CommentMigration
 
         await FileHelper.CombineMultipleFilesIntoSingleFileAsync(COMMENT_JSON_PATH,
                                                                  "*.json",
-                                                                 $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}.json",
+                                                                 COMMENT_COMBINE_JSON_PATH,
                                                                  cancellationToken);
         
         RetryHelper.DropCommentRetryTable();
@@ -135,7 +138,8 @@ public class CommentMigration
         // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
 
         var removedTid = 0;
-
+        var previousTid = 0;
+        
         foreach (var post in posts)
         {
             if (post.Tid == removedTid)
@@ -161,6 +165,12 @@ public class CommentMigration
                     removedTid = post.Tid;
 
                 continue;
+            }
+            //第一筆如果不是first或sequence!=0不處理
+            if (post.Tid != previousTid && (post.Sequence != 0 || !post.First))
+            {
+               removedTid =  post.Tid;
+               continue;
             }
 
             var postResult = new CommentPostResult
@@ -372,8 +382,6 @@ public class CommentMigration
         if (File.Exists(fullPath))
         {
             File.AppendAllText(fullPath, valueSb.ToString());
-
-            // Console.WriteLine($"Append {fullPath}");
         }
         else
         {
