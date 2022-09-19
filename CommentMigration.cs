@@ -65,11 +65,11 @@ public class CommentMigration
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
 
-        if(folderName != null)
-            RetryHelper.RemoveFilesByDate(new []{COMMENT_PATH,COMMENT_EXTEND_DATA_PATH,COMMENT_JSON_PATH},folderName);
+        if (folderName != null)
+            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new []{COMMENT_PATH,COMMENT_EXTEND_DATA_PATH,COMMENT_JSON_PATH,COMMENT_COMBINE_JSON_PATH});
-        
+            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, COMMENT_COMBINE_JSON_PATH });
+
         foreach (var period in periods)
         {
             await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
@@ -77,7 +77,7 @@ public class CommentMigration
                                                                                                               var posts = Array.Empty<CommentPost>();
 
                                                                                                               var sql = string.Format(QUERY_COMMENT_SQL, postTableId == 0 ? "" : $"_{postTableId}");
-                                                                                                              
+
                                                                                                               try
                                                                                                               {
                                                                                                                   await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
@@ -108,8 +108,8 @@ public class CommentMigration
                                                                                                               catch (Exception e)
                                                                                                               {
                                                                                                                   Console.WriteLine(e);
-                                                                                                                  await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}" , token);
-                                                                                                                  RetryHelper.SetCommentRetry(period.FolderName,null,e.ToString());
+                                                                                                                  await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}", token);
+                                                                                                                  RetryHelper.SetCommentRetry(period.FolderName, null, e.ToString());
 
                                                                                                                   throw;
                                                                                                               }
@@ -120,7 +120,7 @@ public class CommentMigration
                                                                  "*.json",
                                                                  COMMENT_COMBINE_JSON_PATH,
                                                                  cancellationToken);
-        
+
         RetryHelper.DropCommentRetryTable();
     }
 
@@ -139,9 +139,11 @@ public class CommentMigration
 
         var removedTid = 0;
         var previousTid = 0;
-        
-        foreach (var post in posts)
+
+        for (var i = 0; i < posts.Length; i++)
         {
+            var post = posts[i];
+
             if (post.Tid == removedTid)
                 continue;
 
@@ -166,11 +168,40 @@ public class CommentMigration
 
                 continue;
             }
-            //第一筆如果不是first或sequence!=0不處理
-            if (post.Tid != previousTid && (post.Sequence != 0 || !post.First))
+
+            if (post.Tid != previousTid)
             {
-               removedTid =  post.Tid;
-               continue;
+                previousTid = post.Tid;
+
+                var hasArticle = false;
+                
+                //第一筆如果不是first或sequence!=0不處理
+                if (post.First && post.Sequence == 0)
+                    hasArticle = true;
+                else
+                {
+                    var index = i;
+
+                    while (++index < posts.Length)
+                    {
+                        var nextPost = posts[index];
+
+                        if (nextPost.Tid != post.Tid)
+                            break;
+                        
+                        if (!nextPost.First || nextPost.Sequence != 0) continue;
+
+                        hasArticle = true;
+                        break;
+                    }
+                }
+                
+                if (!hasArticle)
+                {
+                    removedTid = post.Tid;
+
+                    continue;
+                }
             }
 
             var postResult = new CommentPostResult
