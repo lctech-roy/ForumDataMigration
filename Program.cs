@@ -50,18 +50,18 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // RelationContainer.ArticleIdDic = RelationHelper.GetArticleDic();
 //
 // 3.文章,留言
-// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await ArticleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 // await commentMigration.MigrationAsync(token);
 // await migration.ExecuteArticleAsync(token);
 // await migration.ExecuteArticleRewardAsync(token);
 // await migration.ExecuteCommentAsync(token);
 //
 // //4.文章評分
-// await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
-// await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
+await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
 //
 // //5.文章投票
 // voteMigration.Migration();

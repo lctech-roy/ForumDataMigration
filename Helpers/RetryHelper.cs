@@ -74,6 +74,10 @@ public static class RetryHelper
         foreach (var rootPath in rootPaths)
         {
             var path = $"{rootPath}/{dateFolderName}"; 
+            
+            if(!Directory.Exists(path))
+                continue;
+            
             var directoryInfo = new DirectoryInfo(path);
 
             foreach (var file in directoryInfo.GetFiles())

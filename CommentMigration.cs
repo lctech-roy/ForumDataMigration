@@ -21,11 +21,14 @@ public class CommentMigration
     private const string EXTEND_DATA_RECOMMEND_COMMENT = "RecommendComment";
     private const string EXTEND_DATA_BOARD_ID = "BoardId";
     private const string COMMENT_JSON = "CommentJson";
+    private const string ARTICLE_IGNORE = "ArticleIgnore";
 
     private const string COMMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
     private const string COMMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
     private const string COMMENT_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}";
+    private const string ARTICLE_IGNORE_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_IGNORE}";
     private const string COMMENT_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}.json";
+
 
     private static readonly string CommentEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Comment).ToLower()}-";
     private static readonly string CommentEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
@@ -40,6 +43,18 @@ public class CommentMigration
                                                $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.IsDeleted)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_COMMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(CommentExtendData)}\" (\"{nameof(CommentExtendData.Id)}\",\"{nameof(CommentExtendData.Key)}\",\"{nameof(CommentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
+
+    private const string COPY_ARTICLE_IGNORE_PREFIX = $"COPY \"{ARTICLE_IGNORE}\" (\"Tid\",\"Reason\"" + Setting.COPY_SUFFIX;
+
+    // private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+    //                                             SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
+    //                                             IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
+    //                                             likescore AS RelatedScore,postStick.dateline AS stickDateline
+    //                                             FROM pre_forum_thread AS thread 
+    //                                             LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
+    //                                             LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
+    //                                             WHERE thread.posttableid = @postTableId 
+    //                                             AND thread.dateline >= @Start AND thread.dateline < @End";
 
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                 SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
@@ -66,9 +81,9 @@ public class CommentMigration
         var periods = PeriodHelper.GetPeriods(folderName);
 
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH }, folderName);
+            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, COMMENT_COMBINE_JSON_PATH });
+            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH,ARTICLE_IGNORE_PATH, COMMENT_COMBINE_JSON_PATH, });
 
         foreach (var period in periods)
         {
@@ -129,6 +144,7 @@ public class CommentMigration
         var commentSb = new StringBuilder();
         var commentJsonSb = new StringBuilder();
         var commentExtendDataSb = new StringBuilder();
+        var ignoreSb = new StringBuilder();
 
         // var sw = new Stopwatch();
         // sw.Start();
@@ -149,35 +165,20 @@ public class CommentMigration
 
             var id = ArticleDic.GetValueOrDefault(post.Tid);
             var boardId = BoardDic.GetValueOrDefault(post.Fid);
-
-            //髒資料放過他
-            if (id == 0 || boardId == 0)
-            {
-                if (post.First && post.Sequence == 0)
-                    removedTid = post.Tid;
-
-                continue;
-            }
-
             var (memberId, memberName) = MemberDIc.GetValueOrDefault(post.Authorid);
-
-            if (memberId == 0)
-            {
-                if (post.First && post.Sequence == 0)
-                    removedTid = post.Tid;
-
-                continue;
-            }
 
             if (post.Tid != previousTid)
             {
                 previousTid = post.Tid;
 
-                var hasArticle = false;
+                var isDirty = true;
+                var reason = "";
                 
                 //第一筆如果不是first或sequence!=0不處理
                 if (post.First && post.Sequence == 0)
-                    hasArticle = true;
+                {
+                    (isDirty, reason) = IsDirty(id, boardId, memberId);
+                }
                 else
                 {
                     var index = i;
@@ -188,16 +189,26 @@ public class CommentMigration
 
                         if (nextPost.Tid != post.Tid)
                             break;
-                        
+
                         if (!nextPost.First || nextPost.Sequence != 0) continue;
 
-                        hasArticle = true;
+                        var nextId = ArticleDic.GetValueOrDefault(nextPost.Tid);
+                        var nextBoardId = BoardDic.GetValueOrDefault(nextPost.Fid);
+
+                        var (nextMemberId, _) = MemberDIc.GetValueOrDefault(nextPost.Authorid);
+                        
+                        (isDirty, reason) = IsDirty(nextId, nextBoardId, nextMemberId);
+
+                        // if (!(nextId == 0 || nextBoardId == 0 || nextMemberId == 0))
+                        //     isDirty = false;
+
                         break;
                     }
                 }
-                
-                if (!hasArticle)
+
+                if (isDirty)
                 {
+                    ignoreSb.AppendValueLine(post.Tid, reason);
                     removedTid = post.Tid;
 
                     continue;
@@ -228,13 +239,15 @@ public class CommentMigration
 
         var commentTask = new Task(() => { WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
         var commentExtendDataTask = new Task(() => { WriteToFile($"{COMMENT_EXTEND_DATA_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
+        var ignoreTask = new Task(() => { WriteToFile($"{ARTICLE_IGNORE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_ARTICLE_IGNORE_PREFIX, ignoreSb); });
         var commentJsonTask = new Task(() => { WriteToFile($"{COMMENT_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb); });
 
         commentTask.Start();
         commentExtendDataTask.Start();
+        ignoreTask.Start();
         commentJsonTask.Start();
 
-        await Task.WhenAll(commentTask, commentExtendDataTask, commentJsonTask);
+        await Task.WhenAll(commentTask, commentExtendDataTask, commentJsonTask, ignoreTask);
     }
 
     private static async Task SetCommentFirstAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
@@ -420,5 +433,19 @@ public class CommentMigration
             File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
             Console.WriteLine(fullPath);
         }
+    }
+
+    private static (bool isDirty, string reason) IsDirty(long id, long boarId, long memberId)
+    {
+        if (id == 0)
+            return (true, "Article not exists");
+
+        if (boarId == 0)
+            return (true, "Board not exists");
+
+        if (memberId == 0)
+            return (true, "Member not exists");
+
+        return (false, string.Empty);
     }
 }

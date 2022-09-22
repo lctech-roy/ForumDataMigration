@@ -10,6 +10,7 @@ using ForumDataMigration.Models;
 using Lctech.Jkf.Domain.Entities;
 using Lctech.Jkf.Domain.Enums;
 using MySqlConnector;
+using Polly;
 
 namespace ForumDataMigration;
 
@@ -43,7 +44,6 @@ public class ArticleMigration
                                                                 };
 
     private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
-    private static readonly List<Period> Periods = PeriodHelper.GetPeriods();
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
     private static readonly Dictionary<long, (long, string)> MemberDIc = RelationHelper.GetSimpleMemberDic();
 
@@ -56,6 +56,12 @@ public class ArticleMigration
     private static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private const string ARTICLE_JSON = "ArticleJson";
+
+    private const string ARTICLE_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
+    private const string ARTICLE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}";
+    private const string ARTICLE_COVER_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}";
+    private const string ARTICLE_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}.json";
+
     private static readonly string ArticleEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Thread).ToLower()}-";
     private static readonly string ArticleEsIdSuffix = $"\" }}}}";
     private static readonly string ArticleRelationShipName = DocumentType.Thread.ToString().ToLower();
@@ -74,38 +80,70 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_post{0} postReply ON thread.replies > 0 AND postReply.tid = thread.tid AND postReply.dateline = thread.lastpost AND postReply.author = thread.lastposter
                                               LEFT JOIN pre_post_delay AS postDelay ON postDelay.tid = thread.tid
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
-                                              WHERE thread.posttableid = @postTableId AND post.dateline >= @Start AND post.dateline < @End";
-    //WHERE thread.posttableid = @postTableId AND thread.tid = 8128927";
-    public static async Task MigrationAsync(CancellationToken cancellationToken)
-    {
-        //RetryHelper.CreateRetryTable();
-        
-        var postTableIds = ArticleHelper.GetPostTableIds();
+                                              WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null";
 
-        foreach (var period in Periods)
+    //WHERE thread.posttableid = @postTableId AND thread.tid = 8128927";
+    public async Task MigrationAsync(CancellationToken cancellationToken)
+    {
+        RetryHelper.CreateArticleRetryTable();
+        var (folderName, _) = RetryHelper.GetArticleRetry();
+        var postTableIds = ArticleHelper.GetPostTableIds();
+        var periods = PeriodHelper.GetPeriods(folderName);
+
+        if (folderName != null)
+            RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ARTICLE_COVER_PATH }, folderName);
+        else
+            RetryHelper.RemoveFiles(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ARTICLE_COVER_PATH, ARTICLE_COMBINE_JSON_PATH });
+
+        foreach (var period in periods)
         {
             await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
                                                                                                           {
-                                                                                                              ArticlePost[] posts;
+                                                                                                              var posts = Array.Empty<ArticlePost>();
 
                                                                                                               var sql = string.Concat(string.Format(QUERY_ARTICLE_SQL, postTableId == 0 ? "" : $"_{postTableId}"));
 
-                                                                                                              await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+                                                                                                              try
                                                                                                               {
-                                                                                                                  var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
-                                                                                                                  posts = (await cn.QueryAsync<ArticlePost>(command)).ToArray();
+                                                                                                                  await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+                                                                                                                  {
+                                                                                                                      var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
+
+                                                                                                                      await Policy
+
+                                                                                                                            // 1. 處理甚麼樣的例外
+                                                                                                                           .Handle<EndOfStreamException>()
+
+                                                                                                                            // 2. 重試策略，包含重試次數
+                                                                                                                           .RetryAsync(5, (ex, retryCount) =>
+                                                                                                                                          {
+                                                                                                                                              Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                                                                                              Thread.Sleep(3000);
+                                                                                                                                          })
+
+                                                                                                                            // 3. 執行內容
+                                                                                                                           .ExecuteAsync(async () => { posts = (await cn.QueryAsync<ArticlePost>(command)).ToArray(); });
+                                                                                                                  }
+
+                                                                                                                  if (!posts.Any())
+                                                                                                                      return;
+
+                                                                                                                  await ExecuteAsync(posts, postTableId, period, cancellationToken);
                                                                                                               }
+                                                                                                              catch (Exception e)
+                                                                                                              {
+                                                                                                                  Console.WriteLine(e);
+                                                                                                                  await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}", token);
+                                                                                                                  RetryHelper.SetArticleRetry(period.FolderName, null, e.ToString());
 
-                                                                                                              if (!posts.Any())
-                                                                                                                  return;
-
-                                                                                                              await ExecuteAsync(posts, postTableId, period, cancellationToken);
+                                                                                                                  throw;
+                                                                                                              }
                                                                                                           });
         }
 
-        await FileHelper.CombineMultipleFilesIntoSingleFileAsync($"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}",
+        await FileHelper.CombineMultipleFilesIntoSingleFileAsync(ARTICLE_JSON_PATH,
                                                                  "*.json",
-                                                                 $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}.json",
+                                                                 ARTICLE_COMBINE_JSON_PATH,
                                                                  cancellationToken);
     }
 
@@ -115,11 +153,12 @@ public class ArticleMigration
         var jsonSb = new StringBuilder();
         var coverSb = new StringBuilder();
 
-        var sw = new Stopwatch();
-        sw.Start();
+        // var sw = new Stopwatch();
+        // sw.Start();
         var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(RegexHelper.GetAttachmentGroups(posts), cancellationToken);
-        sw.Stop();
-        Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
+
+        // sw.Stop();
+        // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
 
         long previousId = 0;
 
@@ -136,7 +175,7 @@ public class ArticleMigration
 
             if (memberId == 0)
                 continue;
-            
+
             // 排除因為lastPoster重複的文章
             if (id == previousId)
                 continue;
@@ -170,11 +209,11 @@ public class ArticleMigration
             //await CommonHelper.WatchTimeAsync("SetArticleAsync", async () => await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken));
         }
 
-        var task = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(Article)}/{postTableId}", period!.FileName, COPY_PREFIX, sb); });
+        var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{postTableId}", period!.FileName, COPY_PREFIX, sb); });
 
-        var jsonTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}/{postTableId}", $"{period!.FolderName}.json", "", jsonSb); });
+        var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{postTableId}", $"{period!.FolderName}.json", "", jsonSb); });
 
-        var coverTask = new Task(() => { WriteToFile($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}/{postTableId}", period!.FileName, COVER_RELATION_PREFIX, coverSb); });
+        var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{postTableId}", period!.FileName, COVER_RELATION_PREFIX, coverSb); });
 
         task.Start();
         jsonTask.Start();

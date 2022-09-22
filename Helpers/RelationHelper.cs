@@ -10,27 +10,12 @@ public static class RelationHelper
     public static Dictionary<int, long> GetArticleDic()
     {
         const string queryRelationSql = $"select \"{nameof(ArticleRelation.Id)}\",\"{nameof(ArticleRelation.Tid)}\" from \"{nameof(ArticleRelation)}\"";
+        
+        using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
-        var relationDic = new Dictionary<int, long>();
-
-        using (var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
-        {
-            conn.Open();
-
-            using (var command = new NpgsqlCommand(queryRelationSql, conn))
-            {
-                var reader = command.ExecuteReader();
-
-                while (reader.Read())
-                {
-                    relationDic.Add(reader.GetInt32(1), reader.GetInt64(0));
-                }
-
-                reader.Close();
-            }
-        }
-
-        Console.Out.WriteLine("Finish Import ArticleRelationDic!");
+        var relationDic = conn.Query<(long id, int tid)>(queryRelationSql).ToDictionary(t => t.tid, t => t.id);
+        
+        Console.WriteLine("Finish Import ArticleRelationDic!");
 
         return relationDic;
     }
