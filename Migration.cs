@@ -33,7 +33,6 @@ public class Migration
     {
         const string articleSchemaPath = $"{SCHEMA_PATH}/{nameof(Article)}";
         const string articlePath = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
-        const string articleRewardPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleReward)}";
         const string articleCoverRelationSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleCoverRelation)}";
         const string articleCoverRelationPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}";
 
@@ -63,25 +62,11 @@ public class Migration
 
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{BEFORE_FILE_NAME}", token);
 
-        var periods = PeriodHelper.GetPeriods();
-        var postTableIds = ArticleHelper.GetPostTableIds();
-
-        foreach (var period in periods)
-        {
-            Parallel.ForEach(postTableIds,
-                             postTableId =>
-                             {
-                                 var filePath = $"{articleRewardPath}/{period.FolderName}/{postTableId}.sql";
-
-                                 if (!File.Exists(filePath)) return;
-
-                                 using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
-
-                                 connection.ExecuteAllTexts(filePath);
-                             });
-        }
-
+        cn.ExecuteAllTexts($"{articleRewardPath}.sql");
+        
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{AFTER_FILE_NAME}", token);
+        
+        Console.WriteLine($"{nameof(ExecuteArticleRewardAsync)} Done!");
     }
 
     public void ExecuteAttachment()

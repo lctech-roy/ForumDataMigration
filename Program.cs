@@ -18,6 +18,7 @@ serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<CommentMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
+serviceCollection.AddSingleton<ArticleRewardMigration>();
 serviceCollection.AddSingleton<GameItemMigration>();
 serviceCollection.AddSingleton<MemberBagMigration>();
 
@@ -34,6 +35,8 @@ var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
 var commentMigration = serviceProvider.GetRequiredService<CommentMigration>();
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
+var rewardMigration = serviceProvider.GetRequiredService<ArticleRewardMigration>();
+
 var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
 var memberBagMigration = serviceProvider.GetRequiredService<MemberBagMigration>();
 
@@ -60,12 +63,17 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await migration.ExecuteCommentAsync(token);
 //
 // //4.文章評分
-await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
+//await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
+//await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
 //
+
 // //5.文章投票
 // voteMigration.Migration();
 // await migration.ExecuteArticleVoteAsync(token);
+
+// //5.文章懸賞
+// await CommonHelper.WatchTimeAsync("reward", async () => await rewardMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync("copy reward", async () => await migration.ExecuteArticleRewardAsync(token));
 
 //6.遊戲中心
 //CommonHelper.WatchTime(nameof(gameItemMigration),()=> gameItemMigration.Migration());
