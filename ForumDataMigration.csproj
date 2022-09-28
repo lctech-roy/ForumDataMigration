@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Lctech.Jkf.Domain\Lctech.Jkf.Domain.csproj" />
+        <ProjectReference Include="..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj" />
     </ItemGroup>
 
     <ItemGroup>

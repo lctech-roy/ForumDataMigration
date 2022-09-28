@@ -2,7 +2,7 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Domain.Entities;
+using Lctech.Jkf.Forum.Domain.Entities;
 using Npgsql;
 
 namespace ForumDataMigration;

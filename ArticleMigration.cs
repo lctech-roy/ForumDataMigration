@@ -7,8 +7,8 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Domain.Entities;
-using Lctech.Jkf.Domain.Enums;
+using Lctech.Jkf.Forum.Domain.Entities;
+using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
 using Polly;
 
@@ -17,7 +17,7 @@ namespace ForumDataMigration;
 public class ArticleMigration
 {
     private const string COPY_PREFIX = $"COPY \"{nameof(Article)}\" " +
-                                       $"(\"{nameof(Article.Id)}\",\"{nameof(Article.BoardId)}\",\"{nameof(Article.CategoryId)}\",\"{nameof(Article.Status)}\"" +
+                                       $"(\"{nameof(Article.Id)}\",\"{nameof(Article.BoardId)}\",\"{nameof(Article.CategoryId)}\",\"{nameof(Article.Status)}\",\"{nameof(Article.DeleteStatus)}\"" +
                                        $",\"{nameof(Article.VisibleType)}\",\"{nameof(Article.Type)}\",\"{nameof(Article.ContentType)}\",\"{nameof(Article.PinType)}\"" +
                                        $",\"{nameof(Article.Title)}\",\"{nameof(Article.Content)}\",\"{nameof(Article.ViewCount)}\",\"{nameof(Article.ReplyCount)}\"" +
                                        $",\"{nameof(Article.SortingIndex)}\",\"{nameof(Article.LastReplyDate)}\",\"{nameof(Article.LastReplierId)}\",\"{nameof(Article.PinPriority)}\"" +
@@ -235,12 +235,12 @@ public class ArticleMigration
         var article = new Article
                       {
                           Id = postResult.ArticleId,
-                          Status = post.Displayorder == -1 ? ArticleStatus.Deleted :
-                                   post.Displayorder == -2 ? ArticleStatus.Pending :
-                                   post.Displayorder == -3 ? ArticleStatus.Hide : //待確認
-                                   post.Displayorder == -4 ? ArticleStatus.Hide :
-                                   isScheduling ? ArticleStatus.Scheduling :
-                                   ArticleStatus.Published,
+                          Status =
+                              post.Displayorder == -2 ? ArticleStatus.Pending :
+                              post.Displayorder == -3 ? ArticleStatus.Hide : //待確認
+                              post.Displayorder == -4 ? ArticleStatus.Hide :
+                              isScheduling ? ArticleStatus.Scheduling : ArticleStatus.Published,
+                          DeleteStatus = post.Displayorder == -1 ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
                                      1 => ArticleType.Vote,
@@ -306,8 +306,8 @@ public class ArticleMigration
                           ModificationDate = postResult.CreateDate
                       };
 
-        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.VisibleType,
-                           (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
+        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
+                           (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
                            article.LastReplierId.ToCopyValue(), article.PinPriority,
                            article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.ShareCount,
@@ -385,7 +385,7 @@ public class ArticleMigration
 
                    //document part
                    Type = DocumentType.Thread,
-                   Deleted = article.Status == ArticleStatus.Deleted,
+                   Deleted = article.DeleteStatus == DeleteStatus.Deleted,
                    CreatorUid = postResult.Post.Authorid,
                    CreatorName = postResult.MemberName,
                    ModifierUid = postResult.Post.Authorid,

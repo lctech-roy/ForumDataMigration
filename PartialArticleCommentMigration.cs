@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using ForumDataMigration.Enums;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Domain.Entities;
+using Lctech.Jkf.Forum.Domain.Entities;
 
 namespace ForumDataMigration;
 
@@ -33,7 +33,7 @@ public partial class ArticleCommentMigration
     private static readonly List<int> PostTableIds = ArticleHelper.GetPostTableIds(150);
     
     private const string COPY_PREFIX = $"COPY \"{nameof(Article)}\" " +
-                                       $"(\"{nameof(Article.Id)}\",\"{nameof(Article.BoardId)}\",\"{nameof(Article.CategoryId)}\",\"{nameof(Article.Status)}\"" +
+                                       $"(\"{nameof(Article.Id)}\",\"{nameof(Article.BoardId)}\",\"{nameof(Article.CategoryId)}\",\"{nameof(Article.Status)}\",\"{nameof(Article.DeleteStatus)}\"" +
                                        $",\"{nameof(Article.VisibleType)}\",\"{nameof(Article.Type)}\",\"{nameof(Article.ContentType)}\",\"{nameof(Article.PinType)}\"" +
                                        $",\"{nameof(Article.Title)}\",\"{nameof(Article.Content)}\",\"{nameof(Article.ViewCount)}\",\"{nameof(Article.ReplyCount)}\"" +
                                        $",\"{nameof(Article.SortingIndex)}\",\"{nameof(Article.LastReplyDate)}\",\"{nameof(Article.LastReplierId)}\",\"{nameof(Article.PinPriority)}\"" +

@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForumDataMigration", "ForumDataMigration.csproj", "{72A2EE06-8237-4072-969E-1081EF7115B2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Jkf.Domain", "..\Lctech.Jkf.Domain\Lctech.Jkf.Domain.csproj", "{C0500CD3-EFF3-45E2-881C-9878F8894DE2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Jkf.Forum.Core", "..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj", "{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,10 +14,10 @@ Global
 		{72A2EE06-8237-4072-969E-1081EF7115B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{72A2EE06-8237-4072-969E-1081EF7115B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{72A2EE06-8237-4072-969E-1081EF7115B2}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C0500CD3-EFF3-45E2-881C-9878F8894DE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C0500CD3-EFF3-45E2-881C-9878F8894DE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C0500CD3-EFF3-45E2-881C-9878F8894DE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C0500CD3-EFF3-45E2-881C-9878F8894DE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection

@@ -1,5 +1,5 @@
 using ForumDataMigration.Models;
-using Lctech.Jkf.Domain.Entities;
+using Lctech.Jkf.Forum.Domain.Entities;
 using Netcorext.Algorithms;
 
 namespace ForumDataMigration.Extensions;

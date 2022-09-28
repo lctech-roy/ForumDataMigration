@@ -1,4 +1,4 @@
-using Lctech.Jkf.Domain.Enums;
+using Lctech.Jkf.Forum.Enums;
 using Netcorext.EntityFramework.UserIdentityPattern.Entities;
 
 namespace ForumDataMigration.Models;

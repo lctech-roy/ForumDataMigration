@@ -6,8 +6,8 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Domain.Entities;
-using Lctech.Jkf.Domain.Enums;
+using Lctech.Jkf.Forum.Domain.Entities;
+using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
 using Netcorext.Algorithms;
 
@@ -76,7 +76,7 @@ public partial class ArticleCommentMigration
         var sw = new Stopwatch();
         sw.Start();
 
-        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(posts,cancellationToken);
+        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(posts, cancellationToken);
 
         sw.Stop();
         Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
@@ -158,12 +158,12 @@ public partial class ArticleCommentMigration
         var article = new Article
                       {
                           Id = postResult.ArticleId,
-                          Status = post.Displayorder == -1 ? ArticleStatus.Deleted :
-                                   post.Displayorder == -2 ? ArticleStatus.Pending :
+                          Status = post.Displayorder == -2 ? ArticleStatus.Pending :
                                    post.Displayorder == -3 ? ArticleStatus.Hide : //待確認
                                    post.Displayorder == -4 ? ArticleStatus.Hide :
                                    isScheduling ? ArticleStatus.Scheduling :
                                    ArticleStatus.Published,
+                          DeleteStatus = post.Displayorder == -1 ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
                                      1 => ArticleType.Vote,
@@ -203,7 +203,7 @@ public partial class ArticleCommentMigration
                           VideoCount = videoCount,
                           DonatePoint = 0,
                           Highlight = post.Highlight != 0,
-                          HighlightColor =ColorDic.GetValueOrDefault(highlightInt),
+                          HighlightColor = ColorDic.GetValueOrDefault(highlightInt),
                           Recommend = post.Digest,
                           ReadPermission = post.Readperm,
                           CommentDisabled = post.Closed == 1,
@@ -229,8 +229,8 @@ public partial class ArticleCommentMigration
                           ModificationDate = postResult.CreateDate
                       };
 
-        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.VisibleType,
-                           (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
+        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
+                           (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
                            article.LastReplierId.ToCopyValue(), article.PinPriority,
                            article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.ShareCount,
@@ -528,7 +528,7 @@ public partial class ArticleCommentMigration
 
                    //document part
                    Type = DocumentType.Thread,
-                   Deleted = article.Status == ArticleStatus.Deleted,
+                   Deleted = article.DeleteStatus == DeleteStatus.Deleted,
                    CreatorUid = postResult.Post.Authorid,
                    CreatorName = postResult.MemberName,
                    ModifierUid = postResult.Post.Authorid,

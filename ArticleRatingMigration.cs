@@ -7,8 +7,8 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Domain.Entities;
-using Lctech.Jkf.Domain.Enums;
+using Lctech.Jkf.Forum.Domain.Entities;
+using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
 
 namespace ForumDataMigration;
