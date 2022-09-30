@@ -372,10 +372,10 @@ public class ArticleMigration
                    SortingIndex = article.SortingIndex,
                    Score = 0,
                    Ip = article.Ip,
-                   PinType = (int) article.PinType,
+                   PinType = article.PinType,
                    PinPriority = 0,
-                   VisibleType = (int) article.VisibleType,
-                   Status = (int) article.Status,
+                   VisibleType = article.VisibleType,
+                   Status = article.Status,
                    LastReplyDate = article.LastReplyDate,
                    LastReplierId = article.LastReplierId,
                    CreationDate = article.CreationDate,
@@ -385,7 +385,7 @@ public class ArticleMigration
 
                    //document part
                    Type = DocumentType.Thread,
-                   Deleted = article.DeleteStatus == DeleteStatus.Deleted,
+                   DeleteStatus = article.DeleteStatus,
                    CreatorUid = postResult.Post.Authorid,
                    CreatorName = postResult.MemberName,
                    ModifierUid = postResult.Post.Authorid,

@@ -252,7 +252,7 @@ public class ArticleRatingMigration
                {
                    //rating part
                    Id = rating.Id,
-                   VisibleType = (int) rating.VisibleType,
+                   VisibleType = rating.VisibleType,
                    Content = rating.Content,
                    CreationDate = rating.CreationDate,
                    CreatorId = rating.CreatorId,

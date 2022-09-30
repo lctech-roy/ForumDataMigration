@@ -375,7 +375,7 @@ public partial class ArticleCommentMigration
                           ReplyCount = post.Replies,
                           LikeCount = 0,
                           DislikeCount = 0,
-                          IsDeleted = post.Invisible,
+                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
                           CreationDate = postResult.CreateDate,
                           CreatorId = postResult.MemberId,
                           ModificationDate = postResult.CreateDate,
@@ -449,7 +449,7 @@ public partial class ArticleCommentMigration
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
                                   comment.Title!.ToCopyText(), comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence,
-                                  comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
+                                  comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
 
 
@@ -515,10 +515,10 @@ public partial class ArticleCommentMigration
                    SortingIndex = article.SortingIndex,
                    Score = 0,
                    Ip = article.Ip,
-                   PinType = (int) article.PinType,
+                   PinType = article.PinType,
                    PinPriority = 0,
-                   VisibleType = (int) article.VisibleType,
-                   Status = (int) article.Status,
+                   VisibleType = article.VisibleType,
+                   Status = article.Status,
                    LastReplyDate = article.LastReplyDate,
                    LastReplierId = article.LastReplierId,
                    CreationDate = article.CreationDate,
@@ -528,7 +528,7 @@ public partial class ArticleCommentMigration
 
                    //document part
                    Type = DocumentType.Thread,
-                   Deleted = article.DeleteStatus == DeleteStatus.Deleted,
+                   DeleteStatus = article.DeleteStatus,
                    CreatorUid = postResult.Post.Authorid,
                    CreatorName = postResult.MemberName,
                    ModifierUid = postResult.Post.Authorid,
@@ -560,7 +560,7 @@ public partial class ArticleCommentMigration
                    Ip = comment.Ip,
                    PinType = 0,
                    PinPriority = 0,
-                   VisibleType = (int) comment.VisibleType,
+                   VisibleType = comment.VisibleType,
                    CreationDate = comment.CreationDate,
                    CreatorId = comment.CreatorId,
                    ModificationDate = comment.ModificationDate,
@@ -568,7 +568,7 @@ public partial class ArticleCommentMigration
 
                    //document part
                    Type = DocumentType.Comment,
-                   Deleted = comment.IsDeleted,
+                   DeleteStatus = comment.DeleteStatus,
                    CreatorUid = memberUid,
                    CreatorName = memberName,
                    ModifierUid = memberUid,

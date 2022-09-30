@@ -11,4 +11,5 @@ public class CommentPost : Comment
     public ushort Status { get; set; }
     public uint? StickDateline { get; set; }
     public bool Comment { get; set; }
+    public bool Invisible { get; set; }
 }

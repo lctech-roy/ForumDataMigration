@@ -1,4 +1,5 @@
 using ForumDataMigration.Enums;
+using Lctech.Jkf.Forum.Enums;
 
 namespace ForumDataMigration.Models;
 
@@ -20,10 +21,10 @@ public class Document
     public long SortingIndex { get; set; }
     public decimal Score { get; set; }
     public string? Ip { get; set; }
-    public int PinType { get; set; }
+    public PinType PinType { get; set; }
     public int PinPriority { get; set; }
-    public int VisibleType { get; set; }
-    public int? Status { get; set; }
+    public VisibleType VisibleType { get; set; }
+    public ArticleStatus Status { get; set; }
 
     public DateTimeOffset? LastReplyDate { get; set; }
     public long? LastReplierId { get; set; }
@@ -40,7 +41,7 @@ public class Document
     public long? ModifierUid { get; set; }
     public string ModifierName { get; set; } = null!;
 
-    public bool Deleted { get; set; }
+    public DeleteStatus DeleteStatus { get; set; }
     public Relationship Relationship { get; set; } = null!;
 }
 

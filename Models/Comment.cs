@@ -19,5 +19,5 @@ public class Comment : Entity
     public long ReplyCount { get; set; }
     public long LikeCount { get; set; }
     public long DislikeCount { get; set; }
-    public bool IsDeleted { get; set; }
+    public DeleteStatus DeleteStatus  { get; set; }
 }

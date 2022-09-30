@@ -40,24 +40,14 @@ public class CommentMigration
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
                                                $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Title)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
                                                $",\"{nameof(Comment.Sequence)}\",\"{nameof(Comment.RelatedScore)}\",\"{nameof(Comment.ReplyCount)}\",\"{nameof(Comment.LikeCount)}\"" +
-                                               $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.IsDeleted)}\"" + Setting.COPY_ENTITY_SUFFIX;
+                                               $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.DeleteStatus)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_COMMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(CommentExtendData)}\" (\"{nameof(CommentExtendData.Id)}\",\"{nameof(CommentExtendData.Key)}\",\"{nameof(CommentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_ARTICLE_IGNORE_PREFIX = $"COPY \"{ARTICLE_IGNORE}\" (\"Tid\",\"Reason\"" + Setting.COPY_SUFFIX;
 
-    // private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-    //                                             SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
-    //                                             IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
-    //                                             likescore AS RelatedScore,postStick.dateline AS stickDateline
-    //                                             FROM pre_forum_thread AS thread 
-    //                                             LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
-    //                                             LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-    //                                             WHERE thread.posttableid = @postTableId 
-    //                                             AND thread.dateline >= @Start AND thread.dateline < @End";
-
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible AS IsDeleted,
+                                                SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
@@ -114,10 +104,10 @@ public class CommentMigration
                                                                                                                             // 3. 執行內容
                                                                                                                            .ExecuteAsync(async () => { posts = (await cn.QueryAsync<CommentPost>(command)).ToArray(); });
                                                                                                                   }
-
+                                                                                                                  
                                                                                                                   if (!posts.Any())
                                                                                                                       return;
-
+                                                                                                                  
                                                                                                                   await ExecuteAsync(posts, postTableId, period, cancellationToken);
                                                                                                               }
                                                                                                               catch (Exception e)
@@ -263,7 +253,8 @@ public class CommentMigration
         comment.CreatorId = postResult.MemberId;
         comment.ModificationDate = postResult.CreateDate;
         comment.ModifierId = postResult.MemberId;
-
+        comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
+        
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         commentExtendDataSb.AppendValueLine(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
@@ -286,6 +277,7 @@ public class CommentMigration
         comment.CreatorId = postResult.MemberId;
         comment.ModificationDate = postResult.CreateDate;
         comment.ModifierId = postResult.MemberId;
+        comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
 
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
@@ -351,7 +343,7 @@ public class CommentMigration
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
                                   comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(),
-                                  (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, comment.IsDeleted,
+                                  (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount,  (int)comment.DeleteStatus,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
 
         #region Es文件檔
@@ -394,7 +386,7 @@ public class CommentMigration
                    Ip = comment.Ip,
                    PinType = 0,
                    PinPriority = 0,
-                   VisibleType = (int) comment.VisibleType,
+                   VisibleType = comment.VisibleType,
                    CreationDate = comment.CreationDate,
                    CreatorId = comment.CreatorId,
                    ModificationDate = comment.ModificationDate,
@@ -402,7 +394,7 @@ public class CommentMigration
 
                    //document part
                    Type = DocumentType.Comment,
-                   Deleted = comment.IsDeleted,
+                   DeleteStatus =  comment.DeleteStatus,
                    CreatorUid = memberUid,
                    CreatorName = memberName,
                    ModifierUid = memberUid,
