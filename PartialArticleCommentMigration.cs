@@ -43,7 +43,7 @@ public partial class ArticleCommentMigration
                                        $",\"{nameof(Article.CommentDisabled)}\",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
                                        $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
                                        $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
-                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.Warning)}\"" +
+                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
     private const string COVER_RELATION_PREFIX = $"COPY \"{nameof(ArticleCoverRelation)}\" " +
@@ -55,7 +55,7 @@ public partial class ArticleCommentMigration
 
     private const string COPY_WARNING_PREFIX = $"COPY \"{nameof(Warning)}\" " +
                                                $"(\"{nameof(Warning.Id)}\",\"{nameof(Warning.WarningType)}\",\"{nameof(Warning.SourceId)}\",\"{nameof(Warning.MemberId)}\"" +
-                                               $",\"{nameof(Warning.WarnerId)}\",\"{nameof(Warning.Reason)}\"" + Setting.COPY_ENTITY_SUFFIX;
+                                               $",\"{nameof(Warning.Reason)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_COMMENT_PREFIX = $"COPY \"{nameof(Comment)}\" " +
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +

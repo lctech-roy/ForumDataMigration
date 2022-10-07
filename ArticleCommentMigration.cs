@@ -158,11 +158,8 @@ public partial class ArticleCommentMigration
         var article = new Article
                       {
                           Id = postResult.ArticleId,
-                          Status = post.Displayorder == -2 ? ArticleStatus.Pending :
-                                   post.Displayorder == -3 ? ArticleStatus.Hide : //待確認
-                                   post.Displayorder == -4 ? ArticleStatus.Hide :
-                                   isScheduling ? ArticleStatus.Scheduling :
-                                   ArticleStatus.Published,
+                          Status = isScheduling ? ArticleStatus.Scheduling :
+                                       ArticleStatus.Published,
                           DeleteStatus = post.Displayorder == -1 ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
@@ -222,7 +219,6 @@ public partial class ArticleCommentMigration
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           Signature = post.Usesig,
-                          Warning = post.Warning != null,
                           CreatorId = postResult.MemberId,
                           ModifierId = postResult.MemberId,
                           CreationDate = postResult.CreateDate,
@@ -239,7 +235,7 @@ public partial class ArticleCommentMigration
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
                            article.PublishDate, article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
-                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
+                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
 
 

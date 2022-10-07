@@ -27,7 +27,7 @@ public class ArticleMigration
                                        $",\"{nameof(Article.CommentDisabled)}\",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
                                        $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
                                        $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
-                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.Warning)}\"" +
+                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
     private const string COVER_RELATION_PREFIX = $"COPY \"{nameof(ArticleCoverRelation)}\" " +
@@ -235,11 +235,7 @@ public class ArticleMigration
         var article = new Article
                       {
                           Id = postResult.ArticleId,
-                          Status =
-                              post.Displayorder == -2 ? ArticleStatus.Pending :
-                              post.Displayorder == -3 ? ArticleStatus.Hide : //待確認
-                              post.Displayorder == -4 ? ArticleStatus.Hide :
-                              isScheduling ? ArticleStatus.Scheduling : ArticleStatus.Published,
+                          Status = isScheduling ? ArticleStatus.Scheduling : ArticleStatus.Published,
                           DeleteStatus = post.Displayorder == -1 ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
@@ -261,7 +257,7 @@ public class ArticleMigration
                                         3 => PinType.Global,
                                         _ => PinType.None
                                     },
-                          VisibleType = isScheduling ? VisibleType.Private : VisibleType.Public,
+                          VisibleType = post.Status == 1 ? VisibleType.Private : VisibleType.Public,
                           Title = post.Subject,
                           Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.AttachPathDic),
                           ViewCount = post.Views,
@@ -299,7 +295,6 @@ public class ArticleMigration
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           Signature = post.Usesig,
-                          Warning = post.Warning != null,
                           CreatorId = postResult.MemberId,
                           ModifierId = postResult.MemberId,
                           CreationDate = postResult.CreateDate,
@@ -316,7 +311,7 @@ public class ArticleMigration
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
                            article.PublishDate, article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
-                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, article.Warning,
+                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
 
         #region Es文件檔
