@@ -271,7 +271,7 @@ public class CommentMigration
         comment.Level = 2;
         comment.Hierarchy = string.Concat(postResult.ArticleId, "/", commentId);
         comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Tid, postResult.AttachPathDic);
-        comment.VisibleType = comment.Status == 1 ? VisibleType.Private : VisibleType.Public;
+        comment.VisibleType = comment.Status == 1 ? VisibleType.Hidden : VisibleType.Public;
         comment.SortingIndex = postResult.CreateMilliseconds;
         comment.CreationDate = postResult.CreateDate;
         comment.CreatorId = postResult.MemberId;

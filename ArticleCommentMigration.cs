@@ -363,7 +363,7 @@ public partial class ArticleCommentMigration
                           Level = 2,
                           Hierarchy = $"{postResult.ArticleId}/{commentId}",
                           Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.AttachPathDic),
-                          VisibleType = post.Status == 1 ? VisibleType.Private : VisibleType.Public,
+                          VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           Ip = post.Useip,
                           Sequence = (int) post.Position - 1,
                           SortingIndex = postResult.CreateMilliseconds,

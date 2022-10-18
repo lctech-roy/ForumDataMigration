@@ -257,7 +257,7 @@ public class ArticleMigration
                                         3 => PinType.Global,
                                         _ => PinType.None
                                     },
-                          VisibleType = post.Status == 1 ? VisibleType.Private : VisibleType.Public,
+                          VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           Title = post.Subject,
                           Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.AttachPathDic),
                           ViewCount = post.Views,
