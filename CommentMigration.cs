@@ -47,7 +47,7 @@ public class CommentMigration
     private const string COPY_ARTICLE_IGNORE_PREFIX = $"COPY \"{ARTICLE_IGNORE}\" (\"Tid\",\"Reason\"" + Setting.COPY_SUFFIX;
 
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT thread.fid,thread.tid,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
+                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
@@ -188,10 +188,7 @@ public class CommentMigration
                         var (nextMemberId, _) = MemberDIc.GetValueOrDefault(nextPost.Authorid);
                         
                         (isDirty, reason) = IsDirty(nextId, nextBoardId, nextMemberId);
-
-                        // if (!(nextId == 0 || nextBoardId == 0 || nextMemberId == 0))
-                        //     isDirty = false;
-
+                        
                         break;
                     }
                 }
@@ -254,6 +251,7 @@ public class CommentMigration
         comment.ModificationDate = postResult.CreateDate;
         comment.ModifierId = postResult.MemberId;
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
+        comment.ReplyCount = postResult.Post.ReplyCount;
         
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
@@ -279,6 +277,13 @@ public class CommentMigration
         comment.ModifierId = postResult.MemberId;
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
 
+        PreForumPostcomment[]? postComments = null;
+        
+        if (comment.Comment)
+            postComments = (await CommentHelper.GetPostCommentsAsync(comment.Tid, comment.Pid, cancellationToken)).ToArray();
+
+        comment.ReplyCount = postComments?.Length ?? 0;
+        
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         if (comment.StickDateline.HasValue)
@@ -289,11 +294,7 @@ public class CommentMigration
                                                 stickDate, 0, stickDate, 0, 0);
         }
 
-        if (!comment.Comment) return;
-
-        var postComments = (await CommentHelper.GetPostCommentsAsync(comment.Tid, comment.Pid, cancellationToken)).ToArray();
-
-        if (!postComments.Any())
+        if (postComments == null || !postComments.Any())
             return;
 
         var sequence = 1;
