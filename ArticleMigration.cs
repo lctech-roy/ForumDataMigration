@@ -30,8 +30,10 @@ public class ArticleMigration
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
-    private const string COVER_RELATION_PREFIX = $"COPY \"{nameof(ArticleCoverRelation)}\" " +
-                                                 $"(\"{nameof(ArticleCoverRelation.Id)}\",\"{nameof(ArticleCoverRelation.OriginCover)}\",\"{nameof(ArticleCoverRelation.Tid)}\",\"{nameof(ArticleCoverRelation.Pid)}\",\"{nameof(ArticleCoverRelation.AttachmentUrl)}\"" + Setting.COPY_SUFFIX;
+    private const string COVER_ATTACHMENT_PREFIX = $"COPY \"{nameof(Attachment)}\" " +
+                                                   $"(\"{nameof(Attachment.Id)}\",\"{nameof(Attachment.Name)}\",\"{nameof(Attachment.ContentType)}\",\"{nameof(Attachment.FileSize)}\",\"{nameof(Attachment.FileExtension)}\"" +
+                                                   $",\"{nameof(Attachment.StoragePath)}\",\"{nameof(Attachment.DownloadCount)}\",\"{nameof(Attachment.IncludeFile)}\",\"{nameof(Attachment.IsExternal)}\",\"{nameof(Attachment.DeleteStatus)}\"" +
+                                                   Setting.COPY_SUFFIX;
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
@@ -59,7 +61,7 @@ public class ArticleMigration
 
     private const string ARTICLE_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
     private const string ARTICLE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}";
-    private const string ARTICLE_COVER_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}";
+    private const string ARTICLE_COVER_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
     private const string ARTICLE_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}.json";
 
     private static readonly string ArticleEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Thread).ToLower()}-";
@@ -213,7 +215,7 @@ public class ArticleMigration
 
         var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{postTableId}", $"{period!.FolderName}.json", "", jsonSb); });
 
-        var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{postTableId}", period!.FileName, COVER_RELATION_PREFIX, coverSb); });
+        var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{postTableId}", period!.FileName, COVER_ATTACHMENT_PREFIX, coverSb); });
 
         task.Start();
         jsonTask.Start();
@@ -268,7 +270,7 @@ public class ArticleMigration
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = post.Lastposter,
                           PinPriority = post.Displayorder,
-                          Cover = SetArticleCoverRelation(postResult, coverSb)?.Id,
+                          Cover = SetCoverAttachment(postResult, coverSb)?.Id,
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
@@ -327,7 +329,7 @@ public class ArticleMigration
         #endregion
     }
 
-    private static ArticleCoverRelation? SetArticleCoverRelation(ArticlePostResult postResult, StringBuilder coverSb)
+    private static Attachment? SetCoverAttachment(ArticlePostResult postResult, StringBuilder coverSb)
     {
         var post = postResult.Post;
 
@@ -336,18 +338,21 @@ public class ArticleMigration
 
         if (string.IsNullOrEmpty(coverPath)) return null;
 
-        var coverRelation = new ArticleCoverRelation
-                            {
-                                Id = postResult.ArticleId,
-                                OriginCover = isCover ? post.Cover : post.Thumb,
-                                Tid = post.Tid,
-                                Pid = Convert.ToInt32(post.Tid),
-                                AttachmentUrl = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb)
-                            };
+        var attachment = new Attachment
+                         {
+                             Id = postResult.ArticleId,
+                             StoragePath = coverPath,
+                             CreationDate = postResult.CreateDate,
+                             CreatorId = postResult.MemberId,
+                             ModificationDate = postResult.CreateDate,
+                             ModifierId = postResult.MemberId
+                         };
 
-        coverSb.AppendValueLine(coverRelation.Id, coverRelation.OriginCover, coverRelation.Tid, coverRelation.Pid, coverRelation.AttachmentUrl);
+        coverSb.AppendValueLine(attachment.Id, attachment.Name, attachment.ContentType, attachment.FileSize, attachment.FileExtension,
+                                attachment.StoragePath, attachment.DownloadCount, attachment.IsExternal, attachment.DeleteStatus,
+                                attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
 
-        return coverRelation;
+        return attachment;
     }
 
     private static Document SetArticleDocument(Article article, ArticlePostResult postResult)
