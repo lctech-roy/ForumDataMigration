@@ -1,7 +1,10 @@
+using System.Globalization;
 using Dapper;
 using ForumDataMigration.Extensions;
+using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
 using Lctech.Jkf.Forum.Domain.Entities;
+using MySqlConnector;
 using Npgsql;
 
 namespace ForumDataMigration.Helpers;
@@ -26,18 +29,18 @@ public static class RetryHelper
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(Article)}/{DROP_RETRY_FILE_NAME}");
     }
 
-    public static void SetArticleRetry(string folderName,string? fileName, string exception)
+    public static void SetArticleRetry(string folderName, string? fileName, string exception)
     {
         using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         cn.Execute(@"UPDATE ""ArticleRetry"" SET ""FolderName"" = @folderName, ""FileName"" = @fileName, ""Exception"" = @exception", new { folderName, fileName, exception });
     }
 
-    public static (string? folderName, string? fileName) GetArticleRetry()
+    public static string? GetArticleRetryDateStr()
     {
         using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
-        return cn.QueryFirst<(string?, string?)>(@"SELECT ""FolderName"",""FileName"" FROM ""ArticleRetry""");
+        return cn.QueryFirst<string?>(@"SELECT ""FolderName"" FROM ""ArticleRetry""");
     }
 
 
@@ -55,33 +58,33 @@ public static class RetryHelper
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(Comment)}/{DROP_RETRY_FILE_NAME}");
     }
 
-    public static void SetCommentRetry(string folderName,string? fileName, string exception)
+    public static void SetCommentRetry(string folderName, string? fileName, string exception)
     {
         using var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
 
         cn.Execute(@"UPDATE ""CommentRetry"" SET ""FolderName"" = @folderName, ""FileName"" = @fileName, ""Exception"" = @exception", new { folderName, fileName, exception });
     }
 
-    public static (string? folderName, string? fileName) GetCommentRetry()
+    public static string? GetCommentRetryDateStr()
     {
         using var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
 
-        return cn.QueryFirst<(string?, string?)>(@"SELECT ""FolderName"",""FileName"" FROM ""CommentRetry""");
+        return cn.QueryFirst<string?>(@"SELECT ""FolderName"" FROM ""CommentRetry""");
     }
 
     public static void RemoveFilesByDate(IEnumerable<string> rootPaths, string dateFolderName)
     {
+        var periods = PeriodHelper.GetPeriods(dateFolderName);
+
         foreach (var rootPath in rootPaths)
         {
-            var path = $"{rootPath}/{dateFolderName}"; 
-            
-            if(!Directory.Exists(path))
-                continue;
-            
-            var directoryInfo = new DirectoryInfo(path);
+            foreach (var period in periods)
+            {
+                var path = $"{rootPath}/{period.FolderName}";
 
-            foreach (var file in directoryInfo.GetFiles())
-                file.Delete();
+                if (Directory.Exists(path))
+                    Directory.Delete(path, true);
+            }
         }
     }
 
@@ -98,5 +101,33 @@ public static class RetryHelper
                 File.Delete(path);
             }
         }
+    }
+
+    public static string GetEarliestCreateDateStr()
+    {
+        using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+
+        var createSeconds = cn.QueryFirst<long>(@"SELECT dateline FROM pre_forum_thread WHERE tid = (SELECT MIN(tid) FROM thread_last_updated)");
+
+        var dateTime = DateTimeOffset.FromUnixTimeSeconds(createSeconds);
+
+        var dateStr = PeriodHelper.ConvertToDateStr(dateTime);
+
+        return dateStr;
+    }
+
+    public static void RemoveDataByDateStr(string connectionStr, string tableName, string dateStr)
+    {
+        CultureInfo provider = CultureInfo.InvariantCulture;
+        const string format = "yyyyMM";
+
+        var creationDate = DateTime.ParseExact(dateStr, format, provider);
+        var creationDateOffset = new DateTimeOffset(creationDate, TimeSpan.Zero);
+        
+        using var cn = new NpgsqlConnection(connectionStr);
+
+        var affectedRowCount = cn.Execute($@"DELETE FROM ""{tableName}"" WHERE ""CreationDate"" >= @creationDateOffset", new { creationDateOffset });
+
+        Console.WriteLine($"Remove {tableName} Count:{affectedRowCount}");
     }
 }

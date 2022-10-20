@@ -16,6 +16,6 @@ DROP INDEX IF EXISTS "IX_Article_PublishDate";
 DROP INDEX IF EXISTS "IX_Article_BoardId";
 DROP INDEX IF EXISTS "IX_Article_CategoryId";
 
-TRUNCATE "Article";
+-- TRUNCATE "Article";
 
 

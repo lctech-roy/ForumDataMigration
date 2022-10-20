@@ -1,0 +1,5 @@
+ALTER TABLE "Attachment" ADD CONSTRAINT "PK_Attachment" PRIMARY KEY ("Id");
+
+CREATE INDEX "IX_Attachment_CreationDate" ON "Attachment" ("CreationDate");
+
+

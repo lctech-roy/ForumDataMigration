@@ -2,11 +2,11 @@ namespace ForumDataMigration.Helper;
 
 public static class PeriodHelper
 {
-    public static List<Period> Periods { get; }
+    private static List<Period> Periods { get; }
 
     static PeriodHelper()
     {
-        var startDate = new DateTimeOffset(2007, 12, 1, 0, 0, 0, TimeSpan.FromHours(8));
+        var startDate = new DateTimeOffset(2007, 12, 1, 0, 0, 0, TimeSpan.FromHours(0));
 
         var startSeconds = startDate.ToUnixTimeSeconds();
         var endDate = startDate.AddMonths(1);
@@ -25,7 +25,7 @@ public static class PeriodHelper
 
         while (endSeconds < finalSeconds)
         {
-            var dateStr = $"{startDate.Year}{startDate.Month.ToString().PadLeft(2, '0')}";
+            var dateStr = ConvertToDateStr(startDate);
 
             periods.Add(new Period
                         {
@@ -43,6 +43,11 @@ public static class PeriodHelper
         Periods = periods;
     }
 
+    public static string ConvertToDateStr(DateTimeOffset dateTimeOffset)
+    {
+       return $"{dateTimeOffset.Year}{dateTimeOffset.Month.ToString().PadLeft(2, '0')}";
+    }
+    
     public static List<Period> GetPeriods(string? dateStr = null)
     {
         if (dateStr == null)
@@ -59,7 +64,7 @@ public static class PeriodHelper
         if (!year.HasValue && !month.HasValue)
             return Periods;
 
-        var startDate = new DateTimeOffset(year!.Value, month!.Value, 1, 0, 0, 0, TimeSpan.FromHours(8));
+        var startDate = new DateTimeOffset(year!.Value, month!.Value, 1, 0, 0, 0, TimeSpan.FromHours(0));
         var startSeconds = startDate.ToUnixTimeSeconds();
 
         return Periods.Where(x => x.StartSeconds >= startSeconds).ToList();

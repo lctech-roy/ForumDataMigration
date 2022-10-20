@@ -1,3 +1,1 @@
-CREATE UNIQUE INDEX tid_idx ON "ArticleRelation" ("Tid");
-
-
+ALTER TABLE "ArticleRelation" ADD CONSTRAINT "PK_ArticleRelation" PRIMARY KEY ("Tid");

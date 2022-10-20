@@ -33,17 +33,41 @@ public class Migration
     {
         const string articleSchemaPath = $"{SCHEMA_PATH}/{nameof(Article)}";
         const string articlePath = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
-        const string articleCoverRelationSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleCoverRelation)}";
-        const string articleCoverRelationPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleCoverRelation)}";
+        const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
+        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
 
-        await using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+        await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+            await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
 
-        await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
-        await cn.ExecuteCommandByPathAsync($"{articleCoverRelationSchemaPath}/{BEFORE_FILE_NAME}", token);
+        await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
+            await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
 
-        var task = new Task(() => { FileHelper.ExecuteAllSqlFiles(articlePath, Setting.NEW_FORUM_CONNECTION); });
+        var folderName = RetryHelper.GetArticleRetryDateStr();
+        var periods = PeriodHelper.GetPeriods(folderName);
 
-        var coverTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(articleCoverRelationPath, Setting.NEW_FORUM_CONNECTION); });
+        if (Setting.USE_UPDATED_DATE)
+        {
+            var removeArticleTask = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_FORUM_CONNECTION, nameof(Article), folderName!); });
+
+            var removeAttachmentTask = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_ATTACHMENT_CONNECTION, nameof(Attachment), folderName!); });
+
+            removeArticleTask.Start();
+            removeAttachmentTask.Start();
+
+            await Task.WhenAll(removeArticleTask, removeAttachmentTask);
+        }
+
+        var task = new Task(() =>
+                            {
+                                foreach (var period in periods)
+                                    FileHelper.ExecuteAllSqlFiles($"{articlePath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
+                            });
+
+        var coverTask = new Task(() =>
+                                 {
+                                     foreach (var period in periods)
+                                         FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                 });
 
         task.Start();
         coverTask.Start();
@@ -63,9 +87,9 @@ public class Migration
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{BEFORE_FILE_NAME}", token);
 
         cn.ExecuteAllTexts($"{articleRewardPath}.sql");
-        
+
         await cn.ExecuteCommandByPathAsync($"{articleRewardSchemaPath}/{AFTER_FILE_NAME}", token);
-        
+
         Console.WriteLine($"{nameof(ExecuteArticleRewardAsync)} Done!");
     }
 
@@ -154,14 +178,38 @@ public class Migration
 
         await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
             await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
+
+        var folderName = RetryHelper.GetCommentRetryDateStr();
+        var periods = PeriodHelper.GetPeriods(folderName);
+
+        if (Setting.USE_UPDATED_DATE)
+        {
+            var removeComment = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_COMMENT_CONNECTION, nameof(Comment), folderName!); });
+
+            var removeCommentExtendDataTask = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_COMMENT_CONNECTION, nameof(CommentExtendData), folderName!); });
+
+            removeComment.Start();
+            removeCommentExtendDataTask.Start();
+
+            await Task.WhenAll(removeComment, removeCommentExtendDataTask);
+        }
         
-        var commentTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentPath, Setting.NEW_COMMENT_CONNECTION); });
-        var commentExtendDataTask = new Task(() => { FileHelper.ExecuteAllSqlFiles(commentExtendDataPath, Setting.NEW_COMMENT_CONNECTION); });
-        
+        var commentTask = new Task(() =>
+                                   {
+                                       foreach (var period in periods)
+                                           FileHelper.ExecuteAllSqlFiles($"{commentPath}/{period.FolderName}", Setting.NEW_COMMENT_CONNECTION);
+                                   });
+
+        var commentExtendDataTask = new Task(() =>
+                                             {
+                                                 foreach (var period in periods)
+                                                     FileHelper.ExecuteAllSqlFiles($"{commentExtendDataPath}/{period.FolderName}", Setting.NEW_COMMENT_CONNECTION);
+                                             });
+
         commentTask.Start();
         commentExtendDataTask.Start();
         await Task.WhenAll(commentTask, commentExtendDataTask);
-        
+
         await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
             await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
     }

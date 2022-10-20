@@ -53,8 +53,7 @@ public class CommentMigration
                                                 FROM pre_forum_thread AS thread 
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-                                                WHERE thread.posttableid = @postTableId
-                                                AND thread.dateline >= @Start AND thread.dateline < @End";
+                                                WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End";
 
     private readonly ISnowflake _snowflake;
 
@@ -66,10 +65,15 @@ public class CommentMigration
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.CreateCommentRetryTable();
-        var (folderName, _) = RetryHelper.GetCommentRetry();
+        
+        if (Setting.USE_UPDATED_DATE)
+            RetryHelper.SetCommentRetry(RetryHelper.GetEarliestCreateDateStr(),null,string.Empty);
+        
+        var folderName = RetryHelper.GetCommentRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
 
+        //刪掉之前轉過的檔案
         if (folderName != null)
             RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH }, folderName);
         else

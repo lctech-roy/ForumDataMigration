@@ -33,7 +33,7 @@ public class ArticleMigration
     private const string COVER_ATTACHMENT_PREFIX = $"COPY \"{nameof(Attachment)}\" " +
                                                    $"(\"{nameof(Attachment.Id)}\",\"{nameof(Attachment.Name)}\",\"{nameof(Attachment.ContentType)}\",\"{nameof(Attachment.FileSize)}\",\"{nameof(Attachment.FileExtension)}\"" +
                                                    $",\"{nameof(Attachment.StoragePath)}\",\"{nameof(Attachment.DownloadCount)}\",\"{nameof(Attachment.IncludeFile)}\",\"{nameof(Attachment.IsExternal)}\",\"{nameof(Attachment.DeleteStatus)}\"" +
-                                                   Setting.COPY_SUFFIX;
+                                                   Setting.COPY_ENTITY_SUFFIX;
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
@@ -88,10 +88,15 @@ public class ArticleMigration
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.CreateArticleRetryTable();
-        var (folderName, _) = RetryHelper.GetArticleRetry();
+
+        if (Setting.USE_UPDATED_DATE)
+            RetryHelper.SetArticleRetry(RetryHelper.GetEarliestCreateDateStr(),null,string.Empty);
+        
+        var folderName = RetryHelper.GetArticleRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
 
+        //刪掉之前轉過的檔案
         if (folderName != null)
             RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ARTICLE_COVER_PATH }, folderName);
         else
@@ -149,7 +154,7 @@ public class ArticleMigration
                                                                  cancellationToken);
     }
 
-    private static async Task ExecuteAsync(ArticlePost[] posts, int postTableId, Period? period = null, CancellationToken cancellationToken = default)
+    private static async Task ExecuteAsync(ArticlePost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
         var jsonSb = new StringBuilder();
@@ -211,11 +216,11 @@ public class ArticleMigration
             //await CommonHelper.WatchTimeAsync("SetArticleAsync", async () => await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken));
         }
 
-        var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{postTableId}", period!.FileName, COPY_PREFIX, sb); });
+        var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
+        
+        var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", jsonSb); });
 
-        var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{postTableId}", $"{period!.FolderName}.json", "", jsonSb); });
-
-        var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{postTableId}", period!.FileName, COVER_ATTACHMENT_PREFIX, coverSb); });
+        var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{period.FolderName}", $"{postTableId}.sql", COVER_ATTACHMENT_PREFIX, coverSb); });
 
         task.Start();
         jsonTask.Start();
@@ -349,7 +354,7 @@ public class ArticleMigration
                          };
 
         coverSb.AppendValueLine(attachment.Id, attachment.Name, attachment.ContentType, attachment.FileSize, attachment.FileExtension,
-                                attachment.StoragePath, attachment.DownloadCount, attachment.IsExternal, attachment.DeleteStatus,
+                                attachment.StoragePath, attachment.DownloadCount,attachment.IncludeFile, attachment.IsExternal, (int)attachment.DeleteStatus,
                                 attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
 
         return attachment;
