@@ -90,8 +90,8 @@ public class ArticleMigration
         RetryHelper.CreateArticleRetryTable();
 
         if (Setting.USE_UPDATED_DATE)
-            RetryHelper.SetArticleRetry(RetryHelper.GetEarliestCreateDateStr(),null,string.Empty);
-        
+            RetryHelper.SetArticleRetry(RetryHelper.GetEarliestCreateDateStr(), null, string.Empty);
+
         var folderName = RetryHelper.GetArticleRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
@@ -148,10 +148,11 @@ public class ArticleMigration
                                                                                                           });
         }
 
-        await FileHelper.CombineMultipleFilesIntoSingleFileAsync(ARTICLE_JSON_PATH,
-                                                                 "*.json",
-                                                                 ARTICLE_COMBINE_JSON_PATH,
-                                                                 cancellationToken);
+        if (Setting.USE_UPDATED_DATE)
+            await FileHelper.CombineMultipleFilesIntoSingleFileAsync(ARTICLE_JSON_PATH,
+                                                                     "*.json",
+                                                                     ARTICLE_COMBINE_JSON_PATH,
+                                                                     cancellationToken);
     }
 
     private static async Task ExecuteAsync(ArticlePost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
@@ -217,7 +218,7 @@ public class ArticleMigration
         }
 
         var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
-        
+
         var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", jsonSb); });
 
         var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{period.FolderName}", $"{postTableId}.sql", COVER_ATTACHMENT_PREFIX, coverSb); });
@@ -354,7 +355,7 @@ public class ArticleMigration
                          };
 
         coverSb.AppendValueLine(attachment.Id, attachment.Name, attachment.ContentType, attachment.FileSize, attachment.FileExtension,
-                                attachment.StoragePath, attachment.DownloadCount,attachment.IncludeFile, attachment.IsExternal, (int)attachment.DeleteStatus,
+                                attachment.StoragePath, attachment.DownloadCount, attachment.IncludeFile, attachment.IsExternal, (int) attachment.DeleteStatus,
                                 attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
 
         return attachment;

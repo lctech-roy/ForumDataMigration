@@ -65,10 +65,10 @@ public class CommentMigration
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.CreateCommentRetryTable();
-        
+
         if (Setting.USE_UPDATED_DATE)
-            RetryHelper.SetCommentRetry(RetryHelper.GetEarliestCreateDateStr(),null,string.Empty);
-        
+            RetryHelper.SetCommentRetry(RetryHelper.GetEarliestCreateDateStr(), null, string.Empty);
+
         var folderName = RetryHelper.GetCommentRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
@@ -77,7 +77,7 @@ public class CommentMigration
         if (folderName != null)
             RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH,ARTICLE_IGNORE_PATH, COMMENT_COMBINE_JSON_PATH, });
+            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH, COMMENT_COMBINE_JSON_PATH, });
 
         foreach (var period in periods)
         {
@@ -108,10 +108,10 @@ public class CommentMigration
                                                                                                                             // 3. 執行內容
                                                                                                                            .ExecuteAsync(async () => { posts = (await cn.QueryAsync<CommentPost>(command)).ToArray(); });
                                                                                                                   }
-                                                                                                                  
+
                                                                                                                   if (!posts.Any())
                                                                                                                       return;
-                                                                                                                  
+
                                                                                                                   await ExecuteAsync(posts, postTableId, period, cancellationToken);
                                                                                                               }
                                                                                                               catch (Exception e)
@@ -124,13 +124,14 @@ public class CommentMigration
                                                                                                               }
                                                                                                           });
         }
+        
+        if (Setting.USE_UPDATED_DATE)
+            await FileHelper.CombineMultipleFilesIntoSingleFileAsync(COMMENT_JSON_PATH,
+                                                                     "*.json",
+                                                                     COMMENT_COMBINE_JSON_PATH,
+                                                                     cancellationToken);
 
-        await FileHelper.CombineMultipleFilesIntoSingleFileAsync(COMMENT_JSON_PATH,
-                                                                 "*.json",
-                                                                 COMMENT_COMBINE_JSON_PATH,
-                                                                 cancellationToken);
-
-        RetryHelper.DropCommentRetryTable();
+        // RetryHelper.DropCommentRetryTable();
     }
 
     private async Task ExecuteAsync(CommentPost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
@@ -167,7 +168,7 @@ public class CommentMigration
 
                 var isDirty = true;
                 var reason = "";
-                
+
                 //第一筆如果不是first或sequence!=0不處理
                 if (post.First && post.Sequence == 0)
                 {
@@ -190,9 +191,9 @@ public class CommentMigration
                         var nextBoardId = BoardDic.GetValueOrDefault(nextPost.Fid);
 
                         var (nextMemberId, _) = MemberDIc.GetValueOrDefault(nextPost.Authorid);
-                        
+
                         (isDirty, reason) = IsDirty(nextId, nextBoardId, nextMemberId);
-                        
+
                         break;
                     }
                 }
@@ -256,7 +257,7 @@ public class CommentMigration
         comment.ModifierId = postResult.MemberId;
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
         comment.ReplyCount = postResult.Post.ReplyCount;
-        
+
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         commentExtendDataSb.AppendValueLine(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
@@ -282,12 +283,12 @@ public class CommentMigration
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
 
         PreForumPostcomment[]? postComments = null;
-        
+
         if (comment.Comment)
             postComments = (await CommentHelper.GetPostCommentsAsync(comment.Tid, comment.Pid, cancellationToken)).ToArray();
 
         comment.ReplyCount = postComments?.Length ?? 0;
-        
+
         await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
 
         if (comment.StickDateline.HasValue)
@@ -348,7 +349,7 @@ public class CommentMigration
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
                                   comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(),
-                                  (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount,  (int)comment.DeleteStatus,
+                                  (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
 
         #region Es文件檔
@@ -399,7 +400,7 @@ public class CommentMigration
 
                    //document part
                    Type = DocumentType.Comment,
-                   DeleteStatus =  comment.DeleteStatus,
+                   DeleteStatus = comment.DeleteStatus,
                    CreatorUid = memberUid,
                    CreatorName = memberName,
                    ModifierUid = memberUid,
