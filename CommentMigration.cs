@@ -53,7 +53,7 @@ public class CommentMigration
                                                 FROM pre_forum_thread AS thread 
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-                                                WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End";
+                                                WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder <> -4";
 
     private readonly ISnowflake _snowflake;
 
@@ -81,14 +81,15 @@ public class CommentMigration
 
         foreach (var period in periods)
         {
-            await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
-                                                                                                          {
-                                                                                                              var posts = Array.Empty<CommentPost>();
-
-                                                                                                              var sql = string.Format(QUERY_COMMENT_SQL, postTableId == 0 ? "" : $"_{postTableId}");
-
-                                                                                                              try
+            try
+            {
+                await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
                                                                                                               {
+                                                                                                                  var posts = Array.Empty<CommentPost>();
+
+                                                                                                                  var sql = string.Format(QUERY_COMMENT_SQL, postTableId == 0 ? "" : $"_{postTableId}");
+
+
                                                                                                                   await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
                                                                                                                   {
                                                                                                                       var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
@@ -97,6 +98,7 @@ public class CommentMigration
 
                                                                                                                             // 1. 處理甚麼樣的例外
                                                                                                                            .Handle<EndOfStreamException>()
+                                                                                                                           .Or<ArgumentOutOfRangeException>()
 
                                                                                                                             // 2. 重試策略，包含重試次數
                                                                                                                            .RetryAsync(5, (ex, retryCount) =>
@@ -113,18 +115,18 @@ public class CommentMigration
                                                                                                                       return;
 
                                                                                                                   await ExecuteAsync(posts, postTableId, period, cancellationToken);
-                                                                                                              }
-                                                                                                              catch (Exception e)
-                                                                                                              {
-                                                                                                                  Console.WriteLine(e);
-                                                                                                                  await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}", token);
-                                                                                                                  RetryHelper.SetCommentRetry(period.FolderName, null, e.ToString());
+                                                                                                              });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}", cancellationToken);
+                RetryHelper.SetCommentRetry(period.FolderName, null, e.ToString());
 
-                                                                                                                  throw;
-                                                                                                              }
-                                                                                                          });
+                throw;
+            }
         }
-        
+
         if (Setting.USE_UPDATED_DATE)
             await FileHelper.CombineMultipleFilesIntoSingleFileAsync(COMMENT_JSON_PATH,
                                                                      "*.json",

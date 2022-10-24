@@ -104,14 +104,15 @@ public class ArticleMigration
 
         foreach (var period in periods)
         {
-            await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
-                                                                                                          {
-                                                                                                              var posts = Array.Empty<ArticlePost>();
-
-                                                                                                              var sql = string.Concat(string.Format(QUERY_ARTICLE_SQL, postTableId == 0 ? "" : $"_{postTableId}"));
-
-                                                                                                              try
+            try
+            {
+                await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
                                                                                                               {
+                                                                                                                  var posts = Array.Empty<ArticlePost>();
+
+                                                                                                                  var sql = string.Concat(string.Format(QUERY_ARTICLE_SQL, postTableId == 0 ? "" : $"_{postTableId}"));
+
+
                                                                                                                   await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
                                                                                                                   {
                                                                                                                       var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
@@ -120,6 +121,7 @@ public class ArticleMigration
 
                                                                                                                             // 1. 處理甚麼樣的例外
                                                                                                                            .Handle<EndOfStreamException>()
+                                                                                                                           .Or<ArgumentOutOfRangeException>()
 
                                                                                                                             // 2. 重試策略，包含重試次數
                                                                                                                            .RetryAsync(5, (ex, retryCount) =>
@@ -136,23 +138,23 @@ public class ArticleMigration
                                                                                                                       return;
 
                                                                                                                   await ExecuteAsync(posts, postTableId, period, cancellationToken);
-                                                                                                              }
-                                                                                                              catch (Exception e)
-                                                                                                              {
-                                                                                                                  Console.WriteLine(e);
-                                                                                                                  await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}", token);
-                                                                                                                  RetryHelper.SetArticleRetry(period.FolderName, null, e.ToString());
+                                                                                                              });
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                await File.AppendAllTextAsync($"{Setting.INSERT_DATA_PATH}/Error.txt", $"{period.FolderName}{Environment.NewLine}{e}", cancellationToken);
+                RetryHelper.SetArticleRetry(period.FolderName, null, e.ToString());
 
-                                                                                                                  throw;
-                                                                                                              }
-                                                                                                          });
+                throw;
+            }
         }
 
-        if (Setting.USE_UPDATED_DATE)
-            await FileHelper.CombineMultipleFilesIntoSingleFileAsync(ARTICLE_JSON_PATH,
-                                                                     "*.json",
-                                                                     ARTICLE_COMBINE_JSON_PATH,
-                                                                     cancellationToken);
+        // if (Setting.USE_UPDATED_DATE)
+        await FileHelper.CombineMultipleFilesIntoSingleFileAsync(ARTICLE_JSON_PATH,
+                                                                 "*.json",
+                                                                 ARTICLE_COMBINE_JSON_PATH,
+                                                                 cancellationToken);
     }
 
     private static async Task ExecuteAsync(ArticlePost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
@@ -182,6 +184,10 @@ public class ArticleMigration
             var (memberId, memberName) = MemberDIc.GetValueOrDefault(post.Authorid);
 
             if (memberId == 0)
+                continue;
+            
+            //文章草稿不處理
+            if (post.Displayorder == -4)
                 continue;
 
             // 排除因為lastPoster重複的文章
@@ -244,7 +250,17 @@ public class ArticleMigration
                       {
                           Id = postResult.ArticleId,
                           Status = isScheduling ? ArticleStatus.Scheduling : ArticleStatus.Published,
-                          DeleteStatus = post.Displayorder == -1 ? DeleteStatus.Deleted : DeleteStatus.None,
+                          DeleteStatus = post.Displayorder switch
+                                         {
+                                             -1 => DeleteStatus.Deleted,
+                                             -2 => DeleteStatus.Deleted,
+                                             -3 => DeleteStatus.Deleted, 
+                                             0 => DeleteStatus.None,
+                                             1 => DeleteStatus.None,
+                                             2 => DeleteStatus.None,
+                                             3 => DeleteStatus.None,
+                                             _ => throw new ArgumentOutOfRangeException($"Displayorder", "Not exist")
+                                         },
                           Type = post.Special switch
                                  {
                                      1 => ArticleType.Vote,
