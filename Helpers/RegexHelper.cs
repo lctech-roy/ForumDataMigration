@@ -11,7 +11,6 @@ public static class RegexHelper
     private static Dictionary<string, Func<Match, int, Dictionary<(int, int), string>, string>> BbcodeDic { get; set; }
     private static string Pattern { get; }
     private static Regex Regex { get; }
-
     private static readonly IEnumerable<Regex> RegexTrims = new[]
                                                             {
                                                                 new Regex(@"<[^>]+>|\[[^\]]+\]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
@@ -68,6 +67,11 @@ public static class RegexHelper
 
             return $"[{EMBED}]http://tw.nextmedia.com/playeriframe/articleplayer/IssueID/{attrs[0]}/Photo/{attrs[1]}.jpg/Video/{content}/Level/N/Artid//psecid/international/AdKey/realtimenews_international/Type/Realtimenews[/{EMBED}]";
         }
+        
+        string RemoveUnUsedHideAttr(Match match, int tid, Dictionary<(int, int), string> attachPathDic)
+        {
+            return string.IsNullOrWhiteSpace(match.Groups["attr"].Value) ? match.Value : match.Result("[hide]${content}[/hide]");
+        }
 
         bbcodeDic.Add("img", GetBbcode);
         bbcodeDic.Add("attach", GetAttachBbcode);
@@ -90,7 +94,8 @@ public static class RegexHelper
         bbcodeDic.Add("youmaker", (match, _, _) => match.Result($"[{EMBED}]http://www.youmaker.com/video/v%3Fid%3D${{content}}%26nu%3Dnu&showdigits=true&overstretch=fit&autostart=false&rotatetime=15&linkfromdisplay=false&repeat=false&showfsbutton=false&fsreturnpage=&fullscreenpage=[/{EMBED}]"));
         bbcodeDic.Add("nextmedia", GetNextMedia);
         bbcodeDic.Add("wall", (match, _, _) => match.Result($"[{EMBED}]https://www.jkforum.net/home/ifr/${{content}}[/{EMBED}]"));
-
+        bbcodeDic.Add("hide", RemoveUnUsedHideAttr);
+        
         BbcodeDic = bbcodeDic;
 
         var bbcodeKeys = string.Join("|", BbcodeDic.Keys);
