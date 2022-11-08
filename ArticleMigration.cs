@@ -55,18 +55,10 @@ public class ArticleMigration
     private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbCodeHideTagRegex = new(HIDE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
-    private const string ARTICLE_JSON = "ArticleJson";
-
+    
     private const string ARTICLE_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
-    private const string ARTICLE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}";
     private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
     private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
-    private const string ARTICLE_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}.json";
-
-    private static readonly string ArticleEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Thread).ToLower()}-";
-    private static readonly string ArticleEsIdSuffix = $"\" }}}}";
-    private static readonly string ArticleRelationShipName = DocumentType.Thread.ToString().ToLower();
 
     private const string QUERY_ARTICLE_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                SELECT thread.tid,thread.displayorder,thread.special
@@ -100,9 +92,9 @@ public class ArticleMigration
 
         //刪掉之前轉過的檔案
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
+            RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH, ARTICLE_COMBINE_JSON_PATH });
+            RetryHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
 
         foreach (var period in periods)
         {
@@ -151,18 +143,11 @@ public class ArticleMigration
                 throw;
             }
         }
-
-        // if (Setting.USE_UPDATED_DATE)
-        await FileHelper.CombineMultipleFilesIntoSingleFileAsync(ARTICLE_JSON_PATH,
-                                                                 "*.json",
-                                                                 ARTICLE_COMBINE_JSON_PATH,
-                                                                 cancellationToken);
     }
 
     private static async Task ExecuteAsync(List<ArticlePost> posts, int postTableId, Period period, CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
-        var jsonSb = new StringBuilder();
         var attachmentSb = new StringBuilder();
         var articleAttachmentSb = new StringBuilder();
 
@@ -201,8 +186,8 @@ public class ArticleMigration
                              };
 
             try
-            {
-                await SetArticleAsync(postResult, sb, jsonSb, attachmentSb, articleAttachmentSb, cancellationToken);
+            { 
+                SetArticle(postResult, sb, attachmentSb, articleAttachmentSb);
                 SetCoverAttachment(postResult, attachmentSb);
             }
             catch (Exception e)
@@ -215,23 +200,19 @@ public class ArticleMigration
         }
 
         var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
-
-        var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", jsonSb); });
-
+        
         var attachmentTask = new Task(() => { WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
 
         var articleAttachmentTask = new Task(() => { WriteToFile($"{ARTICLE_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", ARTICLE_ATTACHMENT_PREFIX, articleAttachmentSb); });
-
-
+        
         task.Start();
-        jsonTask.Start();
         attachmentTask.Start();
         articleAttachmentTask.Start();
 
-        await Task.WhenAll(task, jsonTask, attachmentTask, articleAttachmentTask);
+        await Task.WhenAll(task, attachmentTask, articleAttachmentTask);
     }
 
-    private static async Task SetArticleAsync(ArticlePostResult postResult, StringBuilder sb, StringBuilder jsonSb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb, CancellationToken cancellationToken)
+    private static void SetArticle(ArticlePostResult postResult, StringBuilder sb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
     {
         var post = postResult.Post;
 
@@ -332,18 +313,6 @@ public class ArticleMigration
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
-
-        #region Es文件檔
-
-        jsonSb.Append(ArticleEsIdPrefix).Append(article.Id).AppendLine(ArticleEsIdSuffix);
-
-        var document = SetArticleDocument(article, postResult);
-
-        var json = await JsonHelper.GetJsonAsync(document, cancellationToken);
-
-        jsonSb.AppendLine(json);
-
-        #endregion
     }
 
     private static void SetCoverAttachment(ArticlePostResult postResult, StringBuilder attachmentSb)
@@ -367,49 +336,7 @@ public class ArticleMigration
 
         attachmentSb.AppendAttachmentValue(attachment);
     }
-
-    private static Document SetArticleDocument(Article article, ArticlePostResult postResult)
-    {
-        return new Document()
-               {
-                   //article part
-                   Id = article.Id,
-                   Title = RegexHelper.CleanText(article.Title) ?? string.Empty,
-                   Content = RegexHelper.CleanText(article.Content) ?? string.Empty,
-                   ReadPermission = article.ReadPermission,
-                   Tag = article.Tag,
-                   ThumbnailId = article.Cover,
-                   BoardId = article.BoardId,
-                   CategoryId = article.CategoryId,
-                   Sequence = 1,
-                   SortingIndex = article.SortingIndex,
-                   Score = 0,
-                   Ip = article.Ip,
-                   PinType = article.PinType,
-                   PinPriority = 0,
-                   VisibleType = article.VisibleType,
-                   Status = article.Status,
-                   LastReplyDate = article.LastReplyDate,
-                   LastReplierId = article.LastReplierId,
-                   CreationDate = article.CreationDate,
-                   CreatorId = article.CreatorId,
-                   ModificationDate = article.ModificationDate,
-                   ModifierId = article.ModifierId,
-
-                   //document part
-                   Type = DocumentType.Thread,
-                   DeleteStatus = article.DeleteStatus,
-                   CreatorUid = postResult.Post.Authorid,
-                   CreatorName = postResult.MemberName,
-                   ModifierUid = postResult.Post.Authorid,
-                   ModifierName = postResult.MemberName,
-                   Relationship = new Relationship()
-                                  {
-                                      Name = ArticleRelationShipName
-                                  }
-               };
-    }
-
+    
     private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
     {
         if (valueSb.Length == 0)

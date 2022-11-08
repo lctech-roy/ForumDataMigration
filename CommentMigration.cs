@@ -21,23 +21,13 @@ public class CommentMigration
 
     private const string EXTEND_DATA_RECOMMEND_COMMENT = "RecommendComment";
     private const string EXTEND_DATA_BOARD_ID = "BoardId";
-    private const string COMMENT_JSON = "CommentJson";
     private const string ARTICLE_IGNORE = "ArticleIgnore";
 
     private const string COMMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
     private const string COMMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
-    private const string COMMENT_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}";
     private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
     private const string COMMENT_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
     private const string ARTICLE_IGNORE_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_IGNORE}";
-    private const string COMMENT_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}.json";
-
-
-    private static readonly string CommentEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Comment).ToLower()}-";
-    private static readonly string CommentEsRootIdPrefix = $"\",\"routing\": \"{nameof(DocumentType.Thread).ToLower()}-";
-    private static readonly string EsIdSuffix = $"\" }}}}";
-    private static readonly string CommentRelationShipName = DocumentType.Comment.ToString().ToLower();
-    private static readonly string CommentRelationShipParentPrefix = DocumentType.Thread.ToString().ToLower() + "-";
 
     private const string COPY_COMMENT_PREFIX = $"COPY \"{nameof(Comment)}\" " +
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
@@ -82,9 +72,9 @@ public class CommentMigration
 
         //刪掉之前轉過的檔案
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH }, folderName);
+            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH, COMMENT_COMBINE_JSON_PATH, });
+            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH });
 
         foreach (var period in periods)
         {
@@ -133,20 +123,13 @@ public class CommentMigration
                 throw;
             }
         }
-
-        if (Setting.USE_UPDATED_DATE)
-            await FileHelper.CombineMultipleFilesIntoSingleFileAsync(COMMENT_JSON_PATH,
-                                                                     "*.json",
-                                                                     COMMENT_COMBINE_JSON_PATH,
-                                                                     cancellationToken);
-
+        
         // RetryHelper.DropCommentRetryTable();
     }
 
     private async Task ExecuteAsync(CommentPost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
     {
         var commentSb = new StringBuilder();
-        var commentJsonSb = new StringBuilder();
         var commentExtendDataSb = new StringBuilder();
         var attachmentSb = new StringBuilder();
         var commentAttachmentSb = new StringBuilder();
@@ -232,32 +215,30 @@ public class CommentMigration
 
             if (post.First && post.Sequence == 0) //文章
             {
-                await SetCommentFirstAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, cancellationToken);
+                SetCommentFirst(postResult, commentSb, commentExtendDataSb, period, postTableId);
             }
             else if (post.Sequence != 0) //留言
             {
-                await SetCommentAsync(postResult, commentSb, commentExtendDataSb, attachmentSb, commentAttachmentSb, commentJsonSb, period, postTableId, cancellationToken);
+                await SetCommentAsync(postResult, commentSb, commentExtendDataSb, attachmentSb, commentAttachmentSb, period, postTableId, cancellationToken);
             }
         }
 
         var commentTask = new Task(() => { WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
         var commentExtendDataTask = new Task(() => { WriteToFile($"{COMMENT_EXTEND_DATA_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
         var ignoreTask = new Task(() => { WriteToFile($"{ARTICLE_IGNORE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_ARTICLE_IGNORE_PREFIX, ignoreSb); });
-        var commentJsonTask = new Task(() => { WriteToFile($"{COMMENT_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb); });
         var attachmentTask = new Task(() => { WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
         var articleAttachmentTask = new Task(() => { WriteToFile($"{COMMENT_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COMMENT_ATTACHMENT_PREFIX, commentAttachmentSb); });
 
         commentTask.Start();
         commentExtendDataTask.Start();
         ignoreTask.Start();
-        commentJsonTask.Start();
         attachmentTask.Start();
         articleAttachmentTask.Start();
 
-        await Task.WhenAll(commentTask, commentExtendDataTask, commentJsonTask, ignoreTask, attachmentTask, articleAttachmentTask);
+        await Task.WhenAll(commentTask, commentExtendDataTask, ignoreTask, attachmentTask, articleAttachmentTask);
     }
 
-    private static async Task SetCommentFirstAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private static void SetCommentFirst(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId)
     {
         var comment = postResult.Post;
         comment.Id = postResult.ArticleId;
@@ -273,13 +254,13 @@ public class CommentMigration
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
         comment.ReplyCount = postResult.Post.ReplyCount;
 
-        await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
+         AppendCommentSb(comment, commentSb, period, postTableId);
 
         commentExtendDataSb.AppendValueLine(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
                                             comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 
-    private async Task SetCommentAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, StringBuilder commentJsonSb, Period period, int postTableId,
+    private async Task SetCommentAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, Period period, int postTableId,
                                        CancellationToken cancellationToken)
     {
         var comment = postResult.Post;
@@ -304,8 +285,8 @@ public class CommentMigration
             postComments = (await CommentHelper.GetPostCommentsAsync(comment.Tid, comment.Pid, cancellationToken)).ToArray();
 
         comment.ReplyCount = postComments?.Length ?? 0;
-
-        await AppendCommentSbAsync(postResult, comment, commentSb, commentJsonSb, period, postTableId, cancellationToken);
+        
+        AppendCommentSb(comment, commentSb, period, postTableId);
 
         if (comment.StickDateline.HasValue)
         {
@@ -347,12 +328,12 @@ public class CommentMigration
                                    ModificationDate = replyDate,
                                    ModifierId = memberId,
                                };
-
-            await AppendCommentSbAsync(postResult, commentReply, commentSb, commentJsonSb, period, postTableId, cancellationToken);
+            
+            AppendCommentSb(commentReply, commentSb, period, postTableId);
         }
     }
 
-    private static async Task AppendCommentSbAsync(CommentPostResult postResult, Comment comment, StringBuilder commentSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private static void AppendCommentSb(Comment comment, StringBuilder commentSb, Period period, int postTableId)
     {
         const int maxStringBuilderLength = 60000;
 
@@ -367,69 +348,8 @@ public class CommentMigration
                                   comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(),
                                   (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
-
-        #region Es文件檔
-
-        if (commentJsonSb.Length > maxStringBuilderLength)
-        {
-            WriteToFile($"{COMMENT_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb);
-
-            commentJsonSb.Clear();
-        }
-
-        commentJsonSb.Append(CommentEsIdPrefix).Append(comment.Id).Append(CommentEsRootIdPrefix).Append(comment.RootId).AppendLine(EsIdSuffix);
-
-        var commentDocument = SetCommentDocument(comment, postResult);
-
-        var commentJson = await JsonHelper.GetJsonAsync(commentDocument, cancellationToken);
-
-        commentJsonSb.AppendLine(commentJson);
-
-        #endregion
     }
-
-    private static Document SetCommentDocument(Comment comment, CommentPostResult postResult)
-    {
-        long? memberUid = comment.Level != 3 ? postResult.Post.Authorid : postResult.ReplyMemberUid;
-        var memberName = comment.Level != 3 ? postResult.MemberName : postResult.ReplyMemberName;
-
-        return new Document()
-               {
-                   //article part
-                   Id = comment.Id,
-                   Title = RegexHelper.CleanText(comment.Title),
-                   Content = RegexHelper.CleanText(comment.Content) ?? string.Empty,
-                   ReadPermission = 0,
-                   RootId = comment.RootId,
-                   ParentId = comment.ParentId,
-                   Sequence = Convert.ToInt32(comment.Sequence),
-                   SortingIndex = comment.SortingIndex,
-                   Score = comment.RelatedScore,
-                   Ip = comment.Ip,
-                   PinType = 0,
-                   PinPriority = 0,
-                   VisibleType = comment.VisibleType,
-                   CreationDate = comment.CreationDate,
-                   CreatorId = comment.CreatorId,
-                   ModificationDate = comment.ModificationDate,
-                   ModifierId = comment.ModifierId,
-
-                   //document part
-                   Type = DocumentType.Comment,
-                   DeleteStatus = comment.DeleteStatus,
-                   CreatorUid = memberUid,
-                   CreatorName = memberName,
-                   ModifierUid = memberUid,
-                   ModifierName = memberName,
-                   Relationship = new Relationship()
-                                  {
-                                      Name = CommentRelationShipName,
-                                      Parent = CommentRelationShipParentPrefix + comment.RootId
-                                  }
-               };
-    }
-
-
+    
     private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
     {
         if (valueSb.Length == 0)
