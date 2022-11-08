@@ -9,7 +9,7 @@ public class CommentPostResult
     public DateTimeOffset CreateDate { get; set; }
     public long CreateMilliseconds { get; set; }
     public CommentPost Post { get; set; } = default!;
-    public Dictionary<(int,int), string> AttachPathDic { get; set; } = new();
+    public Dictionary<(int,int), Attachment> AttachmentDic { get; set; } = new();
     public int ReplyMemberUid { get; set; } = default!;
     public string ReplyMemberName { get; set; } = default!;
 }

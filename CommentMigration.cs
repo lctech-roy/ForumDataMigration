@@ -5,6 +5,7 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
+using Lctech.Jkf.Forum.Core.Domain;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
 using Netcorext.Algorithms;
@@ -26,6 +27,8 @@ public class CommentMigration
     private const string COMMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
     private const string COMMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
     private const string COMMENT_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{COMMENT_JSON}";
+    private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+    private const string COMMENT_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
     private const string ARTICLE_IGNORE_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_IGNORE}";
     private const string COMMENT_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}.json";
 
@@ -46,6 +49,9 @@ public class CommentMigration
 
     private const string COPY_ARTICLE_IGNORE_PREFIX = $"COPY \"{ARTICLE_IGNORE}\" (\"Tid\",\"Reason\"" + Setting.COPY_SUFFIX;
 
+    private const string COMMENT_ATTACHMENT_PREFIX = $"COPY \"{nameof(CommentAttachment)}\" " +
+                                                     $"(\"{nameof(CommentAttachment.Id)}\",\"{nameof(CommentAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
+
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                 SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
@@ -56,6 +62,7 @@ public class CommentMigration
                                                 WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder <> -4";
 
     private readonly ISnowflake _snowflake;
+    private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(2);
 
     public CommentMigration(ISnowflake snowflake)
     {
@@ -75,9 +82,9 @@ public class CommentMigration
 
         //刪掉之前轉過的檔案
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH }, folderName);
+            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH, COMMENT_COMBINE_JSON_PATH, });
+            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, COMMENT_JSON_PATH, ARTICLE_IGNORE_PATH, COMMENT_COMBINE_JSON_PATH, });
 
         foreach (var period in periods)
         {
@@ -141,11 +148,13 @@ public class CommentMigration
         var commentSb = new StringBuilder();
         var commentJsonSb = new StringBuilder();
         var commentExtendDataSb = new StringBuilder();
+        var attachmentSb = new StringBuilder();
+        var commentAttachmentSb = new StringBuilder();
         var ignoreSb = new StringBuilder();
 
         // var sw = new Stopwatch();
         // sw.Start();
-        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(RegexHelper.GetAttachmentGroups(posts), cancellationToken);
+        var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
 
         // sw.Stop();
         // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
@@ -218,7 +227,7 @@ public class CommentMigration
                                  CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                  CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
                                  Post = post,
-                                 AttachPathDic = attachPathDic
+                                 AttachmentDic = attachmentDic
                              };
 
             if (post.First && post.Sequence == 0) //文章
@@ -227,7 +236,7 @@ public class CommentMigration
             }
             else if (post.Sequence != 0) //留言
             {
-                await SetCommentAsync(postResult, commentSb, commentExtendDataSb, commentJsonSb, period, postTableId, cancellationToken);
+                await SetCommentAsync(postResult, commentSb, commentExtendDataSb, attachmentSb, commentAttachmentSb, commentJsonSb, period, postTableId, cancellationToken);
             }
         }
 
@@ -235,13 +244,17 @@ public class CommentMigration
         var commentExtendDataTask = new Task(() => { WriteToFile($"{COMMENT_EXTEND_DATA_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
         var ignoreTask = new Task(() => { WriteToFile($"{ARTICLE_IGNORE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_ARTICLE_IGNORE_PREFIX, ignoreSb); });
         var commentJsonTask = new Task(() => { WriteToFile($"{COMMENT_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", commentJsonSb); });
+        var attachmentTask = new Task(() => { WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
+        var articleAttachmentTask = new Task(() => { WriteToFile($"{COMMENT_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COMMENT_ATTACHMENT_PREFIX, commentAttachmentSb); });
 
         commentTask.Start();
         commentExtendDataTask.Start();
         ignoreTask.Start();
         commentJsonTask.Start();
+        attachmentTask.Start();
+        articleAttachmentTask.Start();
 
-        await Task.WhenAll(commentTask, commentExtendDataTask, commentJsonTask, ignoreTask);
+        await Task.WhenAll(commentTask, commentExtendDataTask, commentJsonTask, ignoreTask, attachmentTask, articleAttachmentTask);
     }
 
     private static async Task SetCommentFirstAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
@@ -266,7 +279,8 @@ public class CommentMigration
                                             comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 
-    private async Task SetCommentAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder commentJsonSb, Period period, int postTableId, CancellationToken cancellationToken)
+    private async Task SetCommentAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, StringBuilder commentJsonSb, Period period, int postTableId,
+                                       CancellationToken cancellationToken)
     {
         var comment = postResult.Post;
         var commentId = _snowflake.Generate();
@@ -275,7 +289,7 @@ public class CommentMigration
         comment.ParentId = postResult.ArticleId;
         comment.Level = 2;
         comment.Hierarchy = string.Concat(postResult.ArticleId, "/", commentId);
-        comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Tid, postResult.AttachPathDic);
+        comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Tid, commentId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb);
         comment.VisibleType = comment.Status == 1 ? VisibleType.Hidden : VisibleType.Public;
         comment.SortingIndex = postResult.CreateMilliseconds;
         comment.CreationDate = postResult.CreateDate;
@@ -322,7 +336,7 @@ public class CommentMigration
                                    ParentId = commentId,
                                    Level = 3,
                                    Hierarchy = $"{postResult.ArticleId}/{commentId}/{commentReplyId}",
-                                   Content = RegexHelper.GetNewMessage(postComment.Comment, comment.Tid, postResult.AttachPathDic),
+                                   Content = RegexHelper.GetNewMessage(postComment.Comment, comment.Tid, commentReplyId, memberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb),
                                    VisibleType = VisibleType.Public,
                                    Ip = postComment.Useip,
                                    Sequence = sequence++,

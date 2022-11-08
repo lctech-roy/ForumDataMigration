@@ -37,4 +37,6 @@ public class ArticlePost
     // public bool Invisible { get; set; }
     // public uint? StickDateline { get; set; }
     public ThreadWarning? Warning { get; set; }
+    
+    public bool Keep { get; set; }
 }

@@ -5,13 +5,16 @@ namespace ForumDataMigration.Models;
 
 public class Attachment : Entity
 {
-    public string Name { get; set; } = string.Empty;
-    public string ContentType { get; set; } = string.Empty;
-    public long FileSize { get; set; }
-    public string FileExtension { get; set; } = string.Empty!;
-    public string StoragePath { get; set; } = null!;
+    public long? Size { get; set; }
     public int DownloadCount { get; set; }
-    public bool IncludeFile { get; set; }
-    public bool IsExternal { get; set; } = true;
-    public DeleteStatus DeleteStatus { get; set; }
+    public string ExternalLink { get; set; } = default!;
+    public int DeleteStatus { get; set; } = 0;
+    public int ProcessingState { get; set; } = 0;
+    //domain額外資訊
+    public int TableId { get; set; }
+    public int Aid { get; set; }
+    public bool Remote { get; set; }
+    public bool IsImage { get; set; } 
+    public uint Dateline { get; set; }
+    public string BbCode { get; set; } = default!;
 }

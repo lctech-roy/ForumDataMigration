@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using Dapper;
@@ -7,9 +6,11 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
+using Lctech.Jkf.Forum.Core.Domain;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
+using Netcorext.Algorithms;
 using Polly;
 
 namespace ForumDataMigration;
@@ -30,10 +31,8 @@ public class ArticleMigration
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
-    private const string COVER_ATTACHMENT_PREFIX = $"COPY \"{nameof(Attachment)}\" " +
-                                                   $"(\"{nameof(Attachment.Id)}\",\"{nameof(Attachment.Name)}\",\"{nameof(Attachment.ContentType)}\",\"{nameof(Attachment.FileSize)}\",\"{nameof(Attachment.FileExtension)}\"" +
-                                                   $",\"{nameof(Attachment.StoragePath)}\",\"{nameof(Attachment.DownloadCount)}\",\"{nameof(Attachment.IncludeFile)}\",\"{nameof(Attachment.IsExternal)}\",\"{nameof(Attachment.DeleteStatus)}\"" +
-                                                   Setting.COPY_ENTITY_SUFFIX;
+    private const string ARTICLE_ATTACHMENT_PREFIX = $"COPY \"{nameof(ArticleAttachment)}\" " +
+                                                     $"(\"{nameof(ArticleAttachment.Id)}\",\"{nameof(ArticleAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
     private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
@@ -47,7 +46,7 @@ public class ArticleMigration
 
     private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
-    private static readonly Dictionary<long, (long, string)> MemberDIc = RelationHelper.GetSimpleMemberDic();
+    private static readonly Dictionary<long, (long, string)> MemberDic = RelationHelper.GetSimpleMemberDic();
 
     private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
     private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
@@ -61,7 +60,8 @@ public class ArticleMigration
 
     private const string ARTICLE_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
     private const string ARTICLE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_JSON}";
-    private const string ARTICLE_COVER_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+    private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+    private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
     private const string ARTICLE_COMBINE_JSON_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}.json";
 
     private static readonly string ArticleEsIdPrefix = $"{{\"create\":{{ \"_id\": \"{nameof(DocumentType.Thread).ToLower()}-";
@@ -84,6 +84,8 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null";
 
+    private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
+
     //WHERE thread.posttableid = @postTableId AND thread.tid = 8128927";
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
@@ -98,9 +100,9 @@ public class ArticleMigration
 
         //刪掉之前轉過的檔案
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ARTICLE_COVER_PATH }, folderName);
+            RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ARTICLE_COVER_PATH, ARTICLE_COMBINE_JSON_PATH });
+            RetryHelper.RemoveFiles(new[] { ARTICLE_PATH, ARTICLE_JSON_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH, ARTICLE_COMBINE_JSON_PATH });
 
         foreach (var period in periods)
         {
@@ -137,7 +139,7 @@ public class ArticleMigration
                                                                                                                   if (!posts.Any())
                                                                                                                       return;
 
-                                                                                                                  await ExecuteAsync(posts, postTableId, period, cancellationToken);
+                                                                                                                  await ExecuteAsync(posts.ToList(), postTableId, period, cancellationToken);
                                                                                                               });
             }
             catch (Exception e)
@@ -157,44 +159,34 @@ public class ArticleMigration
                                                                  cancellationToken);
     }
 
-    private static async Task ExecuteAsync(ArticlePost[] posts, int postTableId, Period period, CancellationToken cancellationToken = default)
+    private static async Task ExecuteAsync(List<ArticlePost> posts, int postTableId, Period period, CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
         var jsonSb = new StringBuilder();
-        var coverSb = new StringBuilder();
+        var attachmentSb = new StringBuilder();
+        var articleAttachmentSb = new StringBuilder();
 
         // var sw = new Stopwatch();
         // sw.Start();
-        var attachPathDic = await RegexHelper.GetAttachFileNameDicAsync(RegexHelper.GetAttachmentGroups(posts), cancellationToken);
 
         // sw.Stop();
         // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
 
-        long previousId = 0;
+        // 排除因為lastPoster重複的文章
+        posts = posts.DistinctBy(x => x.Tid).ToList();
+
+        posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) ||     //髒資料放過他
+                             !BoardDic.ContainsKey(x.Fid) ||       //髒資料放過他
+                             !MemberDic.ContainsKey(x.Authorid) || //髒資料放過他
+                             x.Displayorder == -4);                //文章草稿不處理
+
+        var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
 
         foreach (var post in posts)
         {
-            var id = ArticleDic.GetValueOrDefault(post.Tid);
-            var boardId = BoardDic.GetValueOrDefault(post.Fid);
-
-            //髒資料放過他
-            if (id == 0 || boardId == 0)
-                continue;
-
-            var (memberId, memberName) = MemberDIc.GetValueOrDefault(post.Authorid);
-
-            if (memberId == 0)
-                continue;
-            
-            //文章草稿不處理
-            if (post.Displayorder == -4)
-                continue;
-
-            // 排除因為lastPoster重複的文章
-            if (id == previousId)
-                continue;
-
-            previousId = id;
+            var id = ArticleDic[post.Tid];
+            var boardId = BoardDic[post.Fid];
+            var (memberId, memberName) = MemberDic[post.Authorid];
 
             var postResult = new ArticlePostResult()
                              {
@@ -205,12 +197,13 @@ public class ArticleMigration
                                  CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                  CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
                                  Post = post,
-                                 AttachPathDic = attachPathDic
+                                 AttachmentDic = attachmentDic
                              };
 
             try
             {
-                await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken);
+                await SetArticleAsync(postResult, sb, jsonSb, attachmentSb, articleAttachmentSb, cancellationToken);
+                SetCoverAttachment(postResult, attachmentSb);
             }
             catch (Exception e)
             {
@@ -219,24 +212,26 @@ public class ArticleMigration
 
                 throw;
             }
-
-            //await CommonHelper.WatchTimeAsync("SetArticleAsync", async () => await SetArticleAsync(postResult, sb, coverSb, jsonSb, cancellationToken));
         }
 
         var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
 
         var jsonTask = new Task(() => { WriteToFile($"{ARTICLE_JSON_PATH}/{period.FolderName}", $"{postTableId}.json", "", jsonSb); });
 
-        var coverTask = new Task(() => { WriteToFile($"{ARTICLE_COVER_PATH}/{period.FolderName}", $"{postTableId}.sql", COVER_ATTACHMENT_PREFIX, coverSb); });
+        var attachmentTask = new Task(() => { WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
+
+        var articleAttachmentTask = new Task(() => { WriteToFile($"{ARTICLE_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", ARTICLE_ATTACHMENT_PREFIX, articleAttachmentSb); });
+
 
         task.Start();
         jsonTask.Start();
-        coverTask.Start();
+        attachmentTask.Start();
+        articleAttachmentTask.Start();
 
-        await Task.WhenAll(task, jsonTask, coverTask);
+        await Task.WhenAll(task, jsonTask, attachmentTask, articleAttachmentTask);
     }
 
-    private static async Task SetArticleAsync(ArticlePostResult postResult, StringBuilder sb, StringBuilder coverSb, StringBuilder jsonSb, CancellationToken cancellationToken)
+    private static async Task SetArticleAsync(ArticlePostResult postResult, StringBuilder sb, StringBuilder jsonSb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb, CancellationToken cancellationToken)
     {
         var post = postResult.Post;
 
@@ -254,7 +249,7 @@ public class ArticleMigration
                                          {
                                              -1 => DeleteStatus.Deleted,
                                              -2 => DeleteStatus.Deleted,
-                                             -3 => DeleteStatus.Deleted, 
+                                             -3 => DeleteStatus.Deleted,
                                              0 => DeleteStatus.None,
                                              1 => DeleteStatus.None,
                                              2 => DeleteStatus.None,
@@ -283,7 +278,7 @@ public class ArticleMigration
                                     },
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           Title = post.Subject,
-                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.AttachPathDic),
+                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.ArticleId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, articleAttachmentSb),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
                           BoardId = postResult.BoardId,
@@ -292,7 +287,7 @@ public class ArticleMigration
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = post.Lastposter,
                           PinPriority = post.Displayorder,
-                          Cover = SetCoverAttachment(postResult, coverSb)?.Id,
+                          Cover = postResult.ArticleId,
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
@@ -351,30 +346,26 @@ public class ArticleMigration
         #endregion
     }
 
-    private static Attachment? SetCoverAttachment(ArticlePostResult postResult, StringBuilder coverSb)
+    private static void SetCoverAttachment(ArticlePostResult postResult, StringBuilder attachmentSb)
     {
         var post = postResult.Post;
 
         var isCover = post.Cover is not ("" or "0");
-        var coverPath = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb);
+        var externalLink = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb);
 
-        if (string.IsNullOrEmpty(coverPath)) return null;
+        if (string.IsNullOrEmpty(externalLink)) return;
 
         var attachment = new Attachment
                          {
                              Id = postResult.ArticleId,
-                             StoragePath = coverPath,
+                             ExternalLink = externalLink,
                              CreationDate = postResult.CreateDate,
                              CreatorId = postResult.MemberId,
                              ModificationDate = postResult.CreateDate,
                              ModifierId = postResult.MemberId
                          };
 
-        coverSb.AppendValueLine(attachment.Id, attachment.Name, attachment.ContentType, attachment.FileSize, attachment.FileExtension,
-                                attachment.StoragePath, attachment.DownloadCount, attachment.IncludeFile, attachment.IsExternal, (int) attachment.DeleteStatus,
-                                attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
-
-        return attachment;
+        attachmentSb.AppendAttachmentValue(attachment);
     }
 
     private static Document SetArticleDocument(Article article, ArticlePostResult postResult)
