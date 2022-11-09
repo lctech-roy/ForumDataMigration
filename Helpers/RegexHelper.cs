@@ -13,7 +13,7 @@ public static class RegexHelper
     private const string EMBED = "embed";
     private static readonly Dictionary<string, Func<Match, int, long, long, Dictionary<(int, int), Attachment>, StringBuilder, StringBuilder, string>> BbcodeDic = new();
     private static string Pattern { get; }
-    private static Regex Regex { get; }
+    private static Regex MessageRegex { get; }
 
     private static readonly IEnumerable<Regex> RegexTrims = new[]
                                                             {
@@ -23,8 +23,11 @@ public static class RegexHelper
                                                             };
 
     private const string ATTACH_PATTERN = @"\[(?:attach|attachimg)](.*?)\[\/(?:attach|attachimg)]";
-    private static readonly Regex BbCodeAttachTagRegex = new(ATTACH_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private const string ID = "Id";
+    private const string ID_PATTERN = $@"(?<{ID}>[\w]*)(\?|$)";
 
+    private static readonly Regex BbCodeAttachTagRegex = new(ATTACH_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex IdRegex = new(ID_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     static RegexHelper()
     {
@@ -53,7 +56,7 @@ public static class RegexHelper
             attachment.ModifierId = memberId;
 
             attachmentSb.AppendAttachmentValue(attachment);
-            
+
             articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
                                                 attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
 
@@ -64,77 +67,79 @@ public static class RegexHelper
         {
             return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Result("[url=${content}]${content}[/url]");
         }
-
-        string GetNextMedia(Match match, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
-        {
-            var content = match.Groups["content"].Value;
-            var attr = match.Groups["attr"].Value;
-
-            if (string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(attr))
-                return match.Value;
-
-            var attrs = attr.Split(',');
-
-            if (attrs.Length < 2)
-                return match.Value;
-
-            return $"[{EMBED}]http://tw.nextmedia.com/playeriframe/articleplayer/IssueID/{attrs[0]}/Photo/{attrs[1]}.jpg/Video/{content}/Level/N/Artid//psecid/international/AdKey/realtimenews_international/Type/Realtimenews[/{EMBED}]";
-        }
-
+        
         string RemoveUnUsedHideAttr(Match match, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
         {
             return string.IsNullOrWhiteSpace(match.Groups["attr"].Value) ? match.Value : match.Result("[hide]${content}[/hide]");
+        }
+
+        string GetYoutube(Match match, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
+        {
+            var content = match.Groups["content"].Value;
+
+            if (string.IsNullOrWhiteSpace(content))
+                return string.Empty;
+
+            var replacement = IdRegex.Replace(content, innerMatch =>
+                                                       {
+                                                           var value = innerMatch.Groups[ID].Value;
+
+                                                           return string.IsNullOrEmpty(value) ? string.Empty : $"[{EMBED}]https://youtu.be/${value}[/{EMBED}]";
+                                                       });
+
+            return replacement;
         }
 
         BbcodeDic.Add("img", GetBbcode);
         BbcodeDic.Add("attach", GetAttachBbcode);
         BbcodeDic.Add("attachimg", GetAttachBbcode);
         BbcodeDic.Add("media", GetUrlBbcode);
-        BbcodeDic.Add("youtube", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://www.youtube.com/embed/${{content}}[/{EMBED}]"));
+
+        #region embed part
+        BbcodeDic.Add("youtube", GetYoutube);
         BbcodeDic.Add("facebook", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("xhamster", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://xhamster.com/xembed.php?video=${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("youporn", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]http://www.youporn.com/embed/${{content}}[/{EMBED}]"));
         BbcodeDic.Add("twitter", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("gfycat", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("fbpost", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("youjizz", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://www.youjizz.com/videos/embed/${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("av", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://av.jkforum.net/watch/${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("avgle", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://avgle.com/video/${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("xvideos", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://www.xvideos.com/video${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("youjizz", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://www.youjizz.com/videos/${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("xhamster", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://zh.xhamster.com/videos/${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("pornhub", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://pornhub.com/view_video.php?viewkey=${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("tiktok", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://www.tiktok.com/${{attr}}/video/${{content}}[/{EMBED}]"));
         BbcodeDic.Add("ig", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("avgle", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://avgle.com/embed/${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("av", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://av.jkforum.net/embed/${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("xvideos", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://flashservice.xvideos.com/embedframe/${{content}}[/{EMBED}]"));
-        BbcodeDic.Add("fc2", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://video.fc2.com/flv2.swf?i=${{content}}&d=1373&movie_stop=off&no_progressive=1&otag=1&sj=10&rel=1[/{EMBED}]"));
-        BbcodeDic.Add("weibo", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]http://video.weibo.com/player/1034:${{content}}/v.swf[/{EMBED}]"));
-        BbcodeDic.Add("youmaker", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]http://www.youmaker.com/video/v%3Fid%3D${{content}}%26nu%3Dnu&showdigits=true&overstretch=fit&autostart=false&rotatetime=15&linkfromdisplay=false&repeat=false&showfsbutton=false&fsreturnpage=&fullscreenpage=[/{EMBED}]"));
-        BbcodeDic.Add("nextmedia", GetNextMedia);
-        BbcodeDic.Add("wall", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://www.jkforum.net/home/ifr/${{content}}[/{EMBED}]"));
+        #endregion
+
         BbcodeDic.Add("hide", RemoveUnUsedHideAttr);
+        BbcodeDic.Add("i", (_, _, _, _, _, _, _) => string.Empty); //[i=s] 本篇最後由 why5684784why 於 2017-5-16 02:41 編輯 [/i] => 整段拿掉
+        BbcodeDic.Add("tr", (match, _, _, _, _, _, _) => match.Result($"[tr]${{content}}[/tr]"));
+        BbcodeDic.Add("td", (match, _, _, _, _, _, _) => match.Result($"[td]${{content}}[/td]"));
 
         var bbcodeKeys = string.Join("|", BbcodeDic.Keys);
 
         Pattern = $"\\[(?<tag>(?:attach)?{bbcodeKeys})=?(?<attr>[^\\]]*)\\](?<content>[^\\[]*)\\[\\/(?:(?:attach)?{bbcodeKeys})]" +
                   "|(?<emoji>{:([1-9]|10)_(199|[2-7][0-9]{2}|8[0-3][0-9]|84[0-6]):})";
 
-        Regex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        MessageRegex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     }
 
-    public static string GetNewMessage(string message, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
+    public static string GetNewMessage(string message, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb)
     {
-        var newMessage = Regex.Replace(message, m =>
-                                                {
-                                                    if (!string.IsNullOrEmpty(m.Groups["emoji"].Value))
-                                                        return string.Empty;
+        var newMessage = MessageRegex.Replace(message, m =>
+                                                       {
+                                                           if (!string.IsNullOrEmpty(m.Groups["emoji"].Value))
+                                                               return string.Empty;
 
-                                                    var tag = m.Groups["tag"].Value;
+                                                           var tag = m.Groups["tag"].Value;
 
-                                                    if (string.IsNullOrEmpty(tag))
-                                                        return m.Value;
+                                                           if (string.IsNullOrEmpty(tag))
+                                                               return m.Value;
 
-                                                    if (!BbcodeDic.ContainsKey(tag)) return m.Value;
+                                                           if (!BbcodeDic.ContainsKey(tag)) return m.Value;
 
-                                                    var replacement = BbcodeDic[tag](m, tid, sourceId, memberId, attachmentDic, attachmentSb, articleAttachmentSb);
+                                                           var replacement = BbcodeDic[tag](m, tid, sourceId, memberId, attachmentDic, attachmentSb, sourceAttachmentSb);
 
-                                                    return replacement;
-                                                });
+                                                           return replacement;
+                                                       });
 
         return newMessage;
     }
