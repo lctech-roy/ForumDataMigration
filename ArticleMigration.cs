@@ -216,7 +216,6 @@ public class ArticleMigration
     {
         var post = postResult.Post;
 
-        var isScheduling = post.PostTime < post.Dateline;
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
         var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
@@ -225,7 +224,7 @@ public class ArticleMigration
         var article = new Article
                       {
                           Id = postResult.ArticleId,
-                          Status = isScheduling ? ArticleStatus.Scheduling : ArticleStatus.Published,
+                          Status = ArticleStatus.None,
                           DeleteStatus = post.Displayorder switch
                                          {
                                              -1 => DeleteStatus.Deleted,

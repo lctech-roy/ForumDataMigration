@@ -3,16 +3,18 @@ using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Models;
 using Netcorext.Algorithms;
+using Npgsql;
 
 namespace ForumDataMigration.Helpers;
 
 public static class AttachmentHelper
 {
     public const string ATTACHMENT_PREFIX = $"COPY \"{nameof(Attachment)}\" " +
-                                             $"(\"{nameof(Attachment.Id)}\",\"{nameof(Attachment.Size)}\",\"{nameof(Attachment.ExternalLink)}\"" +
-                                             $",\"{nameof(Attachment.DownloadCount)}\",\"{nameof(Attachment.ProcessingState)}\",\"{nameof(Attachment.DeleteStatus)}\"" +
-                                             Setting.COPY_ENTITY_SUFFIX;
-    
+                                            $"(\"{nameof(Attachment.Id)}\",\"{nameof(Attachment.Size)}\",\"{nameof(Attachment.ExternalLink)}\",\"{nameof(Attachment.Bucket)}\"" +
+                                            $",\"{nameof(Attachment.DownloadCount)}\",\"{nameof(Attachment.ProcessingState)}\",\"{nameof(Attachment.DeleteStatus)}\",\"{nameof(Attachment.IsPublish)}\"" +
+                                            $",\"{nameof(Attachment.StoragePath)}\",\"{nameof(Attachment.Name)}\",\"{nameof(Attachment.ContentType)}\",\"{nameof(Attachment.ParentId)}\"" +
+                                            Setting.COPY_ENTITY_SUFFIX;
+
     public static async Task<Dictionary<(int, int), Attachment>> GetAttachmentDicAsync(IGrouping<int, IEnumerable<int>>[] attachFileGroups, ISnowflake snowflake, CancellationToken cancellationToken)
     {
         // var sw = new Stopwatch();
@@ -35,9 +37,6 @@ public static class AttachmentHelper
         // Console.WriteLine($"get param Time => {sw.ElapsedMilliseconds}ms");
 
         // sw.Restart();
-
-        await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
-
         var param = new
                     {
                         Groups1 = GetValueByKey(1),
@@ -89,12 +88,14 @@ public static class AttachmentHelper
                                                         ) aa
                                                         LEFT JOIN pre_forum_attachment a ON a.aid = aa.aid;", param, cancellationToken: cancellationToken);
 
+        await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+
         var attacheDic = (await cn.QueryAsync<Attachment>(command))
            .ToDictionary(x => (x.TableId, x.Aid), x =>
                                                   {
                                                       var newId = snowflake.Generate();
                                                       var tag = x.IsImage ? "img" : "file";
-                                                      
+
                                                       x.Id = newId;
                                                       x.ExternalLink = string.Concat(x.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, x.ExternalLink);
                                                       x.BbCode = string.Concat("[", tag, "]", newId, "[/", tag, "]");
@@ -109,10 +110,38 @@ public static class AttachmentHelper
         return attacheDic;
     }
 
-    public static void AppendAttachmentValue(this StringBuilder attachmentSb,Attachment attachment)
+    public static void AppendAttachmentValue(this StringBuilder attachmentSb, Attachment attachment)
     {
-        attachmentSb.AppendValueLine(attachment.Id, attachment.Size.ToCopyValue(), attachment.ExternalLink,
-                                     attachment.DownloadCount, attachment.ProcessingState, attachment.DeleteStatus,
+        attachmentSb.AppendValueLine(attachment.Id, attachment.Size.ToCopyValue(), attachment.ExternalLink, attachment.Bucket.ToCopyValue(),
+                                     attachment.DownloadCount, attachment.ProcessingState, attachment.DeleteStatus, attachment.IsPublish,
+                                     attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyValue(), attachment.ContentType.ToCopyValue(), attachment.ParentId.ToCopyValue(),
                                      attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
+    }
+
+    public static (Dictionary<string, long>, Dictionary<long, List<Attachment>>) GetArtifactAttachmentDic()
+    {
+        var command = new CommandDefinition(@"SELECT ""Id"",""Name"",""ContentType"",""Size"",""IsPublic"",""Bucket"",""ParentId"",""CreationDate"",""ModificationDate"",""ObjectName"" FROM ""Artifact""");
+
+        using var cn = new NpgsqlConnection(Setting.NEW_ARTIFACT_CONNECTION);
+
+        var attachments = cn.Query<Attachment>(command);
+
+        var pathIdDic = new Dictionary<string, long>();
+        var attachmentDic = new Dictionary<long, List<Attachment>>();
+        
+        foreach (var attachment in attachments)
+        {
+            if (attachment.ParentId.HasValue)
+                pathIdDic.Add(attachment.ObjectName, attachment.ParentId.Value);
+
+            var parentId = attachment.ParentId ?? attachment.Id;
+
+            if (!attachmentDic.ContainsKey(parentId))
+                attachmentDic.Add(parentId, new List<Attachment> { attachment });
+            else
+                attachmentDic[parentId].Add(attachment);
+        }
+
+        return (pathIdDic, attachmentDic);
     }
 }

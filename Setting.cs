@@ -8,7 +8,7 @@ public static class Setting
 
     // public const string NEW_FORUM_CONNECTION_LOCAL = "Host=127.0.0.1;Port=5432;Username=postgres;Password=P@ssw0rd;Database=lctech_jkf_forum_tttt;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;";
     public const string OLD_GAME_CENTER_CONNECTION = "Host=104.199.218.6;Port=5432;Username=postgres;Password=6qfh.d[(^%Dj2S7K;Database=jkfapi;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-    
+
     public const string HOST = "104.199.140.32";
     public const string NEW_FORUM_CONNECTION = $"Host={HOST};Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_jkf_forum;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_MEMBER_CONNECTION = $"Host={HOST};Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_jkf_member;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
@@ -16,11 +16,12 @@ public static class Setting
     public const string NEW_GAME_CENTER_CONNECTION = $"Host={HOST};Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_jkf_gamecenter;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_GAME_CENTER_MEDAL_CONNECTION = $"Host={HOST};Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_jkf_gamecenter_medal;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_ATTACHMENT_CONNECTION = $"Host={HOST};Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_attachment;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-
+    public const string NEW_ARTIFACT_CONNECTION = $"Host={HOST};Port=5432;Username=postgres;Password=fybfe9-xaTdon-dozziw;Database=lctech_artifact_test;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
 
     public const string D = "";
     public const string FORUM_URL = "https://www.jkforum.net/";
     public const string ATTACHMENT_URL = "https://www.mymypic.net/";
+    public const string VIDEO_CDN = "https://cdn.mymyatt.net/";
     public const string ATTACHMENT_PATH = "data/attachment/forum/";
     public const string INSERT_DATA_PATH = "../../../ScriptInsert";
 

@@ -28,9 +28,11 @@ public static class RegexHelper
 
     private static readonly Regex BbCodeAttachTagRegex = new(ATTACH_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex IdRegex = new(ID_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
-
+    public static (Dictionary<string, long> pathIdDic,Dictionary<long, List<Attachment>> attachmentDic) ArtifactAttachmentTuple { get; set; }
     static RegexHelper()
     {
+        ArtifactAttachmentTuple = AttachmentHelper.GetArtifactAttachmentDic();
+        
         string GetBbcode(Match match, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
         {
             return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Value;
@@ -89,15 +91,49 @@ public static class RegexHelper
 
             return replacement;
         }
+        
+        string GetVideo(Match match, int tid, long sourceId, long memberId, Dictionary<(int, int), Attachment> attachmentDic, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
+        {
+            var content = match.Groups["content"].Value;
 
+            if (string.IsNullOrWhiteSpace(content))
+                return string.Empty;
+
+            var objectName = content.Replace(Setting.VIDEO_CDN, "");
+
+            var parentId = ArtifactAttachmentTuple.pathIdDic.GetValueOrDefault(objectName);
+
+            if (parentId == default)
+                return match.Value;
+            
+            var attachments = ArtifactAttachmentTuple.attachmentDic[parentId];
+
+            foreach (var attachment in attachments)
+            {
+                attachment.StoragePath = Path.GetDirectoryName(attachment.ObjectName);
+                
+                attachmentSb.AppendAttachmentValue(attachment);
+                articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
+                                                    attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
+            }
+
+            var attr = match.Groups["attr"].Value;
+
+            var replacement = $"[video={attr}]{parentId}[/video]";
+
+            return replacement;
+        }
+        
         BbcodeDic.Add("img", GetBbcode);
         BbcodeDic.Add("attach", GetAttachBbcode);
         BbcodeDic.Add("attachimg", GetAttachBbcode);
         BbcodeDic.Add("media", GetUrlBbcode);
+        BbcodeDic.Add("video", GetVideo);
 
         #region embed part
         BbcodeDic.Add("youtube", GetYoutube);
         BbcodeDic.Add("facebook", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
+        BbcodeDic.Add("fbpost", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
         BbcodeDic.Add("twitter", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]${{content}}[/{EMBED}]"));
         BbcodeDic.Add("av", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://av.jkforum.net/watch/${{content}}[/{EMBED}]"));
         BbcodeDic.Add("avgle", (match, _, _, _, _, _, _) => match.Result($"[{EMBED}]https://avgle.com/video/${{content}}[/{EMBED}]"));
