@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using Dapper;
@@ -25,9 +26,11 @@ public static class RegexHelper
     private const string ATTACH_PATTERN = @"\[(?:attach|attachimg)](.*?)\[\/(?:attach|attachimg)]";
     private const string ID = "Id";
     private const string ID_PATTERN = $@"(?<{ID}>[\w]*)(\?|$)";
+    private const string SUBJECT_PATTERN = @"\s";
 
     private static readonly Regex BbCodeAttachTagRegex = new(ATTACH_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex IdRegex = new(ID_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex SubjectRegex = new(SUBJECT_PATTERN, RegexOptions.Compiled);
     public static (Dictionary<string, long> pathIdDic,Dictionary<long, List<Attachment>> attachmentDic) ArtifactAttachmentTuple { get; set; }
     static RegexHelper()
     {
@@ -217,5 +220,13 @@ public static class RegexHelper
                                                                                                        })).Where(x => x.Key != -1).ToArray();
 
         return attachFileGroups;
+    }
+
+    public static string GetNewSubject(string subject)
+    {
+        subject = WebUtility.HtmlDecode(subject);
+        subject = WebUtility.HtmlEncode(subject);
+
+        return SubjectRegex.Replace(subject, " ");
     }
 }

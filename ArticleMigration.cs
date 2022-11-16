@@ -257,7 +257,7 @@ public class ArticleMigration
                                         _ => PinType.None
                                     },
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
-                          Title = post.Subject,
+                          Title = RegexHelper.GetNewSubject(post.Subject),
                           Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.ArticleId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, articleAttachmentSb),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
