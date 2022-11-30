@@ -183,12 +183,13 @@ public static class RegexHelper
         return newMessage;
     }
 
-    public static string? CleanText(string? text)
-    {
-        return string.IsNullOrWhiteSpace(text)
-                   ? null
-                   : RegexTrims.Aggregate(text, (current, regex) => regex.Replace(current, " "));
-    }
+    //xml用
+    // public static string? CleanText(string? text)
+    // {
+    //     return string.IsNullOrWhiteSpace(text)
+    //                ? null
+    //                : RegexTrims.Aggregate(text, (current, regex) => regex.Replace(current, " "));
+    // }
 
     public static IGrouping<int, IEnumerable<int>>[] GetAttachmentGroups(IEnumerable<ArticlePost> posts)
     {

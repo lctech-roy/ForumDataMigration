@@ -1,7 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Dapper;
-using ForumDataMigration.Enums;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
@@ -74,7 +73,7 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_post{0} postReply ON thread.replies > 0 AND postReply.tid = thread.tid AND postReply.dateline = thread.lastpost AND postReply.author = thread.lastposter
                                               LEFT JOIN pre_post_delay AS postDelay ON postDelay.tid = thread.tid
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
-                                              WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null";
+                                              WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder <> -4";
 
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
 
@@ -162,8 +161,7 @@ public class ArticleMigration
 
         posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) ||     //髒資料放過他
                              !BoardDic.ContainsKey(x.Fid) ||       //髒資料放過他
-                             !MemberDic.ContainsKey(x.Authorid) || //髒資料放過他
-                             x.Displayorder == -4);                //文章草稿不處理
+                             !MemberDic.ContainsKey(x.Authorid)); //髒資料放過他
 
         var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
 
@@ -218,8 +216,6 @@ public class ArticleMigration
 
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
-        var imageCount = BbCodeImageRegex.Matches(post.Message).Count;
-        var videoCount = BbCodeVideoRegex.Matches(post.Message).Count;
 
         var article = new Article
                       {
@@ -243,12 +239,6 @@ public class ArticleMigration
                                      3 => ArticleType.Reward,
                                      _ => ArticleType.Article
                                  },
-                          ContentType = imageCount switch
-                                        {
-                                            0 when videoCount == 0 => ContentType.PaintText,
-                                            > 0 when videoCount > 0 => ContentType.Complex,
-                                            _ => imageCount > 0 ? ContentType.Image : ContentType.Video
-                                        },
                           PinType = post.Displayorder switch
                                     {
                                         1 => PinType.Board,
@@ -271,8 +261,6 @@ public class ArticleMigration
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
-                          ImageCount = imageCount,
-                          VideoCount = videoCount,
                           DonatePoint = 0,
                           Highlight = post.Highlight != 0,
                           HighlightColor = ColorDic.GetValueOrDefault(highlightInt),
@@ -300,6 +288,16 @@ public class ArticleMigration
                           ModificationDate = postResult.CreateDate
                       };
 
+        article.ImageCount = BbCodeImageRegex.Matches(article.Content).Count;
+        article.VideoCount = BbCodeVideoRegex.Matches(article.Content).Count;
+
+        article.ContentType = article.ImageCount switch
+                              {
+                                  0 when article.VideoCount == 0 => ContentType.PaintText,
+                                  > 0 when article.VideoCount > 0 => ContentType.Complex,
+                                  _ => article.VideoCount > 0 ? ContentType.Image : ContentType.Video
+                              };
+        
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
                            (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),

@@ -6,6 +6,7 @@ using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Lctech.Jkf.Forum.Core.Domain;
+using Lctech.Jkf.Forum.Core.Domain.Entities;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
 using Netcorext.Algorithms;
