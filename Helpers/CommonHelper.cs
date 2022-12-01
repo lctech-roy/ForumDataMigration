@@ -4,19 +4,19 @@ namespace ForumDataMigration.Helper;
 
 public class CommonHelper
 {
-    public static void WatchTime(string actionName,Action action)
+    public static void WatchTime(string actionName, Action action)
     {
-         var sw = new Stopwatch();
-         sw.Start();
-         action();
-         sw.Stop();
-         Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
-         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
-         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
-         Console.WriteLine($"{actionName} Time => {answer}");
+        var sw = new Stopwatch();
+        sw.Start();
+        action();
+        sw.Stop();
+        Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
+        var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
+        var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
+        Console.WriteLine($"{actionName} Time => {answer}");
     }
-    
-    public static T WatchTime<T>(string actionName,Func<T> action)
+
+    public static T WatchTime<T>(string actionName, Func<T> action)
     {
         var sw = new Stopwatch();
         sw.Start();
@@ -42,7 +42,7 @@ public class CommonHelper
         Console.WriteLine($"{actionName} Time => {answer}");
     }
 
-    public static async Task<T> WatchTimeAsync<T>(string actionName,Func<Task<T>> action)
+    public static async Task<T> WatchTimeAsync<T>(string actionName, Func<Task<T>> action)
     {
         var sw = new Stopwatch();
         sw.Start();
@@ -58,6 +58,8 @@ public class CommonHelper
 
     public static ParallelOptions GetParallelOptions(CancellationToken cancellationToken = default)
     {
-        return new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 2.0)), CancellationToken = cancellationToken};
+        // return new ParallelOptions { MaxDegreeOfParallelism = 1, CancellationToken = cancellationToken };
+
+        return new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 2.0)), CancellationToken = cancellationToken };
     }
 }

@@ -27,7 +27,7 @@ public class ArticleMigration
                                        $",\"{nameof(Article.CommentDisabled)}\",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
                                        $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
                                        $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
-                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\"" +
+                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
     private const string ARTICLE_ATTACHMENT_PREFIX = $"COPY \"{nameof(ArticleAttachment)}\" " +
@@ -75,6 +75,9 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder <> -4";
 
+    //WHERE thread.posttableid = @postTableId AND thread.tid = 14567820";
+
+
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
 
     //WHERE thread.posttableid = @postTableId AND thread.tid = 8128927";
@@ -87,7 +90,7 @@ public class ArticleMigration
 
         var folderName = RetryHelper.GetArticleRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
-        var periods = PeriodHelper.GetPeriods(folderName);
+        var periods = PeriodHelper.GetPeriods();
 
         //刪掉之前轉過的檔案
         if (folderName != null)
@@ -159,8 +162,8 @@ public class ArticleMigration
         // 排除因為lastPoster重複的文章
         posts = posts.DistinctBy(x => x.Tid).ToList();
 
-        posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) ||     //髒資料放過他
-                             !BoardDic.ContainsKey(x.Fid) ||       //髒資料放過他
+        posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) ||    //髒資料放過他
+                             !BoardDic.ContainsKey(x.Fid) ||      //髒資料放過他
                              !MemberDic.ContainsKey(x.Authorid)); //髒資料放過他
 
         var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
@@ -251,6 +254,7 @@ public class ArticleMigration
                           Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.ArticleId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, articleAttachmentSb),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
+                          HotScore = post.Views / 100 + post.Replies,
                           BoardId = postResult.BoardId,
                           CategoryId = CategoryDic.GetValueOrDefault(post.Typeid),
                           SortingIndex = postResult.CreateMilliseconds,
@@ -297,7 +301,7 @@ public class ArticleMigration
                                   > 0 when article.VideoCount > 0 => ContentType.Complex,
                                   _ => article.VideoCount > 0 ? ContentType.Image : ContentType.Video
                               };
-        
+
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
                            (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
@@ -308,7 +312,7 @@ public class ArticleMigration
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
                            article.PublishDate, article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
-                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature,
+                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
     }
 

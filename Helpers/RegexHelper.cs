@@ -1,11 +1,8 @@
-using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Models;
-using Netcorext.Algorithms;
 
 namespace ForumDataMigration.Helpers;
 
@@ -25,7 +22,8 @@ public static class RegexHelper
 
     private const string ATTACH_PATTERN = @"\[(?:attach|attachimg)](.*?)\[\/(?:attach|attachimg)]";
     private const string ID = "Id";
-    private const string ID_PATTERN = $@"(?<{ID}>[\w]*)(\?|$)";
+    private const string ID_PATTERN = $@"^(?<{ID}>[\w]*).*";
+ 
     private const string SUBJECT_PATTERN = @"\s";
 
     private static readonly Regex BbCodeAttachTagRegex = new(ATTACH_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -89,7 +87,7 @@ public static class RegexHelper
                                                        {
                                                            var value = innerMatch.Groups[ID].Value;
 
-                                                           return string.IsNullOrEmpty(value) ? string.Empty : $"[{EMBED}]https://youtu.be/${value}[/{EMBED}]";
+                                                           return string.IsNullOrEmpty(value) ? string.Empty : $"[{EMBED}]https://youtu.be/{value}[/{EMBED}]";
                                                        });
 
             return replacement;
@@ -114,7 +112,9 @@ public static class RegexHelper
             foreach (var attachment in attachments)
             {
                 attachment.StoragePath = Path.GetDirectoryName(attachment.ObjectName);
-                
+                attachment.CreatorId = memberId;
+                attachment.ModifierId = memberId;
+
                 attachmentSb.AppendAttachmentValue(attachment);
                 articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
                                                     attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);

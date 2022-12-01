@@ -15,7 +15,7 @@ public class Attachment : Entity
     public string? ContentType { get; set; }
     public long? ParentId { get; set; }
     public string? Bucket { get; set; }
-    public bool IsPublish { get; set; }
+    public bool IsPublic { get; set; } = true;
     //for artifact
     public string ObjectName { get; set; } = string.Empty;
     

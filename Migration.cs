@@ -2,6 +2,7 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
+using Lctech.Jkf.Forum.Core.Domain;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Npgsql;
 
@@ -35,10 +36,15 @@ public class Migration
         const string articlePath = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
         const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+        const string articleAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleAttachment)}";
+        const string articleAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
         await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+        {
             await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
-
+            await cn.ExecuteCommandByPathAsync($"{articleAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        }
+        
         await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
             await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
 
@@ -62,17 +68,24 @@ public class Migration
                                 foreach (var period in periods)
                                     FileHelper.ExecuteAllSqlFiles($"{articlePath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
                             });
+        
+        var articleAttachmentTask = new Task(() =>
+                                             {
+                                                 foreach (var period in periods)
+                                                     FileHelper.ExecuteAllSqlFiles($"{articleAttachmentPath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
+                                             });
 
-        var coverTask = new Task(() =>
+        var attachmentTask = new Task(() =>
                                  {
                                      foreach (var period in periods)
                                          FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
                                  });
-
+        
         task.Start();
-        coverTask.Start();
+        articleAttachmentTask.Start();
+        attachmentTask.Start();
 
-        await Task.WhenAll(task, coverTask);
+        await Task.WhenAll(task, articleAttachmentTask ,attachmentTask);
 
         Console.WriteLine($"{nameof(ExecuteArticleAsync)} Done!");
     }
