@@ -13,12 +13,13 @@ public static class RegexHelper
     private static string Pattern { get; }
     private static Regex MessageRegex { get; }
 
-    private static readonly IEnumerable<Regex> RegexTrims = new[]
-                                                            {
-                                                                new Regex(@"<[^>]+>|\[[^\]]+\]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
-                                                                new Regex(@"[（）【】「」『』《》：；！？，。｜、～·﹍——]+", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
-                                                                new Regex(@"[\s\x20-\x2f\x3a-\x40\x5b-\x60]+", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
-                                                            };
+    // for es xml
+    // private static readonly IEnumerable<Regex> RegexTrims = new[]
+    //                                                         {
+    //                                                             new Regex(@"<[^>]+>|\[[^\]]+\]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
+    //                                                             new Regex(@"[（）【】「」『』《》：；！？，。｜、～·﹍——]+", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
+    //                                                             new Regex(@"[\s\x20-\x2f\x3a-\x40\x5b-\x60]+", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase),
+    //                                                         };
 
     private const string ATTACH_PATTERN = @"\[(?:attach|attachimg)](.*?)\[\/(?:attach|attachimg)]";
     private const string ID = "Id";
@@ -50,7 +51,9 @@ public static class RegexHelper
 
             if (!isInt) return match.Value;
 
-            var attachment = attachmentDic.GetValueOrDefault((tid % 10, aid));
+            (int, int) tupleKey = (tid % 10, aid);
+            
+            var attachment = attachmentDic.GetValueOrDefault(tupleKey);
 
             if (attachment == null)
                 return string.Empty;
@@ -62,7 +65,9 @@ public static class RegexHelper
 
             articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
                                                 attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
-
+            //避免產生重複的attachmentId
+            attachmentDic.Remove(tupleKey);
+            
             return attachment.BbCode;
         }
 
@@ -119,6 +124,9 @@ public static class RegexHelper
                 articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
                                                     attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
             }
+            
+            //避免產生重複的attachmentId
+            ArtifactAttachmentTuple.pathIdDic.Remove(objectName);
 
             var attr = match.Groups["attr"].Value;
 

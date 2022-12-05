@@ -12,3 +12,6 @@ CREATE INDEX "IX_Comment_ParentId" ON "Comment" ("ParentId");
 CREATE INDEX "IX_Comment_RootId" ON "Comment" ("RootId");
 CREATE INDEX "IX_CommentExtendData_Key" ON "CommentExtendData" ("Key");
 CREATE INDEX "IX_CommentExtendData_Value" ON "CommentExtendData" ("Value");
+
+ALTER TABLE "Comment" SET LOGGED;
+ALTER TABLE "CommentExtendData" SET LOGGED;

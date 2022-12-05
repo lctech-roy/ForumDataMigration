@@ -22,7 +22,7 @@ public static class RelationHelper
 
     public static Dictionary<int, long> GetBoardDic()
     {
-        const string queryBoardSql = $"SELECT \"Id\",\"Fid\" from \"BoardRelation\"";
+        const string queryBoardSql = $"SELECT b.\"Id\", br.\"Fid\" FROM \"Board\" b LEFT JOIN \"BoardRelation\" br ON b.\"Id\" = br.\"Id\"";
 
         var boardDic = new Dictionary<int, long>();
 
@@ -50,7 +50,7 @@ public static class RelationHelper
 
     public static Dictionary<int, long?> GetCategoryDic()
     {
-        const string queryCategorySql = $"SELECT \"Id\",\"TypeId\" FROM \"ArticleCategoryRelation\"";
+        const string queryCategorySql = $"SELECT a.\"Id\",ar.\"TypeId\" FROM \"ArticleCategory\" a LEFT JOIN \"ArticleCategoryRelation\" ar ON a.\"Id\" = ar.\"Id\"";
 
         var categoryDic = new Dictionary<int, long?>();
 

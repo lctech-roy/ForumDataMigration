@@ -25,9 +25,10 @@ public static class StringExtension
         return imageUrls;
     }
 
-    public static string ToCopyText(this string str)
+    public static string ToCopyText(this string? str)
     {
-        if (string.IsNullOrEmpty(str)) return str;
+        if (string.IsNullOrEmpty(str)) 
+            return str.ToCopyValue();
 
         var sb = new StringBuilder(str);
 

@@ -4,6 +4,7 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Models;
 using Netcorext.Algorithms;
 using Npgsql;
+using Polly;
 
 namespace ForumDataMigration.Helpers;
 
@@ -93,7 +94,22 @@ public static class AttachmentHelper
         var attacheDic = (await cn.QueryAsync<Attachment>(command))
            .ToDictionary(x => (x.TableId, x.Aid), x =>
                                                   {
-                                                      var newId = snowflake.Generate();
+                                                      var newId = Policy
+
+                                                                // 1. 處理甚麼樣的例外
+                                                               .Handle<ArgumentOutOfRangeException>()
+
+                                                                // 2. 重試策略，包含重試次數
+                                                               .Retry(5, (ex, retryCount) =>
+                                                                         {
+                                                                             Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                             Thread.Sleep(3000);
+                                                                         })
+
+                                                                // 3. 執行內容
+                                                               .Execute(snowflake.Generate);
+                                                      
+                                                      // var newId = snowflake.Generate();
                                                       var tag = x.IsImage ? "img" : "file";
 
                                                       x.Id = newId;
@@ -114,7 +130,7 @@ public static class AttachmentHelper
     {
         attachmentSb.AppendValueLine(attachment.Id, attachment.Size.ToCopyValue(), attachment.ExternalLink, attachment.Bucket.ToCopyValue(),
                                      attachment.DownloadCount, attachment.ProcessingState, attachment.DeleteStatus, attachment.IsPublic,
-                                     attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyValue(), attachment.ContentType.ToCopyValue(), attachment.ParentId.ToCopyValue(),
+                                     attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyText(), attachment.ContentType.ToCopyValue(), attachment.ParentId.ToCopyValue(),
                                      attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
     }
 

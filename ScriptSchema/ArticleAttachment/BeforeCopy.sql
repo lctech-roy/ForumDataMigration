@@ -4,3 +4,5 @@ ALTER TABLE "ArticleAttachment"
 DROP INDEX IF EXISTS "IX_ArticleAttachment_AttachmentId";
 
 TRUNCATE "ArticleAttachment";
+
+ALTER TABLE "ArticleAttachment" SET UNLOGGED;

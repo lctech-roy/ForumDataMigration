@@ -87,6 +87,9 @@ public class Migration
 
         await Task.WhenAll(task, articleAttachmentTask ,attachmentTask);
 
+        //await Task.WhenAll(articleAttachmentTask ,attachmentTask);
+
+        
         Console.WriteLine($"{nameof(ExecuteArticleAsync)} Done!");
     }
 
@@ -188,9 +191,20 @@ public class Migration
         const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
+        const string commentAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(CommentAttachment)}";
+        const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
+        const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
+        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
 
+        await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
+            await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        
         await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+        {
+            await cn.ExecuteCommandByPathAsync($"{commentAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+
             await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        }
 
         var folderName = RetryHelper.GetCommentRetryDateStr();
         var periods = PeriodHelper.GetPeriods(folderName);
@@ -218,13 +232,28 @@ public class Migration
                                                  foreach (var period in periods)
                                                      FileHelper.ExecuteAllSqlFiles($"{commentExtendDataPath}/{period.FolderName}", Setting.NEW_COMMENT_CONNECTION);
                                              });
+        
+        var commentAttachmentTask = new Task(() =>
+                                             {
+                                                 foreach (var period in periods)
+                                                     FileHelper.ExecuteAllSqlFiles($"{commentAttachmentPath}/{period.FolderName}", Setting.NEW_COMMENT_CONNECTION);
+                                             });
+        
+        var attachmentTask = new Task(() =>
+                                             {
+                                                 foreach (var period in periods)
+                                                     FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                             });
 
         commentTask.Start();
         commentExtendDataTask.Start();
-        await Task.WhenAll(commentTask, commentExtendDataTask);
+        commentAttachmentTask.Start();
+        attachmentTask.Start();
+        
+        await Task.WhenAll(commentTask, commentExtendDataTask,commentAttachmentTask,attachmentTask);
 
-        await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
-            await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+        //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
 

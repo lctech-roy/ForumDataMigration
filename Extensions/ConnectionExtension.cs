@@ -42,8 +42,8 @@ public static class ConnectionExtension
             Console.WriteLine(path);
             Console.WriteLine(e);
 
-            File.AppendAllText($"{Setting.INSERT_DATA_PATH}/Error/{nameof(ExternalAttachmentUrl)}", path);
-            File.AppendAllText($"{Setting.INSERT_DATA_PATH}/Error/{nameof(ExternalAttachmentUrl)}", e.ToString());
+            File.AppendAllText($"{Setting.INSERT_DATA_PATH}/Error/{DateTime.Now:yyyyMMdd}", path);
+            File.AppendAllText($"{Setting.INSERT_DATA_PATH}/Error/{DateTime.Now:yyyyMMdd}", e.ToString());
 
             //throw;
         }

@@ -12,9 +12,12 @@ end$$;
 ALTER TABLE "ArticleReward"
     DROP CONSTRAINT IF EXISTS "PK_ArticleReward" CASCADE;
 
-DROP INDEX IF EXISTS "IX_Article_PublishDate";
-DROP INDEX IF EXISTS "IX_Article_BoardId";
-DROP INDEX IF EXISTS "IX_Article_CategoryId";
+-- DROP INDEX IF EXISTS "IX_Article_PublishDate";
+-- DROP INDEX IF EXISTS "IX_Article_BoardId";
+-- DROP INDEX IF EXISTS "IX_Article_CategoryId";
+
+ALTER TABLE "Article" SET UNLOGGED;
+
 
 -- TRUNCATE "Article";
 

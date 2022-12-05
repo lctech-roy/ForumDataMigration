@@ -90,7 +90,7 @@ public class ArticleMigration
 
         var folderName = RetryHelper.GetArticleRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
-        var periods = PeriodHelper.GetPeriods();
+        var periods = PeriodHelper.GetPeriods(folderName);
 
         //刪掉之前轉過的檔案
         if (folderName != null)
@@ -104,36 +104,35 @@ public class ArticleMigration
             {
                 await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
                                                                                                               {
-                                                                                                                  var posts = Array.Empty<ArticlePost>();
-
                                                                                                                   var sql = string.Concat(string.Format(QUERY_ARTICLE_SQL, postTableId == 0 ? "" : $"_{postTableId}"));
 
+                                                                                                                  await Policy
 
-                                                                                                                  await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
-                                                                                                                  {
-                                                                                                                      var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
+                                                                                                                        // 1. 處理甚麼樣的例外
+                                                                                                                       .Handle<EndOfStreamException>()
+                                                                                                                       .Or<ArgumentOutOfRangeException>()
 
-                                                                                                                      await Policy
+                                                                                                                        // 2. 重試策略，包含重試次數
+                                                                                                                       .RetryAsync(5, (ex, retryCount) =>
+                                                                                                                                      {
+                                                                                                                                          Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                                                                                          Thread.Sleep(3000);
+                                                                                                                                      })
 
-                                                                                                                            // 1. 處理甚麼樣的例外
-                                                                                                                           .Handle<EndOfStreamException>()
-                                                                                                                           .Or<ArgumentOutOfRangeException>()
+                                                                                                                        // 3. 執行內容
+                                                                                                                       .ExecuteAsync(async () =>
+                                                                                                                                     {
+                                                                                                                                         await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-                                                                                                                            // 2. 重試策略，包含重試次數
-                                                                                                                           .RetryAsync(5, (ex, retryCount) =>
-                                                                                                                                          {
-                                                                                                                                              Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
-                                                                                                                                              Thread.Sleep(3000);
-                                                                                                                                          })
+                                                                                                                                         var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
+                                                                                                                                         
+                                                                                                                                         var posts = (await cn.QueryAsync<ArticlePost>(command)).ToList();
 
-                                                                                                                            // 3. 執行內容
-                                                                                                                           .ExecuteAsync(async () => { posts = (await cn.QueryAsync<ArticlePost>(command)).ToArray(); });
-                                                                                                                  }
+                                                                                                                                         if (!posts.Any())
+                                                                                                                                             return;
 
-                                                                                                                  if (!posts.Any())
-                                                                                                                      return;
-
-                                                                                                                  await ExecuteAsync(posts.ToList(), postTableId, period, cancellationToken);
+                                                                                                                                         await ExecuteAsync(posts, postTableId, period, cancellationToken);
+                                                                                                                                     });
                                                                                                               });
             }
             catch (Exception e)
