@@ -15,7 +15,6 @@ public class CommentMigration
 {
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
     private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
-    private static readonly Dictionary<long, (long, string)> MemberDIc = RelationHelper.GetSimpleMemberDic();
 
     private const string EXTEND_DATA_RECOMMEND_COMMENT = "RecommendComment";
     private const string EXTEND_DATA_BOARD_ID = "BoardId";
@@ -150,7 +149,6 @@ public class CommentMigration
 
             var id = ArticleDic.GetValueOrDefault(post.Tid);
             var boardId = BoardDic.GetValueOrDefault(post.Fid);
-            var (memberId, memberName) = MemberDIc.GetValueOrDefault(post.Authorid);
 
             if (post.Tid != previousTid)
             {
@@ -162,7 +160,7 @@ public class CommentMigration
                 //第一筆如果不是first或sequence!=0不處理
                 if (post.First && post.Sequence == 0)
                 {
-                    (isDirty, reason) = IsDirty(id, boardId, memberId);
+                    (isDirty, reason) = IsDirty(id, boardId);
                 }
                 else
                 {
@@ -180,9 +178,9 @@ public class CommentMigration
                         var nextId = ArticleDic.GetValueOrDefault(nextPost.Tid);
                         var nextBoardId = BoardDic.GetValueOrDefault(nextPost.Fid);
 
-                        var (nextMemberId, _) = MemberDIc.GetValueOrDefault(nextPost.Authorid);
+                        var nextMemberId = nextPost.Authorid;
 
-                        (isDirty, reason) = IsDirty(nextId, nextBoardId, nextMemberId);
+                        (isDirty, reason) = IsDirty(nextId, nextBoardId);
 
                         break;
                     }
@@ -201,8 +199,7 @@ public class CommentMigration
                              {
                                  ArticleId = id,
                                  BoardId = boardId,
-                                 MemberId = memberId,
-                                 MemberName = memberName,
+                                 MemberId = post.Authorid,
                                  CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                  CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
                                  Post = post,
@@ -301,7 +298,7 @@ public class CommentMigration
         {
             var commentReplyId = _snowflake.Generate();
             var replyDate = DateTimeOffset.FromUnixTimeSeconds(postComment.Dateline);
-            var (memberId, _) = MemberDIc.GetValueOrDefault(postComment.Authorid);
+            var memberId = postComment.Authorid;
 
             postResult.ReplyMemberUid = postComment.Authorid;
             postResult.ReplyMemberName = postComment.Author ?? string.Empty;
@@ -365,16 +362,13 @@ public class CommentMigration
         }
     }
 
-    private static (bool isDirty, string reason) IsDirty(long id, long boarId, long memberId)
+    private static (bool isDirty, string reason) IsDirty(long id, long boarId)
     {
         if (id == 0)
             return (true, "Article not exists");
 
         if (boarId == 0)
             return (true, "Board not exists");
-
-        if (memberId == 0)
-            return (true, "Member not exists");
 
         return (false, string.Empty);
     }

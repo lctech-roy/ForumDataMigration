@@ -3,6 +3,7 @@
 using System.Globalization;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
+using ForumDataMigration.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Netcorext.Algorithms;
 
@@ -45,6 +46,8 @@ var token = new CancellationTokenSource().Token;
 Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
+//var result = AttachmentHelper.GetArtifactAttachmentDic();
+
 // //1.文章Id關聯表
 // relationMigration.Migration();
 // migration.ExecuteRelation();
@@ -55,8 +58,8 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // 3.文章,留言
 // await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
-// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
 //
 // //4.文章評分

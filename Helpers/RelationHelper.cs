@@ -123,17 +123,6 @@ public static class RelationHelper
         return idDic;
     }
 
-    public static Dictionary<long, (long, string)> GetSimpleMemberDic()
-    {
-        const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\"";
-        
-        using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
-
-        var simpleMemberDic = conn.Query<(long id, long uid, string displayName)>(queryMemberSql).ToDictionary(t => t.uid, t => (t.id, t.displayName));
-
-        return simpleMemberDic;
-    }
-    
     public static async Task<Dictionary<long, (long, string)>> GetSimpleMemberDicAsync(int[] uids, CancellationToken cancellationToken = default)
     {
         const string queryMemberSql = $"SELECT \"Id\",\"Uid\",\"DisplayName\" FROM \"Member\" WHERE \"Uid\" = ANY(@uids)";

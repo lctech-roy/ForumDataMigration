@@ -45,7 +45,6 @@ public class ArticleMigration
 
     private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
     private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
-    private static readonly Dictionary<long, (long, string)> MemberDic = RelationHelper.GetSimpleMemberDic();
 
     private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
     private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
@@ -162,8 +161,7 @@ public class ArticleMigration
         posts = posts.DistinctBy(x => x.Tid).ToList();
 
         posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) ||    //髒資料放過他
-                             !BoardDic.ContainsKey(x.Fid) ||      //髒資料放過他
-                             !MemberDic.ContainsKey(x.Authorid)); //髒資料放過他
+                             !BoardDic.ContainsKey(x.Fid)); //髒資料放過他
 
         var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
 
@@ -171,14 +169,12 @@ public class ArticleMigration
         {
             var id = ArticleDic[post.Tid];
             var boardId = BoardDic[post.Fid];
-            var (memberId, memberName) = MemberDic[post.Authorid];
 
             var postResult = new ArticlePostResult()
                              {
                                  ArticleId = id,
                                  BoardId = boardId,
-                                 MemberId = memberId,
-                                 MemberName = memberName,
+                                 MemberId = post.Authorid,
                                  CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
                                  CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
                                  Post = post,
