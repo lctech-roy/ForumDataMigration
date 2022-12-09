@@ -3,4 +3,5 @@ ALTER TABLE "ArticleReward"
 
 TRUNCATE "ArticleReward";
 
+ALTER TABLE "ArticleReward" SET UNLOGGED;
 

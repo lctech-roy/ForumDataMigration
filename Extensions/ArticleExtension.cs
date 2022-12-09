@@ -6,7 +6,7 @@ namespace ForumDataMigration.Extensions;
 
 public static class ArticleExtension
 {
-    public static void SetVoteItemHistory(this ICollection<ArticleVoteItem> items, IEnumerable<PollVoter> pollVoters, ISnowflake snowflake,Dictionary<long, long> memberUidDic)
+    public static void SetVoteItemHistory(this ICollection<ArticleVoteItem> items, IEnumerable<PollVoter> pollVoters, ISnowflake snowflake)
     {
         foreach (var pollVoter in pollVoters)
         {
@@ -20,7 +20,7 @@ public static class ArticleExtension
                                            Id = snowflake.Generate(),
                                            ArticleVoteItemId = item.Id,
                                            CreationDate = creationDate,
-                                           CreatorId = memberUidDic.GetValueOrDefault(pollVoter.Uid),
+                                           CreatorId = pollVoter.Uid,
                                            ModificationDate = creationDate,
                                            ModifierId = 0,
                                        });

@@ -14,6 +14,7 @@ var serviceCollection = new ServiceCollection();
 serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint) new Random().Next(1, 31)));
 serviceCollection.AddSingleton<Migration>();
 serviceCollection.AddSingleton<ArticleRelationMigration>();
+
 //serviceCollection.AddSingleton<ArticleCommentMigration>();
 serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<CommentMigration>();
@@ -27,10 +28,12 @@ serviceCollection.AddSingleton<MemberBagMigration>();
 var serviceProvider = serviceCollection.BuildServiceProvider();
 
 Directory.CreateDirectory(Setting.INSERT_DATA_PATH);
+Directory.CreateDirectory(Setting.INSERT_DATA_PATH + "/Error");
 
 // 3. 執行主服務
 var migration = serviceProvider.GetRequiredService<Migration>();
 var relationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
+
 //var articleCommentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
 var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
 var commentMigration = serviceProvider.GetRequiredService<CommentMigration>();
@@ -59,17 +62,17 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
 //
 // //4.文章評分
-//await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
-//await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
-//
+// await CommonHelper.WatchTimeAsync("rating", async () => await ratingMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync("copy rating", async () => await migration.ExecuteRatingAsync(token));
 
+//
 // //5.文章投票
-// voteMigration.Migration();
-// await migration.ExecuteArticleVoteAsync(token);
+// CommonHelper.WatchTime("vote", () => voteMigration.Migration());
+// await CommonHelper.WatchTimeAsync("copy vote", async () => await Migration.ExecuteArticleVoteAsync(token));
 
 // //5.文章懸賞
 // await CommonHelper.WatchTimeAsync("reward", async () => await rewardMigration.MigrationAsync(token));

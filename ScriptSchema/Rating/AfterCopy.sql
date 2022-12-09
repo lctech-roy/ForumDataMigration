@@ -6,4 +6,7 @@ ALTER TABLE "ArticleRatingItem"
     ADD CONSTRAINT "PK_ArticleRatingItem" PRIMARY KEY ("Id", "CreditId"),
     ADD CONSTRAINT "FK_ArticleRatingItem_ArticleRating_Id" FOREIGN KEY ("Id") REFERENCES "ArticleRating" ("Id") ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX "IX_ArticleRating_ArticleId_CreatorId" ON "ArticleRating" ("ArticleId", "CreatorId");
+-- CREATE UNIQUE INDEX "IX_ArticleRating_ArticleId_CreatorId" ON "ArticleRating" ("ArticleId", "CreatorId");
+
+ALTER TABLE "ArticleRating" SET LOGGED;
+ALTER TABLE "ArticleRatingItem" SET LOGGED;

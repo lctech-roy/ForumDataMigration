@@ -42,9 +42,7 @@ public class ArticleRatingMigration
     
     private const string POST0_RATING_PATH = $"{POST_RATING_PATH}/0";
     private const string POST0_RATING_ITEM_PATH = $"{POST_RATING_ITEM_PATH}/0";
-
-    private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
-    private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
+    
     private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
 
     public ArticleRatingMigration(ISnowflake snowflake)
@@ -96,9 +94,7 @@ public class ArticleRatingMigration
 
         if (!idDic.Any())
             return;
-
-        var simpleMemberDic = await RelationHelper.GetSimpleMemberDicAsync(rateLogs.Select(x => x.Uid).Distinct().ToArray(), cancellationToken);
-
+        
         var ratingSb = new StringBuilder();
         var ratingItemSb = new StringBuilder();
 
@@ -108,8 +104,8 @@ public class ArticleRatingMigration
             if (!idDic.ContainsKey(rateLog.Tid))
                 continue;
 
-            var (memberId, memberName) = simpleMemberDic.GetValueOrDefault(rateLog.Uid);
-
+            var memberId = rateLog.Uid;
+            
             if (memberId == default)
                 continue;
 

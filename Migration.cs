@@ -39,14 +39,14 @@ public class Migration
         const string articleAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleAttachment)}";
         const string articleAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
-        await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
-        {
-            await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
-            await cn.ExecuteCommandByPathAsync($"{articleAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
-        }
-        
-        await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
-            await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+        // {
+        //     await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
+        //     await cn.ExecuteCommandByPathAsync($"{articleAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        // }
+        //
+        // await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
+        //     await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
 
         var folderName = RetryHelper.GetArticleRetryDateStr();
         var periods = PeriodHelper.GetPeriods(folderName);
@@ -125,15 +125,15 @@ public class Migration
         }
     }
 
-    public async Task ExecuteArticleVoteAsync(CancellationToken token)
+    public static async Task ExecuteArticleVoteAsync(CancellationToken token)
     {
         const string articleVoteSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleVote)}";
         const string articleVotePath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVote)}";
         const string articleVoteItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItem)}";
         const string articleVoteItemHistoryPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItemHistory)}";
 
-        await using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
-        await connection.ExecuteCommandByPathAsync($"{articleVoteSchemaPath}/{BEFORE_FILE_NAME}", token);
+        // await using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+        // await connection.ExecuteCommandByPathAsync($"{articleVoteSchemaPath}/{BEFORE_FILE_NAME}", token);
 
         var periods = PeriodHelper.GetPeriods();
 
@@ -154,7 +154,7 @@ public class Migration
             cn.ExecuteAllTexts(filePath);
         }
 
-        await connection.ExecuteCommandByPathAsync($"{articleVoteSchemaPath}/{AFTER_FILE_NAME}", token);
+        // await connection.ExecuteCommandByPathAsync($"{articleVoteSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
     public async Task ExecuteRatingAsync(CancellationToken token)

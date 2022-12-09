@@ -2,6 +2,7 @@ using System.Text;
 using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
+using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Lctech.Jkf.Forum.Domain.Entities;
 using MySqlConnector;
@@ -57,107 +58,107 @@ public class ArticleVoteMigration
         #region 轉檔前準備相關資料
 
         var periods = PeriodHelper.GetPeriods();
-        var dic = RelationContainer.ArticleIdDic;
-        var memberUidDic = RelationHelper.GetMemberUidDic();
+        var dic = RelationContainer.GetArticleIdDic();
 
         #endregion
 
         const string articleVotePath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVote)}";
-        Directory.CreateDirectory(articleVotePath);
-
         const string articleVoteItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItem)}";
-        Directory.CreateDirectory(articleVoteItemPath);
-
         const string articleVoteItemHistoryPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItemHistory)}";
+
+        RetryHelper.RemoveFiles(new[] { articleVotePath, articleVoteItemPath, articleVoteItemHistoryPath });
+
+        Directory.CreateDirectory(articleVotePath);
+        Directory.CreateDirectory(articleVoteItemPath);
         Directory.CreateDirectory(articleVoteItemHistoryPath);
 
-        Parallel.ForEach(periods, period =>
-                                  {
-                                      List<Poll> polls;
+        foreach (var period in periods)
+        {
+            List<Poll> polls;
 
-                                      using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
-                                      {
-                                          var dynamicPolls = cn.Query<dynamic>(QUERY_POLL_SQL, new { Start = period.StartSeconds, End = period.EndSeconds }).ToList();
-                                          polls = Slapper.AutoMapper.MapDynamic<Poll>(dynamicPolls, false).ToList();
-                                      }
+            using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+            {
+                var dynamicPolls = cn.Query<dynamic>(QUERY_POLL_SQL, new { Start = period.StartSeconds, End = period.EndSeconds }).ToList();
+                polls = Slapper.AutoMapper.MapDynamic<Poll>(dynamicPolls, false).ToList();
+            }
 
-                                      if (!polls.Any())
-                                          return;
+            if (!polls.Any())
+                continue;
 
-                                      var voteSb = new StringBuilder();
-                                      var voteItemSb = new StringBuilder();
-                                      var voteItemHistorySb = new StringBuilder();
+            var voteSb = new StringBuilder();
+            var voteItemSb = new StringBuilder();
+            var voteItemHistorySb = new StringBuilder();
 
-                                      foreach (var poll in polls.Where(poll => poll.Tid != 0 && dic.ContainsKey(poll.Tid)))
-                                      {
-                                          var id = dic[poll.Tid];
+            foreach (var poll in polls.Where(poll => poll.Tid != 0 && dic.ContainsKey(poll.Tid)))
+            {
+                var id = dic[poll.Tid];
 
-                                          var memberId = memberUidDic.ContainsKey(Convert.ToInt32(poll.Authorid)) ? memberUidDic[Convert.ToInt32(poll.Authorid)] : 0;
+                var memberId = Convert.ToInt32(poll.Authorid);
 
-                                          var createDate = DateTimeOffset.FromUnixTimeSeconds(poll.Dateline);
+                var createDate = DateTimeOffset.FromUnixTimeSeconds(poll.Dateline);
 
-                                          var vote = new ArticleVote
-                                                     {
-                                                         Id = id,
-                                                         LimitNumberOfVotes = poll.Maxchoices,
-                                                         Voters = poll.Voters,
-                                                         PublicResult = poll.Visible,
-                                                         PublicVoter = poll.Overt,
-                                                         Deadline = DateTimeOffset.FromUnixTimeSeconds(poll.Expiration),
-                                                         CreationDate = createDate,
-                                                         CreatorId = memberId,
-                                                         ModificationDate = createDate,
-                                                         ModifierId = memberId,
-                                                         Items = poll.PollOptions.Select(y => new ArticleVoteItem
-                                                                                              {
-                                                                                                  Id = y.Polloptionid,
-                                                                                                  ArticleVoteId = id,
-                                                                                                  Name = y.Polloption ?? string.Empty,
-                                                                                                  Votes = y.Votes,
-                                                                                                  CreationDate = createDate,
-                                                                                                  CreatorId = memberId,
-                                                                                                  ModificationDate = createDate,
-                                                                                              }).ToArray()
-                                                     };
+                var vote = new ArticleVote
+                           {
+                               Id = id,
+                               LimitNumberOfVotes = poll.Maxchoices,
+                               Voters = poll.Voters,
+                               PublicResult = poll.Visible,
+                               PublicVoter = poll.Overt,
+                               Deadline = DateTimeOffset.FromUnixTimeSeconds(poll.Expiration),
+                               CreationDate = createDate,
+                               CreatorId = memberId,
+                               ModificationDate = createDate,
+                               ModifierId = memberId,
+                               Items = poll.PollOptions.Select(y => new ArticleVoteItem
+                                                                    {
+                                                                        Id = y.Polloptionid,
+                                                                        ArticleVoteId = id,
+                                                                        Name = y.Polloption ?? string.Empty,
+                                                                        Votes = y.Votes,
+                                                                        CreationDate = createDate,
+                                                                        CreatorId = memberId,
+                                                                        ModificationDate = createDate,
+                                                                    }).ToArray()
+                           };
 
-                                          vote.Items.SetVoteItemHistory(poll.PollVoters, _snowflake, memberUidDic);
-                                          
-                                          voteSb.AppendValueLine(vote.Id, vote.LimitNumberOfVotes, vote.Voters, vote.PublicResult, vote.PublicVoter, vote.Deadline,
-                                                                  vote.CreationDate, vote.CreatorId, vote.ModificationDate, vote.ModifierId, vote.Version);
+                vote.Items.SetVoteItemHistory(poll.PollVoters, _snowflake);
 
-                                          foreach (var voteItem in vote.Items)
-                                          {
-                                              voteItemSb.AppendValueLine(voteItem.Id,voteItem.ArticleVoteId,voteItem.Name,voteItem.Votes,
-                                                                          voteItem.CreationDate,voteItem.CreatorId,voteItem.ModificationDate,voteItem.ModifierId,voteItem.Version);
+                voteSb.AppendValueLine(vote.Id, vote.LimitNumberOfVotes, vote.Voters, vote.PublicResult, vote.PublicVoter, vote.Deadline,
+                                       vote.CreationDate, vote.CreatorId, vote.ModificationDate, vote.ModifierId, vote.Version);
 
-                                              foreach (var voteItemHistory in voteItem.Histories)
-                                              {
-                                                  voteItemHistorySb.AppendValueLine(voteItemHistory.Id,voteItemHistory.ArticleVoteItemId,
-                                                                                    voteItemHistory.CreationDate,voteItemHistory.CreatorId,voteItemHistory.ModificationDate,voteItemHistory.ModifierId,voteItemHistory.Version);
-                                              }
-                                          }
-                                      }
+                foreach (var voteItem in vote.Items)
+                {
+                    voteItemSb.AppendValueLine(voteItem.Id, voteItem.ArticleVoteId, voteItem.Name.ToCopyText(), voteItem.Votes,
+                                               voteItem.CreationDate, voteItem.CreatorId, voteItem.ModificationDate, voteItem.ModifierId, voteItem.Version);
 
-                                      if (voteSb.Length > 0)
-                                      {
-                                          var fullPath = $"{articleVotePath}/{period.FileName}";
-                                          File.WriteAllText(fullPath, string.Concat(VOTE_SQL, voteSb.ToString()));
-                                          Console.WriteLine(fullPath);
-                                      }
+                    foreach (var voteItemHistory in voteItem.Histories)
+                    {
+                        voteItemHistorySb.AppendValueLine(voteItemHistory.Id, voteItemHistory.ArticleVoteItemId,
+                                                          voteItemHistory.CreationDate, voteItemHistory.CreatorId, voteItemHistory.ModificationDate, voteItemHistory.ModifierId, voteItemHistory.Version);
+                    }
+                }
+            }
 
-                                      if (voteItemSb.Length > 0)
-                                      {
-                                          var fullPath = $"{articleVoteItemPath}/{period.FileName}";
-                                          File.WriteAllText(fullPath, string.Concat(VOTE_ITEM_SQL, voteItemSb.ToString()));
-                                          Console.WriteLine(fullPath);
-                                      }
+            if (voteSb.Length > 0)
+            {
+                var fullPath = $"{articleVotePath}/{period.FileName}";
+                File.WriteAllText(fullPath, string.Concat(VOTE_SQL, voteSb.ToString()));
+                Console.WriteLine(fullPath);
+            }
 
-                                      if (voteItemHistorySb.Length > 0)
-                                      {
-                                          var fullPath = $"{articleVoteItemHistoryPath}/{period.FileName}";
-                                          File.WriteAllText(fullPath, string.Concat(VOTE_ITEM_HISTORY_SQL, voteSb.ToString()));
-                                          Console.WriteLine(fullPath);
-                                      }
-                                  });
+            if (voteItemSb.Length > 0)
+            {
+                var fullPath = $"{articleVoteItemPath}/{period.FileName}";
+                File.WriteAllText(fullPath, string.Concat(VOTE_ITEM_SQL, voteItemSb.ToString()));
+                Console.WriteLine(fullPath);
+            }
+
+            if (voteItemHistorySb.Length > 0)
+            {
+                var fullPath = $"{articleVoteItemHistoryPath}/{period.FileName}";
+                File.WriteAllText(fullPath, string.Concat(VOTE_ITEM_HISTORY_SQL, voteItemHistorySb.ToString()));
+                Console.WriteLine(fullPath);
+            }
+        }
     }
 }

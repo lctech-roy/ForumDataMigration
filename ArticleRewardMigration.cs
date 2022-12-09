@@ -19,7 +19,7 @@ public class ArticleRewardMigration
                                               $"(\"{nameof(ArticleReward.Id)}\",\"{nameof(ArticleReward.Point)}\",\"{nameof(ArticleReward.ExpirationDate)}\"" +
                                               $",\"{nameof(ArticleReward.SolveCommentId)}\",\"{nameof(ArticleReward.SolveDate)}\",\"{nameof(ArticleReward.AllowAdminSolveDate)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
-    private const string QUERY_ARTICLE_SQL = @"SELECT ""Id"",""Price"" AS Point,""CreationDate"",""CreatorId"" FROM ""Article"" WHERE ""Type"" = 3";
+    private const string QUERY_ARTICLE_PRICE_SQL = @"SELECT ""Id"",""Price"" AS Point,""CreationDate"",""CreatorId"" FROM ""Article"" WHERE ""Type"" = 3";
 
     private const string QUERY_COMMENT_SQL = @"SELECT c.""Id"" AS ArticleId, MIN(c2.""Id"") AS SolveCommentId FROM ""Comment"" AS c
                                                INNER JOIN ""Comment"" c2 ON c.""RootId"" = c2.""RootId"" AND c2.""CreationDate"" = c.""CreationDate"" + interval '1' second
@@ -36,7 +36,7 @@ public class ArticleRewardMigration
 
         await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
         {
-            var command = new CommandDefinition(QUERY_ARTICLE_SQL, cancellationToken: cancellationToken);
+            var command = new CommandDefinition(QUERY_ARTICLE_PRICE_SQL, cancellationToken: cancellationToken);
 
             rewards = (await cn.QueryAsync<ArticleReward>(command)).ToArray();
         }
