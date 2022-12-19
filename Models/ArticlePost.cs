@@ -24,7 +24,7 @@ public class ArticlePost
     public uint Replies { get; set; }
     public uint Sharetimes { get; set; }
     public int? ThankCount { get; set; }
-    public uint? Ratetimes { get; set; }
+    public uint? Ratetimes { get; set; } = 0;
     public uint? Lastpost { get; set; }
     public int? Lastposter { get; set; }
     public uint? PostTime { get; set; }

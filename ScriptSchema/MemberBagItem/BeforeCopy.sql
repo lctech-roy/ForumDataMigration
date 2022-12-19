@@ -1,3 +1,10 @@
+-- Remove Duplicate
+-- DELETE FROM "MedalRelation"
+-- WHERE ctid IN (SELECT MIN(ctid) as ctid
+--                FROM "MedalRelation"
+--                GROUP BY "OriMedalId"
+--                HAVING COUNT(*) > 1);
+
 ALTER TABLE "MemberBag"
     DROP CONSTRAINT IF EXISTS "PK_MemberBag" CASCADE;
 

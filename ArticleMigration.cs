@@ -63,7 +63,7 @@ public class ArticleMigration
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
                                               ,thread.lastpost,postReply.authorid AS lastposter
-                                              ,thread.cover,thread.thumb,post.tags,post.ratetimes,thread.sharetimes
+                                              ,thread.cover,thread.thumb,post.tags,thread.sharetimes
                                               ,thread.highlight,thread.digest,thread.readperm,thread.closed
                                               ,thread.status,thankCount.count AS thankCount,post.useip,post.usesig
                                               ,thread.price,thread.authorid
@@ -294,7 +294,7 @@ public class ArticleMigration
                               {
                                   0 when article.VideoCount == 0 => ContentType.PaintText,
                                   > 0 when article.VideoCount > 0 => ContentType.Complex,
-                                  _ => article.VideoCount > 0 ? ContentType.Image : ContentType.Video
+                                  _ => article.VideoCount > 0 ? ContentType.Video : ContentType.Image 
                               };
 
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
@@ -318,7 +318,11 @@ public class ArticleMigration
         var isCover = post.Cover is not ("" or "0");
         var externalLink = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb);
 
-        if (string.IsNullOrEmpty(externalLink)) return;
+        if (string.IsNullOrEmpty(externalLink))
+        {
+            post.Cover = string.Empty;
+            return;
+        }
 
         var attachment = new Attachment
                          {

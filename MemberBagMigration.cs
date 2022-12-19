@@ -22,8 +22,7 @@ public class MemberBagMigration
     public void Migration()
     {
         #region 轉檔前準備相關資料
-
-        var memberUidDic = RelationHelper.GetMemberUidDic();
+        
         var gameItemRelationDic = RelationHelper.GetMedalRelationDic();
 
         #endregion
@@ -42,8 +41,6 @@ public class MemberBagMigration
 
         foreach (var bagGameItem in memberBagItems)
         {
-            bagGameItem.Id = memberUidDic.GetValueOrDefault(bagGameItem.Id);
-
             if (bagGameItem.Id == 0) continue;
 
             bagGameItem.MedalId = gameItemRelationDic.GetValueOrDefault(bagGameItem.MedalId);
