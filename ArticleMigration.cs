@@ -235,7 +235,7 @@ public class ArticleMigration
                                      1 => ArticleType.Vote,
                                      2 => ArticleType.Diversion,
                                      3 => ArticleType.Reward,
-                                     _ => ArticleType.Article
+                                     _ => post.Fid is 228 or 209 ? ArticleType.Serialized : ArticleType.Article 
                                  },
                           PinType = post.Displayorder switch
                                     {

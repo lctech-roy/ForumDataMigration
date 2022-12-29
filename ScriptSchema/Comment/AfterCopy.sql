@@ -13,5 +13,16 @@ CREATE INDEX "IX_Comment_RootId" ON "Comment" ("RootId");
 CREATE INDEX "IX_CommentExtendData_Key" ON "CommentExtendData" ("Key");
 CREATE INDEX "IX_CommentExtendData_Value" ON "CommentExtendData" ("Value");
 
+-- 更新連載資料
+-- UPDATE "Comment" SET
+--                      "Content" = regexp_replace("Content",'\s*',''),
+--                      "Title" = SUBSTRING(
+--                              COALESCE(
+--                                      SUBSTRING("Content" FROM '([^\]]*)+?(?=\[\/)'),
+--                                      SUBSTRING("Content" FROM '([^\s][[:punct:]\w \t]*)'))
+--                              FOR 40)
+-- WHERE "ParentId" IN (
+--     SELECT "Id" FROM "CommentExtendData" WHERE "Key" = 'BoardId' AND "Value" IN  ('243402579247336','243402579247386'))
+
 ALTER TABLE "Comment" SET LOGGED;
 ALTER TABLE "CommentExtendData" SET LOGGED;

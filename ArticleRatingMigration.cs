@@ -22,7 +22,7 @@ public class ArticleRatingMigration
                                             MAX(rate.reason) AS reason,
                                             MIN(rate.dateline) AS dateline FROM pre_forum_thread AS thread
                                             INNER JOIN pre_forum_post{0} AS post ON thread.tid = post.tid
-                                            INNER JOIN pre_forum_ratelog AS rate ON rate.tid = post.tid AND rate.pid = post.pid
+                                            INNER JOIN pre_forum_ratelog AS rate ON rate.score > 0 AND rate.tid = post.tid AND rate.pid = post.pid
                                             WHERE thread.posttableid = @postTableId AND post.`first` = TRUE AND post.`position` = 1";
 
     private const string QUERY_RATE_SQL_DATE_CONDITION = " AND post.dateline >= @Start AND post.dateline < @End";
