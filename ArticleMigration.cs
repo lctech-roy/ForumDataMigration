@@ -184,7 +184,7 @@ public class ArticleMigration
             try
             {
                 SetArticle(postResult, sb, attachmentSb, articleAttachmentSb);
-                SetCoverAttachment(postResult, attachmentSb);
+
             }
             catch (Exception e)
             {
@@ -256,7 +256,7 @@ public class ArticleMigration
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = post.Lastposter,
                           PinPriority = post.Displayorder,
-                          Cover = postResult.ArticleId,
+                          Cover = SetCoverAttachment(postResult, attachmentSb),
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
@@ -311,7 +311,7 @@ public class ArticleMigration
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
     }
 
-    private static void SetCoverAttachment(ArticlePostResult postResult, StringBuilder attachmentSb)
+    private static long? SetCoverAttachment(ArticlePostResult postResult, StringBuilder attachmentSb)
     {
         var post = postResult.Post;
 
@@ -321,7 +321,7 @@ public class ArticleMigration
         if (string.IsNullOrEmpty(externalLink))
         {
             post.Cover = string.Empty;
-            return;
+            return null;
         }
 
         var attachment = new Attachment
@@ -335,6 +335,8 @@ public class ArticleMigration
                          };
 
         attachmentSb.AppendAttachmentValue(attachment);
+
+        return attachment.Id;
     }
 
     private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
