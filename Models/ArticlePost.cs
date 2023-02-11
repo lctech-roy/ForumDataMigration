@@ -3,7 +3,6 @@ namespace ForumDataMigration.Models;
 public class ArticlePost
 {
     //[Slapper.AutoMapper.Id]
-    public uint Pid { get; set; }
     public int Tid { get; set; }
     public int Fid { get; set; }
     public ushort Typeid { get; set; }
@@ -20,7 +19,6 @@ public class ArticlePost
     public short Highlight { get; set; }
     public bool Digest { get; set; }
     public uint Views { get; set; }
-    // public uint Position { get; set; }
     public uint Replies { get; set; }
     public uint Sharetimes { get; set; }
     public int? ThankCount { get; set; }
@@ -33,10 +31,6 @@ public class ArticlePost
     public string Useip { get; set; } = null!;
     public short Price { get; set; }
     public bool Usesig { get; set; }
-    // public int Likescore { get; set; }
-    // public bool Invisible { get; set; }
-    // public uint? StickDateline { get; set; }
-    public ThreadWarning? Warning { get; set; }
-    
-    public bool Keep { get; set; }
+    public uint? Sexpiry { get; set; }
+    public uint? Hexpiry { get; set; }
 }

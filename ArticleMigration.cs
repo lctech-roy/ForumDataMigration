@@ -59,27 +59,37 @@ public class ArticleMigration
     private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
     private const string QUERY_ARTICLE_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                               SELECT thread.tid,thread.displayorder,thread.special
+                                               SELECT thread.tid,thread.special
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
                                               ,thread.lastpost,postReply.authorid AS lastposter
                                               ,thread.cover,thread.thumb,post.tags,thread.sharetimes
-                                              ,thread.highlight,thread.digest,thread.readperm,thread.closed
+                                              ,thread.digest,thread.readperm,thread.closed
                                               ,thread.status,thankCount.count AS thankCount,post.useip,post.usesig
-                                              ,thread.price,thread.authorid
+                                              ,thread.price,thread.authorid,
+                                              CASE WHEN top.issticky = 1 THEN 4
+	                                               WHEN top.issticky = 2 THEN 5
+	                                               WHEN thread.fid != 1128 THEN thread.displayorder
+	                                               ELSE 0
+                                              END AS displayorder,
+                                              CASE WHEN top.color IS NOT NULL THEN top.color
+	                                               WHEN thread.fid != 1128 THEN thread.highlight
+                                                   ELSE 0
+                                              END AS highlight,
+                                              top.hexpiry,top.sexpiry
                                               FROM pre_forum_thread AS thread
-                                              LEFT JOIN pre_forum_post{0} post ON post.first = TRUE AND post.position = 1 AND post.tid = thread.tid
+                                              LEFT JOIN (SELECT * FROM pre_forum_post{0} WHERE `first` AND position = 1) post ON post.tid = thread.tid
                                               LEFT JOIN pre_forum_post{0} postReply ON thread.replies > 0 AND postReply.tid = thread.tid AND postReply.dateline = thread.lastpost AND postReply.author = thread.lastposter
                                               LEFT JOIN pre_post_delay AS postDelay ON postDelay.tid = thread.tid
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
-                                              WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder <> -4";
+                                              LEFT JOIN pre_forum_topthreads top ON top.tid = thread.tid
+                                              WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
 
     //WHERE thread.posttableid = @postTableId AND thread.tid = 14567820";
 
 
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
-
-    //WHERE thread.posttableid = @postTableId AND thread.tid = 8128927";
+    
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.CreateArticleRetryTable();
@@ -124,7 +134,7 @@ public class ArticleMigration
                                                                                                                                          await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
                                                                                                                                          var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
-                                                                                                                                         
+
                                                                                                                                          var posts = (await cn.QueryAsync<ArticlePost>(command)).ToList();
 
                                                                                                                                          if (!posts.Any())
@@ -160,8 +170,8 @@ public class ArticleMigration
         // 排除因為lastPoster重複的文章
         posts = posts.DistinctBy(x => x.Tid).ToList();
 
-        posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) ||    //髒資料放過他
-                             !BoardDic.ContainsKey(x.Fid)); //髒資料放過他
+        posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) || //髒資料放過他
+                             !BoardDic.ContainsKey(x.Fid));    //髒資料放過他
 
         var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
 
@@ -184,11 +194,10 @@ public class ArticleMigration
             try
             {
                 SetArticle(postResult, sb, attachmentSb, articleAttachmentSb);
-
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Tid:{post.Tid} Pid:{post.Pid}");
+                Console.WriteLine($"Tid:{post.Tid}");
                 Console.WriteLine(e);
 
                 throw;
@@ -228,6 +237,8 @@ public class ArticleMigration
                                              1 => DeleteStatus.None,
                                              2 => DeleteStatus.None,
                                              3 => DeleteStatus.None,
+                                             4 => DeleteStatus.None,
+                                             5 => DeleteStatus.None,
                                              _ => throw new ArgumentOutOfRangeException($"Displayorder", "Not exist")
                                          },
                           Type = post.Special switch
@@ -235,13 +246,15 @@ public class ArticleMigration
                                      1 => ArticleType.Vote,
                                      2 => ArticleType.Diversion,
                                      3 => ArticleType.Reward,
-                                     _ => post.Fid is 228 or 209 ? ArticleType.Serialized : ArticleType.Article 
+                                     _ => post.Fid is 228 or 209 ? ArticleType.Serialized : ArticleType.Article
                                  },
                           PinType = post.Displayorder switch
                                     {
                                         1 => PinType.Board,
                                         2 => PinType.Area,
                                         3 => PinType.Global,
+                                        4 => PinType.Advertise,
+                                        5 => PinType.Advertise5X,
                                         _ => PinType.None
                                     },
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
@@ -274,9 +287,9 @@ public class ArticleMigration
                           AuditFloor = read?.ReadFloor,
                           PublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : postResult.CreateDate,
                           HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? postResult.CreateDate.AddDays(CommonSetting.HideExpirationDay) : null,
-                          PinExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
+                          PinExpirationDate = post.Sexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
+                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset(),
                           RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset(),
-                          HighlightExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset(),
                           CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset(),
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
@@ -294,7 +307,7 @@ public class ArticleMigration
                               {
                                   0 when article.VideoCount == 0 => ContentType.PaintText,
                                   > 0 when article.VideoCount > 0 => ContentType.Complex,
-                                  _ => article.VideoCount > 0 ? ContentType.Video : ContentType.Image 
+                                  _ => article.VideoCount > 0 ? ContentType.Video : ContentType.Image
                               };
 
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
@@ -319,11 +332,8 @@ public class ArticleMigration
         var externalLink = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb);
 
         if (string.IsNullOrEmpty(externalLink))
-        {
-            post.Cover = string.Empty;
             return null;
-        }
-
+        
         var attachment = new Attachment
                          {
                              Id = postResult.ArticleId,
