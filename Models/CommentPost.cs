@@ -4,7 +4,7 @@ public class CommentPost : Comment
 {
     public int Tid { get; set; }
     public int Fid { get; set; }
-    public uint Pid { get; set; }
+    public int Pid { get; set; }
     public int Authorid { get; set; }
     public uint Dateline { get; set; }
     public bool First { get; set; }

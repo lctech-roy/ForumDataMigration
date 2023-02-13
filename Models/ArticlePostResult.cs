@@ -11,5 +11,5 @@ public class ArticlePostResult
     public DateTimeOffset CreateDate { get; set; }
     public long CreateMilliseconds { get; set; }
     public ArticlePost Post { get; set; } = default!;
-    public Dictionary<(int,int), Attachment> AttachmentDic { get; set; } = new();
+    public Dictionary<int, List<Attachment>> AttachmentDic { get; set; } = new();
 }

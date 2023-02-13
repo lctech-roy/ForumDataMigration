@@ -16,7 +16,7 @@ public static class AttachmentHelper
                                             $",\"{nameof(Attachment.StoragePath)}\",\"{nameof(Attachment.Name)}\",\"{nameof(Attachment.ContentType)}\",\"{nameof(Attachment.ParentId)}\"" +
                                             Setting.COPY_ENTITY_SUFFIX;
 
-    public static async Task<Dictionary<(int, int), Attachment>> GetAttachmentDicAsync(IGrouping<int, IEnumerable<int>>[] attachFileGroups, ISnowflake snowflake, CancellationToken cancellationToken)
+    public static async Task<Dictionary<int, List<Attachment>>> GetAttachmentDicAsync(IGrouping<int, int>[] attachFileGroups, ISnowflake snowflake, CancellationToken cancellationToken)
     {
         // var sw = new Stopwatch();
         // sw.Start();
@@ -24,7 +24,7 @@ public static class AttachmentHelper
 
         int[]? GetValueByKey(int key)
         {
-            var attachGroup = attachFileGroups.FirstOrDefault(x => x.Key == key)?.SelectMany(x => x).Distinct()?.ToArray();
+            var attachGroup = attachFileGroups.FirstOrDefault(x => x.Key == key)?.Select(x => x).Distinct()?.ToArray();
 
             if (!attachGroup?.Any() ?? true)
                 return new[] { -1 };
@@ -53,72 +53,76 @@ public static class AttachmentHelper
                     };
 
         if (!hasValue)
-            return new Dictionary<(int, int), Attachment>();
+            return new Dictionary<int, List<Attachment>>();
 
         var command = new CommandDefinition(@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                         SELECT aa.*,a.downloads AS DownloadCount FROM (
-                                                        SELECT 1 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline 
-                                                        FROM pre_forum_attachment_1 WHERE aid IN @Groups1
+                                                        SELECT 1 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline 
+                                                        FROM pre_forum_attachment_1 WHERE pid IN @Groups1
                                                         UNION ALL
-                                                        SELECT 2 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_2 WHERE aid IN @Groups2
+                                                        SELECT 2 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_2 WHERE pid IN @Groups2
                                                         UNION ALL
-                                                        SELECT 3 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_3 WHERE aid IN @Groups3
+                                                        SELECT 3 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_3 WHERE pid IN @Groups3
                                                         UNION ALL
-                                                        SELECT 4 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_4 WHERE aid IN @Groups4
+                                                        SELECT 4 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_4 WHERE pid IN @Groups4
                                                         UNION ALL
-                                                        SELECT 5 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_5 WHERE aid IN @Groups5
+                                                        SELECT 5 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_5 WHERE pid IN @Groups5
                                                         UNION ALL
-                                                        SELECT 6 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_6 WHERE aid IN @Groups6
+                                                        SELECT 6 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_6 WHERE pid IN @Groups6
                                                         UNION ALL
-                                                        SELECT 7 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_7 WHERE aid IN @Groups7
+                                                        SELECT 7 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_7 WHERE pid IN @Groups7
                                                         UNION ALL
-                                                        SELECT 8 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_8 WHERE aid IN @Groups8
+                                                        SELECT 8 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_8 WHERE pid IN @Groups8
                                                         UNION ALL
-                                                        SELECT 9 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_9 WHERE aid IN @Groups9
+                                                        SELECT 9 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_9 WHERE pid IN @Groups9
                                                         UNION ALL
-                                                        SELECT 0 AS tableId,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
-                                                        FROM pre_forum_attachment_0 WHERE aid IN @Groups0
+                                                        SELECT 0 AS tableId,tid,pid,aid,attachment AS ExternalLink,remote,isimage,filename AS 'NAME',filesize AS Size,dateline
+                                                        FROM pre_forum_attachment_0 WHERE pid IN @Groups0
                                                         ) aa
                                                         LEFT JOIN pre_forum_attachment a ON a.aid = aa.aid;", param, cancellationToken: cancellationToken);
 
         await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
         var attacheDic = (await cn.QueryAsync<Attachment>(command))
-           .ToDictionary(x => (x.TableId, x.Aid), x =>
-                                                  {
-                                                      var newId = Policy
+                        .GroupBy(x=>x.Pid).ToDictionary(x=>x.Key, groups =>
+                                                                  {
+                                                                      IEnumerable<Attachment> attachments = groups;
+                                                                      
+                                                                      foreach (var attachment in attachments)
+                                                                      {
+                                                                          var newId = Policy
 
-                                                                // 1. 處理甚麼樣的例外
-                                                               .Handle<ArgumentOutOfRangeException>()
+                                                                                      // 1. 處理甚麼樣的例外
+                                                                                     .Handle<ArgumentOutOfRangeException>()
 
-                                                                // 2. 重試策略，包含重試次數
-                                                               .Retry(5, (ex, retryCount) =>
-                                                                         {
-                                                                             Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
-                                                                             Thread.Sleep(3000);
-                                                                         })
+                                                                                      // 2. 重試策略，包含重試次數
+                                                                                     .Retry(5, (ex, retryCount) =>
+                                                                                               {
+                                                                                                   Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                                                   Thread.Sleep(3000);
+                                                                                               })
 
-                                                                // 3. 執行內容
-                                                               .Execute(snowflake.Generate);
+                                                                                      // 3. 執行內容
+                                                                                     .Execute(snowflake.Generate);
                                                       
-                                                      // var newId = snowflake.Generate();
-                                                      var tag = x.IsImage ? "img" : "file";
+                                                                          // var newId = snowflake.Generate();
+                                                                          var tag = attachment.IsImage ? "img" : "file";
 
-                                                      x.Id = newId;
-                                                      x.ExternalLink = string.Concat(x.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, x.ExternalLink);
-                                                      x.BbCode = string.Concat("[", tag, "]", newId, "[/", tag, "]");
-                                                      x.CreationDate = DateTimeOffset.FromUnixTimeSeconds(x.Dateline);
-
-                                                      return x;
-                                                  });
+                                                                          attachment.Id = newId;
+                                                                          attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, attachment.ExternalLink);
+                                                                          attachment.BbCode = string.Concat("[", tag, "]", newId, "[/", tag, "]");
+                                                                          attachment.CreationDate = DateTimeOffset.FromUnixTimeSeconds(attachment.Dateline);
+                                                                      }
+                                                                      return attachments.ToList();
+                                                                  });
 
         // sw.Stop();
         // Console.WriteLine($"query attachment Time => {sw.ElapsedMilliseconds}ms");

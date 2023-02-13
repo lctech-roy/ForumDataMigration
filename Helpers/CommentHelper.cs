@@ -6,7 +6,7 @@ namespace ForumDataMigration.Helper;
 
 public static class CommentHelper
 {
-    public static async Task<IEnumerable<PreForumPostcomment>> GetPostCommentsAsync(int tid, uint pid, CancellationToken cancellationToken)
+    public static async Task<IEnumerable<PreForumPostcomment>> GetPostCommentsAsync(int tid, int pid, CancellationToken cancellationToken)
     {
         const string querySql = $"SELECT * FROM pre_forum_postcomment WHERE tid = @tid AND pid= @pid";
 

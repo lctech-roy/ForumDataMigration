@@ -59,7 +59,7 @@ public class ArticleMigration
     private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
     private const string QUERY_ARTICLE_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                               SELECT thread.tid,thread.special
+                                               SELECT thread.tid,post.pid,thread.special
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
                                               ,thread.lastpost,postReply.authorid AS lastposter
@@ -84,6 +84,8 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
                                               LEFT JOIN pre_forum_topthreads top ON top.tid = thread.tid
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
+
+                                              //WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14254090";
 
     //WHERE thread.posttableid = @postTableId AND thread.tid = 14567820";
 
@@ -259,7 +261,7 @@ public class ArticleMigration
                                     },
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           Title = RegexHelper.GetNewSubject(post.Subject),
-                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid, postResult.ArticleId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, articleAttachmentSb),
+                          Content = RegexHelper.GetNewMessage(post.Message, post.Pid, postResult.ArticleId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, articleAttachmentSb),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
                           HotScore = post.Views / 100 + post.Replies,

@@ -4,6 +4,7 @@ public class ArticlePost
 {
     //[Slapper.AutoMapper.Id]
     public int Tid { get; set; }
+    public int Pid { get; set; }
     public int Fid { get; set; }
     public ushort Typeid { get; set; }
     public byte Readperm { get; set; }

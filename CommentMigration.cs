@@ -263,7 +263,7 @@ public class CommentMigration
         comment.ParentId = postResult.ArticleId;
         comment.Level = 2;
         comment.Hierarchy = string.Concat(postResult.ArticleId, "/", commentId);
-        comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Tid, commentId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb);
+        comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Pid, commentId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb);
         comment.VisibleType = comment.Status == 1 ? VisibleType.Hidden : VisibleType.Public;
         comment.SortingIndex = postResult.CreateMilliseconds;
         comment.CreationDate = postResult.CreateDate;
@@ -310,7 +310,7 @@ public class CommentMigration
                                    ParentId = commentId,
                                    Level = 3,
                                    Hierarchy = $"{postResult.ArticleId}/{commentId}/{commentReplyId}",
-                                   Content = RegexHelper.GetNewMessage(postComment.Comment, comment.Tid, commentReplyId, memberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb),
+                                   Content = RegexHelper.GetNewMessage(postComment.Comment, postComment.Pid, commentReplyId, memberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb),
                                    VisibleType = VisibleType.Public,
                                    Ip = postComment.Useip,
                                    Sequence = sequence++,

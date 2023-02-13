@@ -4,7 +4,7 @@ public class PreForumPostcomment
 {
     public uint Id { get; set; }
     public uint Tid { get; set; }
-    public uint Pid { get; set; }
+    public int Pid { get; set; }
     public string? Author { get; set; }
     public int Authorid { get; set; }
     public uint Dateline { get; set; }

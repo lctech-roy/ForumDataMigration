@@ -21,6 +21,8 @@ public class Attachment : Entity
     
     //domain額外資訊
     public int TableId { get; set; }
+    public int Tid { get; set; }
+    public int Pid { get; set; }
     public int Aid { get; set; }
     public bool Remote { get; set; }
     public bool IsImage { get; set; } 

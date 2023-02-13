@@ -55,11 +55,8 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // relationMigration.Migration();
 // migration.ExecuteRelation();
 //
-// //2.寫入ArticleId Mapping表
-// RelationContainer.ArticleIdDic = RelationHelper.GetArticleDic();
-//
 // 3.文章,留言
-// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
