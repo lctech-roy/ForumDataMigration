@@ -2,7 +2,7 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Forum.Core.Domain;
+using Lctech.Comment.Domain.Entities;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Npgsql;
 
@@ -35,7 +35,7 @@ public class Migration
         const string articleSchemaPath = $"{SCHEMA_PATH}/{nameof(Article)}";
         const string articlePath = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
         const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
-        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Article)}";
         const string articleAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleAttachment)}";
         const string articleAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
@@ -86,9 +86,6 @@ public class Migration
         attachmentTask.Start();
 
         await Task.WhenAll(task, articleAttachmentTask ,attachmentTask);
-
-        //await Task.WhenAll(articleAttachmentTask ,attachmentTask);
-
         
         Console.WriteLine($"{nameof(ExecuteArticleAsync)} Done!");
     }
@@ -194,17 +191,17 @@ public class Migration
         const string commentAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(CommentAttachment)}";
         const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
         const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
-        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
 
-        await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
-            await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        // await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
+        //     await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
         
-        await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
-        {
-            await cn.ExecuteCommandByPathAsync($"{commentAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
-
-            await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
-        }
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
+        // {
+        //     await cn.ExecuteCommandByPathAsync($"{commentAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        //
+        //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
+        // }
 
         var folderName = RetryHelper.GetCommentRetryDateStr();
         var periods = PeriodHelper.GetPeriods(folderName);
