@@ -3,6 +3,7 @@ using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
+using Lctech.Comment.Domain.Entities;
 using Lctech.Jkf.Forum.Domain.Entities;
 using MySqlConnector;
 using Npgsql;

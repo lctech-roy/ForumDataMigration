@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Lctech.Comment\src\Lctech.Comment\Lctech.Comment.csproj" />
         <ProjectReference Include="..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj" />
     </ItemGroup>
 

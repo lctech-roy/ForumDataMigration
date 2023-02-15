@@ -4,10 +4,13 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Forum.Enums;
+using Lctech.Comment.Domain.Entities;
+using Lctech.Comment.Enums;
 using MySqlConnector;
 using Netcorext.Algorithms;
 using Polly;
+using Comment = Lctech.Comment.Domain.Entities.Comment;
+
 
 namespace ForumDataMigration;
 
@@ -22,7 +25,7 @@ public class CommentMigration
 
     private const string COMMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
     private const string COMMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
-    private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+    private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
     private const string COMMENT_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
     private const string ARTICLE_IGNORE_PATH = $"{Setting.INSERT_DATA_PATH}/{ARTICLE_IGNORE}";
 
@@ -30,7 +33,7 @@ public class CommentMigration
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
                                                $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Title)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
                                                $",\"{nameof(Comment.Sequence)}\",\"{nameof(Comment.RelatedScore)}\",\"{nameof(Comment.ReplyCount)}\",\"{nameof(Comment.LikeCount)}\"" +
-                                               $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.DeleteStatus)}\"" + Setting.COPY_ENTITY_SUFFIX;
+                                               $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.DeleteStatus)}\",\"{nameof(Comment.Status)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_COMMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(CommentExtendData)}\" (\"{nameof(CommentExtendData.Id)}\",\"{nameof(CommentExtendData.Key)}\",\"{nameof(CommentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
@@ -40,13 +43,14 @@ public class CommentMigration
                                                      $"(\"{nameof(CommentAttachment.Id)}\",\"{nameof(CommentAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
+                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status as poststatus,post.comment,invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
-                                                WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder <> -4";
+                                                WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder >= -3";
+    // WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14605751";                                               
 
     private readonly ISnowflake _snowflake;
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(2);
@@ -80,7 +84,7 @@ public class CommentMigration
                 await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
                                                                                                               {
                                                                                                                   var sql = string.Format(QUERY_COMMENT_SQL, postTableId == 0 ? "" : $"_{postTableId}");
-                                                                                                                  
+
                                                                                                                   await Policy
 
                                                                                                                         // 1. 處理甚麼樣的例外
@@ -101,7 +105,7 @@ public class CommentMigration
 
                                                                                                                                          var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
                                                                                                                                          var posts = (await cn.QueryAsync<CommentPost>(command)).ToArray();
-                                                                                                                                         
+
                                                                                                                                          if (!posts.Any())
                                                                                                                                              return;
 
@@ -246,6 +250,7 @@ public class CommentMigration
         comment.ModifierId = postResult.MemberId;
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
         comment.ReplyCount = postResult.Post.ReplyCount;
+        comment.Status = CommentStatus.NoneCommentStatus;
 
         AppendCommentSb(comment, commentSb, period, postTableId);
 
@@ -264,13 +269,14 @@ public class CommentMigration
         comment.Level = 2;
         comment.Hierarchy = string.Concat(postResult.ArticleId, "/", commentId);
         comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Pid, commentId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb);
-        comment.VisibleType = comment.Status == 1 ? VisibleType.Hidden : VisibleType.Public;
+        comment.VisibleType = comment.PostStatus == 1 ? VisibleType.Hidden : VisibleType.Public;
         comment.SortingIndex = postResult.CreateMilliseconds;
         comment.CreationDate = postResult.CreateDate;
         comment.CreatorId = postResult.MemberId;
         comment.ModificationDate = postResult.CreateDate;
         comment.ModifierId = postResult.MemberId;
         comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
+        comment.Status = CommentStatus.NoneCommentStatus;
 
         PreForumPostcomment[]? postComments = null;
 
@@ -320,6 +326,7 @@ public class CommentMigration
                                    CreatorId = memberId,
                                    ModificationDate = replyDate,
                                    ModifierId = memberId,
+                                   Status = CommentStatus.NoneCommentStatus
                                };
 
             AppendCommentSb(commentReply, commentSb, period, postTableId);
@@ -337,9 +344,10 @@ public class CommentMigration
             commentSb.Clear();
         }
 
-        commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy, comment.SortingIndex,
-                                  comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(), comment.Content.ToCopyText(),
-                                  (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore, comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus,
+        commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy,
+                                  comment.SortingIndex, comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(),
+                                  comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore,
+                                  comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus, (int) comment.Status,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 

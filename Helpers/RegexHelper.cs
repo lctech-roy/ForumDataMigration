@@ -51,7 +51,7 @@ public static class RegexHelper
             var isInt = int.TryParse(content, out var aid);
 
             if (!isInt) return match.Value;
-            
+
             var attachments = attachmentDic.GetValueOrDefault(pid);
 
             var index = attachments?.FindIndex(x => x.Aid == aid);
@@ -71,7 +71,7 @@ public static class RegexHelper
 
             //避免產生重複的attachmentId
             attachments.RemoveAt(index!.Value);
-            
+
             return attachment.BbCode;
         }
 
@@ -206,7 +206,7 @@ public static class RegexHelper
         {
             newMessageSb.Append(Environment.NewLine);
             newMessageSb.Append(attachment.BbCode);
- 
+
             attachmentSb.AppendAttachmentValue(attachment);
 
             articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
@@ -233,7 +233,8 @@ public static class RegexHelper
 
     public static IGrouping<int, int>[] GetAttachmentGroups(IEnumerable<CommentPost> posts)
     {
-        var attachFileGroups = posts.GroupBy(x => x.Tid % 10, x => x.Pid).ToArray();
+        var attachFileGroups = posts.Where(x => x is not { First: true, Sequence: 0 })
+                                         .GroupBy(x => x.Tid % 10, x => x.Pid).ToArray();
 
         return attachFileGroups;
     }

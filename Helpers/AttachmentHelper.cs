@@ -3,6 +3,7 @@ using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Models;
 using Netcorext.Algorithms;
+using Netcorext.Extensions.Linq;
 using Npgsql;
 using Polly;
 
@@ -91,43 +92,63 @@ public static class AttachmentHelper
 
         await using var cn = new MySqlConnector.MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-        var attacheDic = (await cn.QueryAsync<Attachment>(command))
-                        .GroupBy(x=>x.Pid).ToDictionary(x=>x.Key, groups =>
-                                                                  {
-                                                                      IEnumerable<Attachment> attachments = groups;
-                                                                      
-                                                                      foreach (var attachment in attachments)
-                                                                      {
-                                                                          var newId = Policy
+        try
+        {
+            var attacheDic = (await cn.QueryAsync<Attachment>(command))
+                            .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups =>
+                                                                          {
+                                                                              IEnumerable<Attachment> attachments = groups;
 
-                                                                                      // 1. 處理甚麼樣的例外
-                                                                                     .Handle<ArgumentOutOfRangeException>()
+                                                                              foreach (var attachment in attachments)
+                                                                              {
+                                                                                  var newId = Policy
 
-                                                                                      // 2. 重試策略，包含重試次數
-                                                                                     .Retry(5, (ex, retryCount) =>
-                                                                                               {
-                                                                                                   Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
-                                                                                                   Thread.Sleep(3000);
-                                                                                               })
+                                                                                              // 1. 處理甚麼樣的例外
+                                                                                             .Handle<ArgumentOutOfRangeException>()
 
-                                                                                      // 3. 執行內容
-                                                                                     .Execute(snowflake.Generate);
-                                                      
-                                                                          // var newId = snowflake.Generate();
-                                                                          var tag = attachment.IsImage ? "img" : "file";
+                                                                                              // 2. 重試策略，包含重試次數
+                                                                                             .Retry(5, (ex, retryCount) =>
+                                                                                                       {
+                                                                                                           Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                                                           Thread.Sleep(3000);
+                                                                                                       })
 
-                                                                          attachment.Id = newId;
-                                                                          attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, attachment.ExternalLink);
-                                                                          attachment.BbCode = string.Concat("[", tag, "]", newId, "[/", tag, "]");
-                                                                          attachment.CreationDate = DateTimeOffset.FromUnixTimeSeconds(attachment.Dateline);
-                                                                      }
-                                                                      return attachments.ToList();
-                                                                  });
+                                                                                              // 3. 執行內容
+                                                                                             .Execute(snowflake.Generate);
+
+                                                                                  // var newId = snowflake.Generate();
+                                                                                  var tag = attachment.IsImage ? "img" : "file";
+
+                                                                                  attachment.Id = newId;
+                                                                                  attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, attachment.ExternalLink);
+                                                                                  attachment.BbCode = string.Concat("[", tag, "]", newId, "[/", tag, "]");
+                                                                                  attachment.CreationDate = DateTimeOffset.FromUnixTimeSeconds(attachment.Dateline);
+                                                                              }
+
+                                                                              return attachments.ToList();
+                                                                          });
+            
+            return attacheDic;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+
+            for (var i = 0; i < 10; i++)
+            {
+                Console.WriteLine(Environment.NewLine);
+                Console.WriteLine("Group key:" + i);
+                Console.WriteLine(Environment.NewLine);
+                var paramStr = string.Join(',', GetValueByKey(i) ?? Array.Empty<int>());
+                Console.WriteLine(paramStr);
+                Console.WriteLine(Environment.NewLine);
+            }
+            
+            throw;
+        }
 
         // sw.Stop();
         // Console.WriteLine($"query attachment Time => {sw.ElapsedMilliseconds}ms");
-
-        return attacheDic;
     }
 
     public static void AppendAttachmentValue(this StringBuilder attachmentSb, Attachment attachment)
@@ -148,7 +169,7 @@ public static class AttachmentHelper
 
         var pathIdDic = new Dictionary<string, long>();
         var attachmentDic = new Dictionary<long, List<Attachment>>();
-        
+
         foreach (var attachment in attachments)
         {
             if (attachment.ParentId.HasValue)

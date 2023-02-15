@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ForumDataMigration", "Forum
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Jkf.Forum.Core", "..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj", "{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Comment", "..\Lctech.Comment\src\Lctech.Comment\Lctech.Comment.csproj", "{B5C29EA0-3DC4-4344-9538-DDC5532E3FC9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,10 @@ Global
 		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4AA66ABD-C328-4A8B-AD1E-6355AE9E367F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5C29EA0-3DC4-4344-9538-DDC5532E3FC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5C29EA0-3DC4-4344-9538-DDC5532E3FC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5C29EA0-3DC4-4344-9538-DDC5532E3FC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5C29EA0-3DC4-4344-9538-DDC5532E3FC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
