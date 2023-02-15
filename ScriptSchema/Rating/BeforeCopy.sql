@@ -11,5 +11,7 @@ ALTER TABLE "ArticleRating"
 TRUNCATE "ArticleRatingItem";
 TRUNCATE "ArticleRating";
 
-ALTER TABLE "ArticleRating" SET UNLOGGED;
-ALTER TABLE "ArticleRatingItem" SET UNLOGGED;
+ALTER TABLE "ArticleRating"
+    SET UNLOGGED;
+ALTER TABLE "ArticleRatingItem"
+    SET UNLOGGED;

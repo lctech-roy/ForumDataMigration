@@ -3,5 +3,6 @@ ALTER TABLE "ArticleReward"
 
 TRUNCATE "ArticleReward";
 
-ALTER TABLE "ArticleReward" SET UNLOGGED;
+ALTER TABLE "ArticleReward"
+    SET UNLOGGED;
 

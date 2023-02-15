@@ -3,7 +3,6 @@ using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Models;
 using Netcorext.Algorithms;
-using Netcorext.Extensions.Linq;
 using Npgsql;
 using Polly;
 
@@ -127,7 +126,7 @@ public static class AttachmentHelper
 
                                                                               return attachments.ToList();
                                                                           });
-            
+
             return attacheDic;
         }
         catch (Exception e)
@@ -143,7 +142,7 @@ public static class AttachmentHelper
                 Console.WriteLine(paramStr);
                 Console.WriteLine(Environment.NewLine);
             }
-            
+
             throw;
         }
 

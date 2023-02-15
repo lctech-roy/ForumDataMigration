@@ -3,7 +3,6 @@
 using System.Globalization;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
-using ForumDataMigration.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Netcorext.Algorithms;
 
@@ -53,12 +52,14 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 // //1.文章Id關聯表
 // relationMigration.Migration();
-// migration.ExecuteRelation();
+migration.ExecuteRelation();
+
 //
 // 3.文章,留言
-await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
-// await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
+
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
 //
@@ -76,8 +77,8 @@ await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await ar
 // await CommonHelper.WatchTimeAsync("copy reward", async () => await migration.ExecuteArticleRewardAsync(token));
 
 //6.遊戲中心
-//CommonHelper.WatchTime(nameof(gameItemMigration),()=> gameItemMigration.Migration());
-//await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteGameItemAsync), async () => await migration.ExecuteGameItemAsync());
+// CommonHelper.WatchTime(nameof(gameItemMigration),()=> gameItemMigration.Migration());
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteGameItemAsync), async () => await migration.ExecuteGameItemAsync());
 // CommonHelper.WatchTime(nameof(memberBagMigration),()=> memberBagMigration.Migration());
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteMemberBagAsync), async () => await migration.ExecuteMemberBagAsync());
 

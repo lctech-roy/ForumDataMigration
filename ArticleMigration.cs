@@ -5,7 +5,6 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Lctech.Jkf.Forum.Core.Domain;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
@@ -85,13 +84,13 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_topthreads top ON top.tid = thread.tid
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
 
-                                              //WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14254090";
+    //WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14254090";
 
     //WHERE thread.posttableid = @postTableId AND thread.tid = 14567820";
 
 
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
-    
+
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.CreateArticleRetryTable();
@@ -335,7 +334,7 @@ public class ArticleMigration
 
         if (string.IsNullOrEmpty(externalLink))
             return null;
-        
+
         var attachment = new Attachment
                          {
                              Id = postResult.ArticleId,

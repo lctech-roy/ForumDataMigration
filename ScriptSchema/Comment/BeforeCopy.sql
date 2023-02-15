@@ -7,8 +7,10 @@ ALTER TABLE "CommentExtendData"
     DROP CONSTRAINT IF EXISTS "PK_CommentExtendData" CASCADE,
     DROP CONSTRAINT IF EXISTS "FK_CommentExtendData_Comment_Id" CASCADE;
 
-ALTER TABLE "Comment" SET UNLOGGED;
-ALTER TABLE "CommentExtendData" SET UNLOGGED;
+ALTER TABLE "Comment"
+    SET UNLOGGED;
+ALTER TABLE "CommentExtendData"
+    SET UNLOGGED;
 
 -- DROP INDEX IF EXISTS "IX_Comment_ParentId";
 -- DROP INDEX IF EXISTS "IX_Comment_RootId";
