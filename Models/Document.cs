@@ -7,7 +7,7 @@ public class Document
 {
     public long Id { get; set; }
     public DocumentType Type { get; set; }
-    
+
     public string? Title { get; set; }
     public string Content { get; set; } = null!;
     public long ReadPermission { get; set; }
@@ -30,12 +30,12 @@ public class Document
     public long? LastReplierId { get; set; }
     public long? LastReplierUid { get; set; }
     public string? LastReplierName { get; set; }
-    
+
     public DateTimeOffset CreationDate { get; set; }
     public long CreatorId { get; set; }
     public long? CreatorUid { get; set; }
     public string CreatorName { get; set; } = null!;
-    
+
     public DateTimeOffset ModificationDate { get; set; }
     public long ModifierId { get; set; }
     public long? ModifierUid { get; set; }

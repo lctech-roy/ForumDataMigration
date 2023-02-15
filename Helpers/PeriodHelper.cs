@@ -45,20 +45,20 @@ public static class PeriodHelper
 
     public static string ConvertToDateStr(DateTimeOffset dateTimeOffset)
     {
-       return $"{dateTimeOffset.Year}{dateTimeOffset.Month.ToString().PadLeft(2, '0')}";
+        return $"{dateTimeOffset.Year}{dateTimeOffset.Month.ToString().PadLeft(2, '0')}";
     }
-    
+
     public static List<Period> GetPeriods(string? dateStr = null)
     {
         if (dateStr == null)
             return GetPeriods(null, null);
-        
+
         var year = int.Parse(dateStr[..4]);
         var month = int.Parse(dateStr.Substring(4, 2));
 
         return GetPeriods(year, month);
     }
-    
+
     public static List<Period> GetPeriods(int? year, int? month)
     {
         if (!year.HasValue && !month.HasValue)

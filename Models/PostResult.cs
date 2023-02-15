@@ -1,5 +1,3 @@
-using System.Reflection.Metadata.Ecma335;
-
 namespace ForumDataMigration.Models;
 
 public class PostResult
@@ -14,5 +12,5 @@ public class PostResult
     public DateTimeOffset CreateDate { get; set; }
     public long CreateMilliseconds { get; set; }
     public Post Post { get; set; } = default!;
-    public Dictionary<(int,int), string> AttachPathDic { get; set; } = new();
+    public Dictionary<(int, int), string> AttachPathDic { get; set; } = new();
 }

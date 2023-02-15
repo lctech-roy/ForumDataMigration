@@ -1,8 +1,5 @@
 using System.Data;
-using System.Data.Common;
 using Dapper;
-using ForumDataMigration.Helper;
-using ForumDataMigration.Models;
 using Npgsql;
 
 namespace ForumDataMigration.Extensions;
@@ -15,7 +12,7 @@ public static class ConnectionExtension
 
         cn.ExecuteAllTexts(path);
     }
-    
+
     public static void ExecuteAllTexts(this NpgsqlConnection cn, string path)
     {
         try
@@ -57,27 +54,27 @@ public static class ConnectionExtension
         {
             cn.ExecuteAllTexts(inputFilePath);
         }
-        
+
         Console.WriteLine($"{path} Execute copy command done");
     }
 
-    public static async Task ExecuteCommandByPathAsync(this NpgsqlConnection cn, string path,CancellationToken token)
+    public static async Task ExecuteCommandByPathAsync(this NpgsqlConnection cn, string path, CancellationToken token)
     {
         if (cn.State == ConnectionState.Closed)
             await cn.OpenAsync(token);
-        
+
         var commandSql = await File.ReadAllTextAsync(path, token);
 
         Console.WriteLine($"Start {path}");
         await cn.ExecuteAsync(commandSql);
         Console.WriteLine($"Finish {path}");
     }
-    
+
     public static void ExecuteCommandByPath(this NpgsqlConnection cn, string path)
     {
         if (cn.State == ConnectionState.Closed)
-             cn.Open();
-        
+            cn.Open();
+
         var commandSql = File.ReadAllText(path);
 
         Console.WriteLine($"Start {path}");

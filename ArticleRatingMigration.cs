@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Text;
-using Netcorext.Algorithms;
 using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
@@ -9,6 +8,7 @@ using ForumDataMigration.Models;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
+using Netcorext.Algorithms;
 
 namespace ForumDataMigration;
 
@@ -39,16 +39,16 @@ public class ArticleRatingMigration
 
     private const string POST_RATING_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}";
     private const string POST_RATING_ITEM_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}";
-    
+
     private const string POST0_RATING_PATH = $"{POST_RATING_PATH}/0";
     private const string POST0_RATING_ITEM_PATH = $"{POST_RATING_ITEM_PATH}/0";
-    
+
     private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
 
     public ArticleRatingMigration(ISnowflake snowflake)
     {
         RetryHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
-        
+
         Directory.CreateDirectory(POST0_RATING_PATH);
         Directory.CreateDirectory(POST0_RATING_ITEM_PATH);
 
@@ -94,7 +94,7 @@ public class ArticleRatingMigration
 
         if (!idDic.Any())
             return;
-        
+
         var ratingSb = new StringBuilder();
         var ratingItemSb = new StringBuilder();
 
@@ -105,7 +105,7 @@ public class ArticleRatingMigration
                 continue;
 
             var memberId = rateLog.Uid;
-            
+
             if (memberId == default)
                 continue;
 
@@ -182,7 +182,7 @@ public class ArticleRatingMigration
                                       var insertRatingSql = string.Concat(COPY_RATING_SQL, ratingSb);
                                       File.WriteAllText(ratingPath, insertRatingSql);
                                   });
-        
+
         var ratingItemTask = new Task(() =>
                                       {
                                           var insertRatingItemSql = string.Concat(COPY_RATING_ITEM_SQL, ratingItemSb);

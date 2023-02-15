@@ -234,7 +234,7 @@ public static class RegexHelper
     public static IGrouping<int, int>[] GetAttachmentGroups(IEnumerable<CommentPost> posts)
     {
         var attachFileGroups = posts.Where(x => x is not { First: true, Sequence: 0 })
-                                         .GroupBy(x => x.Tid % 10, x => x.Pid).ToArray();
+                                    .GroupBy(x => x.Tid % 10, x => x.Pid).ToArray();
 
         return attachFileGroups;
     }

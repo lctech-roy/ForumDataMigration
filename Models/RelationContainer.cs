@@ -1,8 +1,4 @@
-using System.Collections.Concurrent;
 using ForumDataMigration.Helper;
-using ForumDataMigration.Models;
-using Microsoft.VisualStudio.Threading;
-using Npgsql;
 
 namespace ForumDataMigration;
 

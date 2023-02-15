@@ -1,4 +1,3 @@
-using System.Data;
 using Dapper;
 using ForumDataMigration.Models;
 using MySqlConnector;
@@ -85,9 +84,11 @@ public static class ArticleHelper
             {
                 case "rewardexpiration":
                     commonSetting.RewardExpirationDay = Convert.ToInt32(value);
+
                     break;
                 case "hideexpiration":
                     commonSetting.HideExpirationDay = Convert.ToInt32(value);
+
                     break;
             }
         }

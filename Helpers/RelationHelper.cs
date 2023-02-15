@@ -1,4 +1,3 @@
-using System.Data;
 using Dapper;
 using ForumDataMigration.Models;
 using Npgsql;
@@ -10,11 +9,11 @@ public static class RelationHelper
     public static Dictionary<int, long> GetArticleDic()
     {
         const string queryRelationSql = $"select \"{nameof(ArticleRelation.Id)}\",\"{nameof(ArticleRelation.Tid)}\" from \"{nameof(ArticleRelation)}\"";
-        
+
         using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         var relationDic = conn.Query<(long id, int tid)>(queryRelationSql).ToDictionary(t => t.tid, t => t.id);
-        
+
         Console.WriteLine("Finish Import ArticleRelationDic!");
 
         return relationDic;
@@ -83,7 +82,7 @@ public static class RelationHelper
         using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
 
         var idDic = conn.Query<(long id, long uid)>(queryMemberSql).ToDictionary(t => t.uid, t => t.id);
-        
+
         Console.WriteLine("Finish Import MemberUidDic!");
 
         return idDic;
@@ -92,18 +91,18 @@ public static class RelationHelper
     public static Dictionary<long, long> GetGameItemRelationDic()
     {
         const string queryGameItemRelationSql = @"SELECT ""Id"",""MaterialId"" FROM ""GameItemRelation""";
-        
+
         using var conn = new NpgsqlConnection(Setting.NEW_GAME_CENTER_CONNECTION);
 
         var idDic = conn.Query<(long id, long materialId)>(queryGameItemRelationSql).ToDictionary(t => t.materialId, t => t.id);
 
         return idDic;
     }
-    
+
     public static Dictionary<long, long> GetMedalRelationDic()
     {
         const string queryMedalRelationSql = @"SELECT ""Id"",""OriMedalId"" FROM ""MedalRelation""";
-        
+
         using var conn = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
 
         var idDic = conn.Query<(long id, long medalId)>(queryMedalRelationSql).ToDictionary(t => t.medalId, t => t.id);

@@ -1,4 +1,3 @@
-
 namespace ForumDataMigration.Models;
 
 public class CommentPost : Lctech.Comment.Domain.Entities.Comment
@@ -13,6 +12,6 @@ public class CommentPost : Lctech.Comment.Domain.Entities.Comment
     public uint? StickDateline { get; set; }
     public bool Comment { get; set; }
     public bool Invisible { get; set; }
-    
+
     public uint Replies { get; set; }
 }

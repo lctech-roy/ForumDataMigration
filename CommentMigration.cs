@@ -9,8 +9,6 @@ using Lctech.Comment.Enums;
 using MySqlConnector;
 using Netcorext.Algorithms;
 using Polly;
-using Comment = Lctech.Comment.Domain.Entities.Comment;
-
 
 namespace ForumDataMigration;
 
@@ -50,6 +48,7 @@ public class CommentMigration
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
                                                 WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder >= -3";
+
     // WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14605751";                                               
 
     private readonly ISnowflake _snowflake;

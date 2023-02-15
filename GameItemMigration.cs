@@ -3,7 +3,6 @@ using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
-using MySqlConnector;
 using Netcorext.Algorithms;
 using Npgsql;
 
@@ -30,7 +29,7 @@ public class GameItemMigration
     public void Migration()
     {
         #region 轉檔前準備相關資料
-        
+
         var gameItemRelationDic = RelationHelper.GetGameItemRelationDic();
 
         #endregion

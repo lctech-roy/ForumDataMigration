@@ -36,6 +36,7 @@ public class CommonHelper
         sw.Start();
         await action();
         sw.Stop();
+
         //Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
@@ -60,6 +61,6 @@ public class CommonHelper
     {
         // return new ParallelOptions { MaxDegreeOfParallelism = 1, CancellationToken = cancellationToken };
 
-        return new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 2.0)), CancellationToken = cancellationToken };
+        return new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.75 * 2.0)), CancellationToken = cancellationToken };
     }
 }

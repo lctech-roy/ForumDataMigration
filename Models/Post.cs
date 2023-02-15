@@ -37,7 +37,7 @@ public class Post
     public bool Comment { get; set; }
     public int Likescore { get; set; }
     public bool Invisible { get; set; }
-    
+
     public uint? StickDateline { get; set; }
     public ThreadWarning? Warning { get; set; }
 }

@@ -2,7 +2,6 @@ using System.Globalization;
 using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
-using ForumDataMigration.Models;
 using Lctech.Comment.Domain.Entities;
 using Lctech.Jkf.Forum.Domain.Entities;
 using MySqlConnector;
@@ -119,12 +118,12 @@ public static class RetryHelper
 
     public static void RemoveDataByDateStr(string connectionStr, string tableName, string dateStr)
     {
-        CultureInfo provider = CultureInfo.InvariantCulture;
+        var provider = CultureInfo.InvariantCulture;
         const string format = "yyyyMM";
 
         var creationDate = DateTime.ParseExact(dateStr, format, provider);
         var creationDateOffset = new DateTimeOffset(creationDate, TimeSpan.Zero);
-        
+
         using var cn = new NpgsqlConnection(connectionStr);
 
         var affectedRowCount = cn.Execute($@"DELETE FROM ""{tableName}"" WHERE ""CreationDate"" >= @creationDateOffset", new { creationDateOffset });

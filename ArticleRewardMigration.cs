@@ -27,11 +27,11 @@ public class ArticleRewardMigration
 
     private const string QUERY_ARTICLE_PRICE_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                                                      SELECT ""Id"",""Price"" AS Point,""CreationDate"",""CreatorId"" FROM ""Article"" WHERE ""Type"" = 3";
-    
+
     private const string QUERY_COMMENT_SQL = @"SELECT c.""Id"" AS ArticleId, c2.""Id"" AS SolveCommentId FROM ""Comment"" c
                                                LEFT JOIN ""Comment"" c2 ON c2.""RootId"" = c.""Id"" AND c2.""CreationDate"" = c.""CreationDate"" + interval '1' second
                                                WHERE c.""Id"" = ANY(@RootIds)";
-    
+
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.RemoveFiles(new[] { $"{ARTICLE_REWARD_PATH}.sql" });
@@ -72,7 +72,7 @@ public class ArticleRewardMigration
                                           });
 
         var solvedRewardDic = new ConcurrentDictionary<long, long>();
-        
+
         await CommonHelper.WatchTimeAsync("total time",
                                           async () =>
                                           {
@@ -117,14 +117,14 @@ public class ArticleRewardMigration
                 reward.SolveCommentId = solvedRewardDic.GetValueOrDefault(reward.Id);
                 reward.SolveDate = reward.CreationDate.AddSeconds(1);
             }
-        
+
             reward.Point = Math.Abs(reward.Point);
-            
+
             rewardSb.AppendValueLine(reward.Id, reward.Point, reward.ExpirationDate,
                                      reward.SolveCommentId.ToCopyValue(), reward.SolveDate.ToCopyValue(), reward.AllowAdminSolveDate,
                                      reward.CreationDate, reward.CreatorId, reward.ModificationDate, reward.ModifierId, reward.Version);
         }
-        
+
         File.WriteAllText($"{ARTICLE_REWARD_PATH}.sql", string.Concat(COPY_REWARD_PREFIX, rewardSb.ToString()));
     }
 }

@@ -3,7 +3,6 @@ using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Models;
-using Netcorext.Algorithms;
 using Npgsql;
 
 namespace ForumDataMigration;
@@ -14,7 +13,7 @@ public class MemberBagMigration
                                    $"(\"{nameof(MemberBag.Id)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string BAG_MEDAL_SQL = $"COPY \"{nameof(MemberBagItem)}\" " +
-                                             $"(\"{nameof(MemberBagItem.Id)}\",\"{nameof(MemberBagItem.MedalId)}\"" + Setting.COPY_ENTITY_SUFFIX;
+                                         $"(\"{nameof(MemberBagItem.Id)}\",\"{nameof(MemberBagItem.MedalId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string QUERY_BAG_MEDAL_ITEM_SQL = $@"SELECT inventory_id::INT AS Id, medal_id::INT AS MedalId, created_at AS CreationDate,created_at AS ModificationDate 
                                                       FROM medal_asset WHERE deleted_at IS NULL ORDER BY inventory_id, medal_id";
@@ -22,7 +21,7 @@ public class MemberBagMigration
     public void Migration()
     {
         #region 轉檔前準備相關資料
-        
+
         var gameItemRelationDic = RelationHelper.GetMedalRelationDic();
 
         #endregion
@@ -51,8 +50,8 @@ public class MemberBagMigration
                 bagSb.AppendValueLine(bagGameItem.Id,
                                       bagGameItem.CreationDate, bagGameItem.CreatorId, bagGameItem.ModificationDate, bagGameItem.ModifierId, bagGameItem.Version);
 
-            bagMedalItemSb.AppendValueLine(bagGameItem.Id, bagGameItem.MedalId, 
-                                      bagGameItem.CreationDate, bagGameItem.CreatorId, bagGameItem.ModificationDate, bagGameItem.ModifierId, bagGameItem.Version);
+            bagMedalItemSb.AppendValueLine(bagGameItem.Id, bagGameItem.MedalId,
+                                           bagGameItem.CreationDate, bagGameItem.CreatorId, bagGameItem.ModificationDate, bagGameItem.ModifierId, bagGameItem.Version);
 
             previousBagItem = bagGameItem;
         }

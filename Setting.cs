@@ -10,8 +10,8 @@ public static class Setting
     public const string OLD_GAME_CENTER_CONNECTION = "Host=104.199.218.6;Port=5432;Username=postgres;Password=6qfh.d[(^%Dj2S7K;Database=jkfapi;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
 
     private const string HOST = "104.199.140.32";
-    private const string PORT =  "5433";
-    private const string PASSWORD =  "9OYLemeN.xK=B^OH";
+    private const string PORT = "5433";
+    private const string PASSWORD = "9OYLemeN.xK=B^OH";
     public const string NEW_FORUM_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_jkf_forum;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_MEMBER_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_jkf_member;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_COMMENT_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_comment;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";

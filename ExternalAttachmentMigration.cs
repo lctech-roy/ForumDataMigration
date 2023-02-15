@@ -24,7 +24,7 @@ public class ExternalAttachmentMigration
         const string copyAttachmentSql = $"COPY \"{nameof(ExternalAttachmentUrl)}\" " +
                                          $"(\"{nameof(ExternalAttachmentUrl.AttachmentId)}\",\"{nameof(ExternalAttachmentUrl.Tid)}\",\"{nameof(ExternalAttachmentUrl.Pid)}\",\"{nameof(ExternalAttachmentUrl.AttachmentUrl)}\"" + Setting.COPY_SUFFIX;
 
-        var periods = PeriodHelper.GetPeriods(2013,07);
+        var periods = PeriodHelper.GetPeriods(2013, 07);
         var postTableIds = ArticleHelper.GetPostTableIds();
 
         foreach (var period in periods)

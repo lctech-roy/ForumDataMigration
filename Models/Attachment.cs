@@ -1,4 +1,3 @@
-using Lctech.Jkf.Forum.Enums;
 using Netcorext.EntityFramework.UserIdentityPattern.Entities;
 
 namespace ForumDataMigration.Models;
@@ -15,17 +14,19 @@ public class Attachment : Entity
     public string? ContentType { get; set; }
     public long? ParentId { get; set; }
     public string? Bucket { get; set; }
+
     public bool IsPublic { get; set; } = true;
+
     //for artifact
     public string ObjectName { get; set; } = string.Empty;
-    
+
     //domain額外資訊
     public int TableId { get; set; }
     public int Tid { get; set; }
     public int Pid { get; set; }
     public int Aid { get; set; }
     public bool Remote { get; set; }
-    public bool IsImage { get; set; } 
+    public bool IsImage { get; set; }
     public uint Dateline { get; set; }
     public string BbCode { get; set; } = default!;
 }

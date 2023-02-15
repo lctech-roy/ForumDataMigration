@@ -1,7 +1,6 @@
 using Netcorext.Algorithms;
 using Netcorext.EntityFramework.UserIdentityPattern;
 
-
 namespace ForumDataMigration;
 
 public class StatisticsMigration
@@ -14,7 +13,7 @@ public class StatisticsMigration
         _snowflake = snowflake;
         _context = context;
     }
-    
+
     public void Migration()
     {
         // var cn = _oldForumContext.Database.GetDbConnection();
@@ -22,7 +21,7 @@ public class StatisticsMigration
         // const string sql = @"select logdate, fid, value from pre_forum_statlog LIMIT @Limit OFFSET @Offset";
         //
         // var statistics = cn.Query<Statistics>(sql, new { Limit = 100, Offset = 0 }).ToList();
-        
+
         Console.Write("111");
     }
 }
