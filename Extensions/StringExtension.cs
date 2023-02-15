@@ -1,4 +1,3 @@
-using System;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -27,7 +26,7 @@ public static class StringExtension
 
     public static string ToCopyText(this string? str)
     {
-        if (string.IsNullOrEmpty(str)) 
+        if (string.IsNullOrEmpty(str))
             return str.ToCopyValue();
 
         var sb = new StringBuilder(str);
@@ -59,7 +58,7 @@ public static class StringExtension
         }
 
         newTagStr = newTagStr.TrimEnd('\t');
-        
+
         return newTagStr;
     }
 }
