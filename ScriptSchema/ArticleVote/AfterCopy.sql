@@ -19,3 +19,7 @@ CASCADE;
 ALTER TABLE "ArticleVote" SET LOGGED;
 ALTER TABLE "ArticleVoteItem" SET LOGGED;
 ALTER TABLE "ArticleVoteItemHistory" SET LOGGED;
+
+ANALYZE "ArticleVote";
+ANALYZE "ArticleVoteItem";
+ANALYZE "ArticleVoteItemHistory";

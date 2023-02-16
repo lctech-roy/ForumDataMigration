@@ -104,9 +104,9 @@ public class ArticleMigration
 
         //刪掉之前轉過的檔案
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
+            FileHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
+            FileHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
 
         foreach (var period in periods)
         {
@@ -205,11 +205,11 @@ public class ArticleMigration
             }
         }
 
-        var task = new Task(() => { WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
+        var task = new Task(() => { FileHelper.WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, sb); });
 
-        var attachmentTask = new Task(() => { WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
+        var attachmentTask = new Task(() => { FileHelper.WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
 
-        var articleAttachmentTask = new Task(() => { WriteToFile($"{ARTICLE_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", ARTICLE_ATTACHMENT_PREFIX, articleAttachmentSb); });
+        var articleAttachmentTask = new Task(() => { FileHelper.WriteToFile($"{ARTICLE_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", ARTICLE_ATTACHMENT_PREFIX, articleAttachmentSb); });
 
         task.Start();
         attachmentTask.Start();
@@ -348,18 +348,5 @@ public class ArticleMigration
         attachmentSb.AppendAttachmentValue(attachment);
 
         return attachment.Id;
-    }
-
-    private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
-    {
-        if (valueSb.Length == 0)
-            return;
-
-        var fullPath = $"{directoryPath}/{fileName}";
-
-        Directory.CreateDirectory(directoryPath);
-        File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
-        Console.WriteLine(fullPath);
-        valueSb.Clear();
     }
 }

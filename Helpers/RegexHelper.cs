@@ -64,7 +64,7 @@ public static class RegexHelper
             attachment.CreatorId = memberId;
             attachment.ModifierId = memberId;
 
-            attachmentSb.AppendAttachmentValue(attachment);
+            // attachmentSb.AppendAttachmentValue(attachment);
 
             articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
                                                 attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
@@ -207,7 +207,9 @@ public static class RegexHelper
             newMessageSb.Append(Environment.NewLine);
             newMessageSb.Append(attachment.BbCode);
 
-            attachmentSb.AppendAttachmentValue(attachment);
+            //attachmentSb.AppendAttachmentValue(attachment);
+            attachment.CreatorId = memberId;
+            attachment.ModifierId = memberId;
 
             articleAttachmentSb.AppendValueLine(sourceId, attachment.Id,
                                                 attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);

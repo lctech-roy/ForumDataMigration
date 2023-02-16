@@ -10,3 +10,6 @@ CASCADE,
 CASCADE;
 
 CREATE INDEX "IX_BagGameItem_GameItemId" ON "BagGameItem" ("GameItemId");
+
+ANALYZE "Bag";
+ANALYZE "BagGameItem";

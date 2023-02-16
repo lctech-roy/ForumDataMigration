@@ -14,3 +14,6 @@ ALTER TABLE "ArticleRatingItem"
 -- UPDATE "Article" a SET "RatingCount" = ar."ratecount"
 -- FROM (SELECT "ArticleId", COUNT("ArticleId") AS ratecount FROM "ArticleRating" GROUP BY "ArticleId") ar
 -- WHERE a."Id" IN(SELECT DISTINCT "ArticleId" FROM "ArticleRating") AND a."Id" = ar."ArticleId";
+
+ANALYZE "ArticleRating";
+ANALYZE "ArticleRatingItem";

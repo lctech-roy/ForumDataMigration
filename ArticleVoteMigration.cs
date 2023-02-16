@@ -66,7 +66,7 @@ public class ArticleVoteMigration
         const string articleVoteItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItem)}";
         const string articleVoteItemHistoryPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleVoteItemHistory)}";
 
-        RetryHelper.RemoveFiles(new[] { articleVotePath, articleVoteItemPath, articleVoteItemHistoryPath });
+        FileHelper.RemoveFiles(new[] { articleVotePath, articleVoteItemPath, articleVoteItemHistoryPath });
 
         Directory.CreateDirectory(articleVotePath);
         Directory.CreateDirectory(articleVoteItemPath);

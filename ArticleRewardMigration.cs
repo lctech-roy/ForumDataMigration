@@ -34,7 +34,7 @@ public class ArticleRewardMigration
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
-        RetryHelper.RemoveFiles(new[] { $"{ARTICLE_REWARD_PATH}.sql" });
+        FileHelper.RemoveFiles(new[] { $"{ARTICLE_REWARD_PATH}.sql" });
 
         var rewardDic = new Dictionary<string, ArticleReward[]>();
 

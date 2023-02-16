@@ -47,7 +47,7 @@ public class ArticleRatingMigration
 
     public ArticleRatingMigration(ISnowflake snowflake)
     {
-        RetryHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
+        FileHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
 
         Directory.CreateDirectory(POST0_RATING_PATH);
         Directory.CreateDirectory(POST0_RATING_ITEM_PATH);

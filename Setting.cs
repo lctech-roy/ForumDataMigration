@@ -1,3 +1,4 @@
+using ForumDataMigration.Models;
 using Netcorext.EntityFramework.UserIdentityPattern.Entities;
 
 namespace ForumDataMigration;
@@ -24,13 +25,18 @@ public static class Setting
     public const string FORUM_URL = "https://www.jkforum.net/";
     public const string ATTACHMENT_URL = "https://www.mymypic.net/";
     public const string VIDEO_CDN = "https://cdn.mymyatt.net/";
-    public const string ATTACHMENT_PATH = "data/attachment/forum/";
+    public const string FORUM_ATTACHMENT_PATH = "data/attachment/forum/";
     public const string INSERT_DATA_PATH = "../../../ScriptInsert";
+    public const string ATTACHMENT_PATH = $"{INSERT_DATA_PATH}/{nameof(Attachment)}";
 
     public const string COPY_ENTITY_SUFFIX = $",\"{nameof(Entity.CreationDate)}\",\"{nameof(Entity.CreatorId)}\",\"{nameof(Entity.ModificationDate)}\",\"{nameof(Entity.ModifierId)}\",\"{nameof(Entity.Version)}\") " +
                                              $"FROM STDIN (DELIMITER '{D}')\n";
 
     public const string COPY_SUFFIX = $") FROM STDIN (DELIMITER '{D}')\n";
+    
+    public const string SCHEMA_PATH = "../../../ScriptSchema";
+    public const string BEFORE_FILE_NAME = "BeforeCopy.sql";
+    public const string AFTER_FILE_NAME = "AfterCopy.sql";
 
     public const bool USE_UPDATED_DATE = false;
 }

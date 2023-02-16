@@ -8,3 +8,6 @@ DELETE
 CASCADE,
     ADD CONSTRAINT "FK_MemberBagItem_MemberBag_Id" FOREIGN KEY ("Id") REFERENCES "MemberBag" ("Id") ON DELETE
 CASCADE;
+
+ANALYZE "MemberBag";
+ANALYZE "MemberBagItem";

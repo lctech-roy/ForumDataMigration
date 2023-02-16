@@ -72,9 +72,9 @@ public class CommentMigration
 
         //刪掉之前轉過的檔案
         if (folderName != null)
-            RetryHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH }, folderName);
+            FileHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH }, folderName);
         else
-            RetryHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH });
+            FileHelper.RemoveFiles(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH });
 
         foreach (var period in periods)
         {
@@ -219,11 +219,11 @@ public class CommentMigration
             }
         }
 
-        var commentTask = new Task(() => { WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
-        var commentExtendDataTask = new Task(() => { WriteToFile($"{COMMENT_EXTEND_DATA_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
-        var ignoreTask = new Task(() => { WriteToFile($"{ARTICLE_IGNORE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_ARTICLE_IGNORE_PREFIX, ignoreSb); });
-        var attachmentTask = new Task(() => { WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
-        var commentAttachmentTask = new Task(() => { WriteToFile($"{COMMENT_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COMMENT_ATTACHMENT_PREFIX, commentAttachmentSb); });
+        var commentTask = new Task(() => { FileHelper.WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb); });
+        var commentExtendDataTask = new Task(() => { FileHelper.WriteToFile($"{COMMENT_EXTEND_DATA_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_EXTEND_DATA_PREFIX, commentExtendDataSb); });
+        var ignoreTask = new Task(() => { FileHelper.WriteToFile($"{ARTICLE_IGNORE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_ARTICLE_IGNORE_PREFIX, ignoreSb); });
+        var attachmentTask = new Task(() => { FileHelper.WriteToFile($"{ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", AttachmentHelper.ATTACHMENT_PREFIX, attachmentSb); });
+        var commentAttachmentTask = new Task(() => { FileHelper.WriteToFile($"{COMMENT_ATTACHMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COMMENT_ATTACHMENT_PREFIX, commentAttachmentSb); });
 
         commentTask.Start();
         commentExtendDataTask.Start();
@@ -338,7 +338,7 @@ public class CommentMigration
 
         if (commentSb.Length > maxStringBuilderLength)
         {
-            WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
+            FileHelper.WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
 
             commentSb.Clear();
         }
@@ -348,25 +348,6 @@ public class CommentMigration
                                   comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore,
                                   comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus, (int) comment.Status,
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
-    }
-
-    private static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
-    {
-        if (valueSb.Length == 0)
-            return;
-
-        var fullPath = $"{directoryPath}/{fileName}";
-
-        if (File.Exists(fullPath))
-        {
-            File.AppendAllText(fullPath, valueSb.ToString());
-        }
-        else
-        {
-            Directory.CreateDirectory(directoryPath);
-            File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
-            Console.WriteLine(fullPath);
-        }
     }
 
     private static (bool isDirty, string reason) IsDirty(long id, long boarId)

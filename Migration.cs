@@ -10,9 +10,9 @@ namespace ForumDataMigration;
 
 public class Migration
 {
-    private const string SCHEMA_PATH = "../../../ScriptSchema";
-    private const string BEFORE_FILE_NAME = "BeforeCopy.sql";
-    private const string AFTER_FILE_NAME = "AfterCopy.sql";
+    private const string SCHEMA_PATH = Setting.SCHEMA_PATH;
+    private const string BEFORE_FILE_NAME = Setting.BEFORE_FILE_NAME;
+    private const string AFTER_FILE_NAME = Setting.AFTER_FILE_NAME;
 
     public void ExecuteRelation()
     {
@@ -28,6 +28,35 @@ public class Migration
         }
 
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{AFTER_FILE_NAME}");
+    }
+
+    public async Task ExecuteAttachmentAsync(CancellationToken token)
+    {
+        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+        const string attachmentRelationPath = $"{Setting.INSERT_DATA_PATH}/{nameof(AttachmentRelation)}";
+
+        var tableNumbers = new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        
+        var attachmentTask = new Task(() =>
+                                      {
+                                          foreach (var tableNumber in tableNumbers)
+                                          {
+                                              FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{tableNumber}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                          }
+                                      });
+
+        var attachmentRelationTask = new Task(() =>
+                                              {
+                                                  foreach (var tableNumber in tableNumbers)
+                                                  {
+                                                      FileHelper.ExecuteAllSqlFiles($"{attachmentRelationPath}/{tableNumber}", Setting.NEW_FORUM_CONNECTION);
+                                                  }
+                                              });
+
+        attachmentTask.Start();
+        attachmentRelationTask.Start();
+        
+        await Task.WhenAll(attachmentTask, attachmentRelationTask);
     }
 
     public async Task ExecuteArticleAsync(CancellationToken token)

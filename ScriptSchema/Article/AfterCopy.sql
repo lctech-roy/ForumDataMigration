@@ -19,6 +19,8 @@ $$;
 ALTER TABLE "Article"
     SET LOGGED;
 
+ANALYZE "Article";
+
 --刪除重複的資料
 -- DELETE FROM "Article"
 -- WHERE ctid IN (SELECT MIN(ctid) as ctid

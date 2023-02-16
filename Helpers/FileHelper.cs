@@ -1,4 +1,6 @@
+using System.Text;
 using ForumDataMigration.Extensions;
+using ForumDataMigration.Helper;
 using Npgsql;
 
 namespace ForumDataMigration.Helpers;
@@ -53,5 +55,49 @@ public static class FileHelper
         //
         //                      connection.ExecuteAllTexts(inputFilePath);
         //                  });
+    }
+    
+    public static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
+    {
+        if (valueSb.Length == 0)
+            return;
+
+        var fullPath = $"{directoryPath}/{fileName}";
+
+        Directory.CreateDirectory(directoryPath);
+        File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
+        Console.WriteLine(fullPath);
+        valueSb.Clear();
+    }
+    
+    public static void RemoveFilesByDate(IEnumerable<string> rootPaths, string dateFolderName)
+    {
+        var periods = PeriodHelper.GetPeriods(dateFolderName);
+
+        foreach (var rootPath in rootPaths)
+        {
+            foreach (var period in periods)
+            {
+                var path = $"{rootPath}/{period.FolderName}";
+
+                if (Directory.Exists(path))
+                    Directory.Delete(path, true);
+            }
+        }
+    }
+
+    public static void RemoveFiles(IEnumerable<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+            else if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
     }
 }

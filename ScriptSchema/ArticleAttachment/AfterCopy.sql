@@ -4,3 +4,5 @@ ALTER TABLE "ArticleAttachment"
 -- CREATE UNIQUE INDEX "IX_ArticleAttachment_AttachmentId" ON "ArticleAttachment" ("AttachmentId");
 
 ALTER TABLE "ArticleAttachment" SET LOGGED;
+
+ANALYZE "ArticleAttachment";

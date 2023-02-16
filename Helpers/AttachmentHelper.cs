@@ -119,7 +119,7 @@ public static class AttachmentHelper
                                                                                   var tag = attachment.IsImage ? "img" : "file";
 
                                                                                   attachment.Id = newId;
-                                                                                  attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.ATTACHMENT_PATH, attachment.ExternalLink);
+                                                                                  attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.FORUM_ATTACHMENT_PATH, attachment.ExternalLink);
                                                                                   attachment.BbCode = string.Concat("[", tag, "]", newId, "[/", tag, "]");
                                                                                   attachment.CreationDate = DateTimeOffset.FromUnixTimeSeconds(attachment.Dateline);
                                                                               }

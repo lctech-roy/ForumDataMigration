@@ -1,10 +1,14 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Globalization;
+using Dapper;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
+using ForumDataMigration.Models;
 using Microsoft.Extensions.DependencyInjection;
+using MySqlConnector;
 using Netcorext.Algorithms;
+using Npgsql;
 
 // 1. 建立依賴注入的容器
 var serviceCollection = new ServiceCollection();
@@ -15,6 +19,7 @@ serviceCollection.AddSingleton<Migration>();
 serviceCollection.AddSingleton<ArticleRelationMigration>();
 
 //serviceCollection.AddSingleton<ArticleCommentMigration>();
+serviceCollection.AddSingleton<AttachmentMigration>();
 serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<CommentMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
@@ -34,6 +39,8 @@ var migration = serviceProvider.GetRequiredService<Migration>();
 var relationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
 
 //var articleCommentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
+
+var attachmentMigration = serviceProvider.GetRequiredService<AttachmentMigration>();
 var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
 var commentMigration = serviceProvider.GetRequiredService<CommentMigration>();
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
@@ -50,15 +57,26 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 //var result = AttachmentHelper.GetArtifactAttachmentDic();
 
+await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+{
+    var attachmentRelations = (await cn.QueryAsync<AttachmentRelation>(@"SELECT * FROM ""AttachmentRelation"""))
+                             .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups => groups.ToList());;
+}
+
+
 // //1.文章Id關聯表
 // relationMigration.Migration();
-migration.ExecuteRelation();
+// migration.ExecuteRelation();
+
+// 2.附件
+// await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await AttachmentMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), async () => await migration.ExecuteAttachmentAsync(token));
 
 //
 // 3.文章,留言
 // await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
 
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 

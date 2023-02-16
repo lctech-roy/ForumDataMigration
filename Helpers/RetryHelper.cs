@@ -72,37 +72,6 @@ public static class RetryHelper
         return cn.QueryFirst<string?>(@"SELECT ""FolderName"" FROM ""CommentRetry""");
     }
 
-    public static void RemoveFilesByDate(IEnumerable<string> rootPaths, string dateFolderName)
-    {
-        var periods = PeriodHelper.GetPeriods(dateFolderName);
-
-        foreach (var rootPath in rootPaths)
-        {
-            foreach (var period in periods)
-            {
-                var path = $"{rootPath}/{period.FolderName}";
-
-                if (Directory.Exists(path))
-                    Directory.Delete(path, true);
-            }
-        }
-    }
-
-    public static void RemoveFiles(IEnumerable<string> paths)
-    {
-        foreach (var path in paths)
-        {
-            if (Directory.Exists(path))
-            {
-                Directory.Delete(path, true);
-            }
-            else if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-        }
-    }
-
     public static string GetEarliestCreateDateStr()
     {
         using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
