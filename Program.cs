@@ -1,14 +1,11 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
 using System.Globalization;
-using Dapper;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
-using ForumDataMigration.Models;
 using Microsoft.Extensions.DependencyInjection;
-using MySqlConnector;
 using Netcorext.Algorithms;
-using Npgsql;
+
 
 // 1. 建立依賴注入的容器
 var serviceCollection = new ServiceCollection();
@@ -57,11 +54,21 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 //var result = AttachmentHelper.GetArtifactAttachmentDic();
 
-await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
-{
-    var attachmentRelations = (await cn.QueryAsync<AttachmentRelation>(@"SELECT * FROM ""AttachmentRelation"""))
-                             .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups => groups.ToList());;
-}
+// await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+// {
+//     var startDate = DateTimeOffset.Parse(Setting.ATTACHMENT_START_DATE).ToUniversalTime();
+//     
+//     var attachmentRelations = (await cn.QueryAsync<Attachment>(@"SELECT * FROM ""AttachmentRelation"""))
+//                              .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups => groups.ToList());;
+// }
+//
+// await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+// {
+//
+//     
+//     var attachmentRelations = (await cn.QueryAsync<Attachment>(@"SELECT * FROM ""AttachmentRelation"""))
+//                              .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups => groups.ToList());;
+// }
 
 
 // //1.文章Id關聯表
@@ -70,7 +77,7 @@ await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
 
 // 2.附件
 // await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await AttachmentMigration.MigrationAsync(token));
-// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), async () => await migration.ExecuteAttachmentAsync(token));
+CommonHelper.WatchTime(nameof(migration.ExecuteAttachment), () => migration.ExecuteAttachment());
 
 //
 // 3.文章,留言

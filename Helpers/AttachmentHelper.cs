@@ -16,6 +16,8 @@ public static class AttachmentHelper
                                             $",\"{nameof(Attachment.StoragePath)}\",\"{nameof(Attachment.Name)}\",\"{nameof(Attachment.ContentType)}\",\"{nameof(Attachment.ParentId)}\"" +
                                             Setting.COPY_ENTITY_SUFFIX;
 
+    public static readonly int[] TableNumbers = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
     public static async Task<Dictionary<int, List<Attachment>>> GetAttachmentDicAsync(IGrouping<int, int>[] attachFileGroups, ISnowflake snowflake, CancellationToken cancellationToken)
     {
         // var sw = new Stopwatch();

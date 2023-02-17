@@ -56,7 +56,7 @@ public static class FileHelper
         //                      connection.ExecuteAllTexts(inputFilePath);
         //                  });
     }
-    
+
     public static void WriteToFile(string directoryPath, string fileName, string copyPrefix, StringBuilder valueSb)
     {
         if (valueSb.Length == 0)
@@ -69,7 +69,7 @@ public static class FileHelper
         Console.WriteLine(fullPath);
         valueSb.Clear();
     }
-    
+
     public static void RemoveFilesByDate(IEnumerable<string> rootPaths, string dateFolderName)
     {
         var periods = PeriodHelper.GetPeriods(dateFolderName);

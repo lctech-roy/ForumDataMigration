@@ -30,33 +30,20 @@ public class Migration
         cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{AFTER_FILE_NAME}");
     }
 
-    public async Task ExecuteAttachmentAsync(CancellationToken token)
+    public void ExecuteAttachment()
     {
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
-        const string attachmentRelationPath = $"{Setting.INSERT_DATA_PATH}/{nameof(AttachmentRelation)}";
 
-        var tableNumbers = new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-        
-        var attachmentTask = new Task(() =>
-                                      {
-                                          foreach (var tableNumber in tableNumbers)
-                                          {
-                                              FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{tableNumber}", Setting.NEW_ATTACHMENT_CONNECTION);
-                                          }
-                                      });
+        var tableNumbers = AttachmentHelper.TableNumbers;
 
-        var attachmentRelationTask = new Task(() =>
-                                              {
-                                                  foreach (var tableNumber in tableNumbers)
-                                                  {
-                                                      FileHelper.ExecuteAllSqlFiles($"{attachmentRelationPath}/{tableNumber}", Setting.NEW_FORUM_CONNECTION);
-                                                  }
-                                              });
-
-        attachmentTask.Start();
-        attachmentRelationTask.Start();
-        
-        await Task.WhenAll(attachmentTask, attachmentRelationTask);
+        CommonHelper.WatchTime(nameof(ExecuteAttachment),
+                               () =>
+                               {
+                                   foreach (var tableNumber in tableNumbers)
+                                   {
+                                       FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{tableNumber}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                   }
+                               });
     }
 
     public async Task ExecuteArticleAsync(CancellationToken token)
@@ -135,21 +122,21 @@ public class Migration
         Console.WriteLine($"{nameof(ExecuteArticleRewardAsync)} Done!");
     }
 
-    public void ExecuteAttachment()
-    {
-        using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
-        cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ExternalAttachmentUrl)}/{BEFORE_FILE_NAME}");
-
-        const string path = $"{Setting.INSERT_DATA_PATH}/{nameof(ExternalAttachmentUrl)}";
-
-        var periods = PeriodHelper.GetPeriods();
-        var postTableIds = ArticleHelper.GetPostTableIds();
-
-        foreach (var filePath in periods.SelectMany(_ => postTableIds, (period, postTableId) => $"{path}/{period.FolderName}/{postTableId}.sql").Where(File.Exists))
-        {
-            cn.ExecuteAllTexts(filePath);
-        }
-    }
+    // public void ExecuteAttachment()
+    // {
+    //     using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+    //     cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ExternalAttachmentUrl)}/{BEFORE_FILE_NAME}");
+    //
+    //     const string path = $"{Setting.INSERT_DATA_PATH}/{nameof(ExternalAttachmentUrl)}";
+    //
+    //     var periods = PeriodHelper.GetPeriods();
+    //     var postTableIds = ArticleHelper.GetPostTableIds();
+    //
+    //     foreach (var filePath in periods.SelectMany(_ => postTableIds, (period, postTableId) => $"{path}/{period.FolderName}/{postTableId}.sql").Where(File.Exists))
+    //     {
+    //         cn.ExecuteAllTexts(filePath);
+    //     }
+    // }
 
     public static async Task ExecuteArticleVoteAsync(CancellationToken token)
     {

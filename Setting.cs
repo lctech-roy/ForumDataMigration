@@ -33,10 +33,12 @@ public static class Setting
                                              $"FROM STDIN (DELIMITER '{D}')\n";
 
     public const string COPY_SUFFIX = $") FROM STDIN (DELIMITER '{D}')\n";
-    
+
     public const string SCHEMA_PATH = "../../../ScriptSchema";
     public const string BEFORE_FILE_NAME = "BeforeCopy.sql";
     public const string AFTER_FILE_NAME = "AfterCopy.sql";
 
     public const bool USE_UPDATED_DATE = false;
+
+    public const string ATTACHMENT_START_DATE = "2007-12-01";
 }

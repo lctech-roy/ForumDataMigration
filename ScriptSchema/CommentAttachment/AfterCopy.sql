@@ -3,6 +3,7 @@ ALTER TABLE "CommentAttachment"
 
 CREATE UNIQUE INDEX "IX_CommentAttachment_AttachmentId" ON "CommentAttachment" ("AttachmentId");
 
-ALTER TABLE "CommentAttachment" SET LOGGED;
+ALTER TABLE "CommentAttachment"
+    SET LOGGED;
 
 ANALYZE "CommentAttachment";

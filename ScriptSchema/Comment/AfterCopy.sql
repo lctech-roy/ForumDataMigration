@@ -33,5 +33,7 @@ CREATE INDEX "IX_CommentExtendData_Value" ON "CommentExtendData" ("Value");
 ALTER TABLE "Comment" SET LOGGED;
 ALTER TABLE "CommentExtendData" SET LOGGED;
 
-ANALYZE "Comment";
-ANALYZE "CommentExtendData";
+ANALYZE
+"Comment";
+ANALYZE
+"CommentExtendData";
