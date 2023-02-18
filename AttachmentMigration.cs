@@ -18,17 +18,17 @@ public class AttachmentMigration
 
     public static async Task MigrationAsync(CancellationToken cancellationToken)
     {
-        int? progressedMaxAid;
+        int? progressedMaxAid = null;
 
-        await using (var conn = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))
-        {
-            var startDate = DateTimeOffset.Parse(Setting.ATTACHMENT_START_DATE).AddHours(8).ToUniversalTime();
-
-            const string getMaxAIdSql = $@"SELECT MIN(""Id"") FROM ""Attachment"" WHERE ""CreationDate"" >= @startDate";
-            progressedMaxAid = conn.QueryFirst<int?>(getMaxAIdSql, new { startDate });
-
-            Console.WriteLine("progressedMaxAid:" + progressedMaxAid);
-        }
+        // await using (var conn = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))
+        // {
+        //     var startDate = DateTimeOffset.Parse(Setting.ATTACHMENT_START_DATE).AddHours(8).ToUniversalTime();
+        //
+        //     const string getMaxAIdSql = @"SELECT MIN(""Id"") FROM ""Attachment"" WHERE ""CreationDate"" >= @startDate";
+        //     progressedMaxAid = conn.QueryFirst<int?>(getMaxAIdSql, new { startDate });
+        //
+        //     Console.WriteLine("progressedMaxAid:" + progressedMaxAid);
+        // }
 
         if (!progressedMaxAid.HasValue)
             FileHelper.RemoveFiles(new[] { Setting.ATTACHMENT_PATH });
@@ -39,7 +39,7 @@ public class AttachmentMigration
                                                                                                       {
                                                                                                           var startAid = progressedMaxAid ?? 0;
 
-                                                                                                          var sql = $@"SELECT a.tid,a.pid,a.aid,attachment AS ExternalLink,remote,isimage,
+                                                                                                          var sql = $@"SELECT a.tid,a.pid,a.aid,a.uid,attachment AS ExternalLink,remote,isimage,
                                                                                                                        filename AS 'NAME',filesize AS Size,dateline,aa.downloads AS DownloadCount
                                                                                                                        FROM pre_forum_attachment_{tableNumber} a
                                                                                                                        LEFT JOIN pre_forum_attachment aa ON a.aid = aa.aid
@@ -76,7 +76,7 @@ public class AttachmentMigration
             attachmentSb.AppendValueLine(attachment.Id, attachment.Size.ToCopyValue(), attachment.ExternalLink, attachment.Bucket.ToCopyValue(),
                                          attachment.DownloadCount, attachment.ProcessingState, attachment.DeleteStatus, attachment.IsPublic,
                                          attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyText(), attachment.ContentType.ToCopyValue(), attachment.ParentId.ToCopyValue(),
-                                         attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
+                                         attachment.CreationDate, attachment.Uid,  attachment.CreationDate, attachment.Uid, attachment.Version);
         }
 
         FileHelper.WriteToFile($"{Setting.ATTACHMENT_PATH}/{tableNumber}", $"{startAid}.sql", ATTACHMENT_PREFIX, attachmentSb);

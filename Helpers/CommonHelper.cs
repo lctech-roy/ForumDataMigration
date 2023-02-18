@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Netcorext.Algorithms;
 
 namespace ForumDataMigration.Helper;
 
@@ -7,10 +8,12 @@ public class CommonHelper
     public static void WatchTime(string actionName, Action action)
     {
         var sw = new Stopwatch();
+        Console.WriteLine($"Start {actionName}");
+
         sw.Start();
         action();
         sw.Stop();
-        Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
+
         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
         Console.WriteLine($"{actionName} Time => {answer}");
@@ -19,10 +22,12 @@ public class CommonHelper
     public static T WatchTime<T>(string actionName, Func<T> action)
     {
         var sw = new Stopwatch();
+        Console.WriteLine($"Start {actionName}");
+
         sw.Start();
         var result = action();
         sw.Stop();
-        Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
+
         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
         Console.WriteLine($"{actionName} Time => {answer}");
@@ -33,11 +38,12 @@ public class CommonHelper
     public static async Task WatchTimeAsync(string actionName, Func<Task> action)
     {
         var sw = new Stopwatch();
+        Console.WriteLine($"Start {actionName}");
+
         sw.Start();
         await action();
         sw.Stop();
 
-        //Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
         Console.WriteLine($"{actionName} Time => {answer}");
@@ -46,10 +52,12 @@ public class CommonHelper
     public static async Task<T> WatchTimeAsync<T>(string actionName, Func<Task<T>> action)
     {
         var sw = new Stopwatch();
+        Console.WriteLine($"Start {actionName}");
+
         sw.Start();
         var result = await action();
         sw.Stop();
-        Console.WriteLine($"{actionName} Time => {sw.ElapsedMilliseconds}ms");
+
         var t = TimeSpan.FromMilliseconds(sw.ElapsedMilliseconds);
         var answer = $"{t.Hours:D2}h:{t.Minutes:D2}m:{t.Seconds:D2}s:{t.Milliseconds:D3}ms";
         Console.WriteLine($"{actionName} Time => {answer}");

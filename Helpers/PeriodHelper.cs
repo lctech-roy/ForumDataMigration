@@ -1,3 +1,6 @@
+using Dapper;
+using MySqlConnector;
+
 namespace ForumDataMigration.Helper;
 
 public static class PeriodHelper
@@ -50,6 +53,16 @@ public static class PeriodHelper
 
     public static List<Period> GetPeriods(string? dateStr = null)
     {
+        if (Setting.TestTid != null)
+        {
+            const string getDatelineSql = $@"SELECT dateline FROM pre_forum_thread where tid =@tid";
+            using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+            var timeSeconds = sqlConnection.QueryFirst<int>(getDatelineSql, new { tid = Setting.TestTid });
+            var dateTime = DateTimeOffset.FromUnixTimeSeconds(timeSeconds);
+            
+            return GetPeriods(dateTime.Year, dateTime.Month);
+        }
+        
         if (dateStr == null)
             return GetPeriods(null, null);
 

@@ -52,36 +52,12 @@ var token = new CancellationTokenSource().Token;
 Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
-//var result = AttachmentHelper.GetArtifactAttachmentDic();
-
-// await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
-// {
-//     var startDate = DateTimeOffset.Parse(Setting.ATTACHMENT_START_DATE).ToUniversalTime();
-//     
-//     var attachmentRelations = (await cn.QueryAsync<Attachment>(@"SELECT * FROM ""AttachmentRelation"""))
-//                              .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups => groups.ToList());;
-// }
-//
-// await using (var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
-// {
-//
-//     
-//     var attachmentRelations = (await cn.QueryAsync<Attachment>(@"SELECT * FROM ""AttachmentRelation"""))
-//                              .GroupBy(x => x.Pid).ToDictionary(x => x.Key, groups => groups.ToList());;
-// }
-
-
-// //1.文章Id關聯表
-// relationMigration.Migration();
-// migration.ExecuteRelation();
-
 // 2.附件
 // await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await AttachmentMigration.MigrationAsync(token));
-CommonHelper.WatchTime(nameof(migration.ExecuteAttachment), () => migration.ExecuteAttachment());
+// CommonHelper.WatchTime(nameof(migration.ExecuteAttachment), () => migration.ExecuteAttachment());
 
-//
 // 3.文章,留言
-// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
 

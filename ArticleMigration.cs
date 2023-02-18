@@ -32,8 +32,8 @@ public class ArticleMigration
     private const string ARTICLE_ATTACHMENT_PREFIX = $"COPY \"{nameof(ArticleAttachment)}\" " +
                                                      $"(\"{nameof(ArticleAttachment.Id)}\",\"{nameof(ArticleAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
-    private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
-    private static readonly Dictionary<int, long?> CategoryDic = RelationHelper.GetCategoryDic();
+    private static readonly HashSet<long> BoardIdHash = RelationHelper.GetBoardIdHash();
+    private static readonly HashSet<long> CategoryIdHash = RelationHelper.GetCategoryIdHash();
     private static readonly Dictionary<(int, string), int?> ModDic = ArticleHelper.GetModDic();
     private static readonly Dictionary<long, Read> ReadDic = ArticleHelper.GetReadDic();
 
@@ -43,7 +43,6 @@ public class ArticleMigration
                                                                 };
 
     private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
-    private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
 
     private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
     private const string VIDEO_PATTERN = @"\[(media[^\]]*|video)](.*?)\[\/(media|video)]";
@@ -83,12 +82,7 @@ public class ArticleMigration
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
                                               LEFT JOIN pre_forum_topthreads top ON top.tid = thread.tid
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
-
-    //WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14254090";
-
-    //WHERE thread.posttableid = @postTableId AND thread.tid = 14567820";
-
-
+    
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
@@ -101,6 +95,13 @@ public class ArticleMigration
         var folderName = RetryHelper.GetArticleRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
+        
+        if (folderName != null)
+            Console.WriteLine("Retry on:" + folderName);
+        if(Setting.TestTid != null)
+            Console.WriteLine("Start Test:" + Setting.TestTid);
+        
+        Thread.Sleep(3000);
 
         //刪掉之前轉過的檔案
         if (folderName != null)
@@ -112,38 +113,43 @@ public class ArticleMigration
         {
             try
             {
-                await Parallel.ForEachAsync(postTableIds, CommonHelper.GetParallelOptions(cancellationToken), async (postTableId, token) =>
-                                                                                                              {
-                                                                                                                  var sql = string.Concat(string.Format(QUERY_ARTICLE_SQL, postTableId == 0 ? "" : $"_{postTableId}"));
+                await Parallel.ForEachAsync(postTableIds,
+                                            CommonHelper.GetParallelOptions(cancellationToken),
+                                            async (postTableId, token) =>
+                                            {
+                                                var sql = string.Concat(string.Format(QUERY_ARTICLE_SQL, postTableId == 0 ? "" : $"_{postTableId}"));
 
-                                                                                                                  await Policy
+                                                await Policy
 
-                                                                                                                        // 1. 處理甚麼樣的例外
-                                                                                                                       .Handle<EndOfStreamException>()
-                                                                                                                       .Or<ArgumentOutOfRangeException>()
+                                                      // 1. 處理甚麼樣的例外
+                                                     .Handle<EndOfStreamException>()
+                                                     .Or<ArgumentOutOfRangeException>()
 
-                                                                                                                        // 2. 重試策略，包含重試次數
-                                                                                                                       .RetryAsync(5, (ex, retryCount) =>
-                                                                                                                                      {
-                                                                                                                                          Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
-                                                                                                                                          Thread.Sleep(3000);
-                                                                                                                                      })
+                                                      // 2. 重試策略，包含重試次數
+                                                     .RetryAsync(5, (ex, retryCount) =>
+                                                                    {
+                                                                        Console.WriteLine($"發生錯誤：{ex.Message}，第 {retryCount} 次重試");
+                                                                        Thread.Sleep(3000);
+                                                                    })
 
-                                                                                                                        // 3. 執行內容
-                                                                                                                       .ExecuteAsync(async () =>
-                                                                                                                                     {
-                                                                                                                                         await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+                                                      // 3. 執行內容
+                                                     .ExecuteAsync(async () =>
+                                                                   {
+                                                                       if (Setting.TestTid != null)
+                                                                           sql += $" AND thread.tid = {Setting.TestTid}";
 
-                                                                                                                                         var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
+                                                                       await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-                                                                                                                                         var posts = (await cn.QueryAsync<ArticlePost>(command)).ToList();
+                                                                       var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
 
-                                                                                                                                         if (!posts.Any())
-                                                                                                                                             return;
+                                                                       var posts = (await cn.QueryAsync<ArticlePost>(command)).ToList();
 
-                                                                                                                                         await ExecuteAsync(posts, postTableId, period, cancellationToken);
-                                                                                                                                     });
-                                                                                                              });
+                                                                       if (!posts.Any())
+                                                                           return;
+
+                                                                       await ExecuteAsync(posts, postTableId, period, cancellationToken);
+                                                                   });
+                                            });
             }
             catch (Exception e)
             {
@@ -162,39 +168,25 @@ public class ArticleMigration
         var attachmentSb = new StringBuilder();
         var articleAttachmentSb = new StringBuilder();
 
-        // var sw = new Stopwatch();
-        // sw.Start();
-
-        // sw.Stop();
-        // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
-
-        // 排除因為lastPoster重複的文章
-        posts = posts.DistinctBy(x => x.Tid).ToList();
-
-        posts.RemoveAll(x => !ArticleDic.ContainsKey(x.Tid) || //髒資料放過他
-                             !BoardDic.ContainsKey(x.Fid));    //髒資料放過他
-
-        var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
+        var articleIdHash = new HashSet<int>();
 
         foreach (var post in posts)
         {
-            var id = ArticleDic[post.Tid];
-            var boardId = BoardDic[post.Fid];
+            if (!BoardIdHash.Contains(post.Fid))
+                continue;
 
-            var postResult = new ArticlePostResult()
-                             {
-                                 ArticleId = id,
-                                 BoardId = boardId,
-                                 MemberId = post.Authorid,
-                                 CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
-                                 CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
-                                 Post = post,
-                                 AttachmentDic = attachmentDic
-                             };
+            // 排除因為lastPoster重複的文章
+            if (articleIdHash.Contains(post.Tid))
+                continue;
+
+            articleIdHash.Add(post.Tid);
+
+            post.CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline);
+            post.CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000;
 
             try
             {
-                SetArticle(postResult, sb, attachmentSb, articleAttachmentSb);
+                SetArticle(post, sb, attachmentSb, articleAttachmentSb);
             }
             catch (Exception e)
             {
@@ -218,16 +210,14 @@ public class ArticleMigration
         await Task.WhenAll(task, attachmentTask, articleAttachmentTask);
     }
 
-    private static void SetArticle(ArticlePostResult postResult, StringBuilder sb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
+    private static void SetArticle(ArticlePost post, StringBuilder sb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
     {
-        var post = postResult.Post;
-
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
 
         var article = new Article
                       {
-                          Id = postResult.ArticleId,
+                          Id = post.Tid,
                           Status = ArticleStatus.None,
                           DeleteStatus = post.Displayorder switch
                                          {
@@ -260,17 +250,18 @@ public class ArticleMigration
                                     },
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           Title = RegexHelper.GetNewSubject(post.Subject),
-                          Content = RegexHelper.GetNewMessage(post.Message, post.Pid, postResult.ArticleId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, articleAttachmentSb),
+                          Content = RegexHelper.GetNewMessage(post.Message, post.Tid % 10, post.Pid, post.Tid,
+                                                              post.Authorid, post.CreateDate, attachmentSb, articleAttachmentSb),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
                           HotScore = post.Views / 100 + post.Replies,
-                          BoardId = postResult.BoardId,
-                          CategoryId = CategoryDic.GetValueOrDefault(post.Typeid),
-                          SortingIndex = postResult.CreateMilliseconds,
+                          BoardId = post.Fid,
+                          CategoryId = CategoryIdHash.Contains(post.Typeid) ? post.Typeid : null,
+                          SortingIndex = post.CreateMilliseconds,
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
                           LastReplierId = post.Lastposter,
                           PinPriority = post.Displayorder,
-                          Cover = SetCoverAttachment(postResult, attachmentSb),
+                          Cover = SetCoverAttachment(post, attachmentSb),
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
@@ -286,8 +277,8 @@ public class ArticleMigration
                           Price = post.Price,
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
-                          PublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : postResult.CreateDate,
-                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? postResult.CreateDate.AddDays(CommonSetting.HideExpirationDay) : null,
+                          PublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : post.CreateDate,
+                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? post.CreateDate.AddDays(CommonSetting.HideExpirationDay) : null,
                           PinExpirationDate = post.Sexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
                           HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset(),
                           RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset(),
@@ -295,10 +286,10 @@ public class ArticleMigration
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           Signature = post.Usesig,
-                          CreatorId = postResult.MemberId,
-                          ModifierId = postResult.MemberId,
-                          CreationDate = postResult.CreateDate,
-                          ModificationDate = postResult.CreateDate
+                          CreatorId = post.Authorid,
+                          ModifierId = post.Authorid,
+                          CreationDate = post.CreateDate,
+                          ModificationDate = post.CreateDate
                       };
 
         article.ImageCount = BbCodeImageRegex.Matches(article.Content).Count;
@@ -325,10 +316,8 @@ public class ArticleMigration
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
     }
 
-    private static long? SetCoverAttachment(ArticlePostResult postResult, StringBuilder attachmentSb)
+    private static long? SetCoverAttachment(ArticlePost post, StringBuilder attachmentSb)
     {
-        var post = postResult.Post;
-
         var isCover = post.Cover is not ("" or "0");
         var externalLink = isCover ? CoverHelper.GetCoverPath(post.Tid, post.Cover) : CoverHelper.GetThumbPath(post.Tid, post.Thumb);
 
@@ -337,12 +326,12 @@ public class ArticleMigration
 
         var attachment = new Attachment
                          {
-                             Id = postResult.ArticleId,
+                             Id = AttachmentSnowflake.TryGenerate(),
                              ExternalLink = externalLink,
-                             CreationDate = postResult.CreateDate,
-                             CreatorId = postResult.MemberId,
-                             ModificationDate = postResult.CreateDate,
-                             ModifierId = postResult.MemberId
+                             CreationDate = post.CreateDate,
+                             CreatorId = post.Authorid,
+                             ModificationDate = post.CreateDate,
+                             ModifierId = post.Authorid
                          };
 
         attachmentSb.AppendAttachmentValue(attachment);

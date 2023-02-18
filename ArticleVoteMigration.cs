@@ -58,7 +58,7 @@ public class ArticleVoteMigration
         #region 轉檔前準備相關資料
 
         var periods = PeriodHelper.GetPeriods();
-        var dic = RelationContainer.GetArticleIdDic();
+        var idHash = RelationContainer.GetArticleIdHash();
 
         #endregion
 
@@ -89,17 +89,15 @@ public class ArticleVoteMigration
             var voteItemSb = new StringBuilder();
             var voteItemHistorySb = new StringBuilder();
 
-            foreach (var poll in polls.Where(poll => poll.Tid != 0 && dic.ContainsKey(poll.Tid)))
+            foreach (var poll in polls.Where(poll => poll.Tid != 0 && idHash.Contains(poll.Tid)))
             {
-                var id = dic[poll.Tid];
-
                 var memberId = Convert.ToInt32(poll.Authorid);
 
                 var createDate = DateTimeOffset.FromUnixTimeSeconds(poll.Dateline);
 
                 var vote = new ArticleVote
                            {
-                               Id = id,
+                               Id = poll.Tid,
                                LimitNumberOfVotes = poll.Maxchoices,
                                Voters = poll.Voters,
                                PublicResult = poll.Visible,
@@ -112,7 +110,7 @@ public class ArticleVoteMigration
                                Items = poll.PollOptions.Select(y => new ArticleVoteItem
                                                                     {
                                                                         Id = y.Polloptionid,
-                                                                        ArticleVoteId = id,
+                                                                        ArticleVoteId = poll.Tid,
                                                                         Name = y.Polloption ?? string.Empty,
                                                                         Votes = y.Votes,
                                                                         CreationDate = createDate,

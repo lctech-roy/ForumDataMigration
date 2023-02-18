@@ -22,6 +22,13 @@ public static class ArticleHelper
 
     public static List<int> GetPostTableIds(int? id = null)
     {
+        if (Setting.TestTid != null)
+        {
+            const string getPidSql = $@"SELECT posttableid FROM pre_forum_thread where tid =@tid";
+            using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+            id = sqlConnection.QueryFirst<int>(getPidSql, new { tid = Setting.TestTid });
+        }
+
         return id.HasValue ? new List<int> { id.Value } : PostTableIds;
     }
 
@@ -31,70 +38,83 @@ public static class ArticleHelper
 
         var modDic = new Dictionary<(int, string), int?>();
 
-        using (var conn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
-        {
-            conn.Open();
+        CommonHelper.WatchTime(nameof(GetModDic),
+                               () =>
+                               {
+                                   using (var conn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION))
+                                   {
+                                       conn.Open();
 
-            using (var command = new MySqlCommand(queryModSql, conn))
-            {
-                var reader = command.ExecuteReader();
+                                       using (var command = new MySqlCommand(queryModSql, conn))
+                                       {
+                                           var reader = command.ExecuteReader();
 
-                while (reader.Read())
-                {
-                    modDic.Add((reader.GetInt32(0), reader.GetString(1)), reader.GetInt32(2));
-                }
+                                           while (reader.Read())
+                                           {
+                                               modDic.Add((reader.GetInt32(0), reader.GetString(1)), reader.GetInt32(2));
+                                           }
 
-                reader.Close();
-            }
-        }
-
-        Console.WriteLine("Finish Import ModDic!");
+                                           reader.Close();
+                                       }
+                                   }
+                               });
 
         return modDic;
     }
 
     public static Dictionary<long, Read> GetReadDic()
     {
-        using var readConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+        Dictionary<long, Read> readDic = default!;
 
-        const string readSql = @"SELECT tid, MAX(uid) AS ReadUid, MAX(pid) AS ReadFloor FROM pre_forum_read WHERE pid <> -1 GROUP BY tid";
+        CommonHelper.WatchTime(nameof(GetReadDic),
+                               () =>
+                               {
+                                   using var readConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
-        return readConnection.Query<Read>(readSql).ToDictionary(row => row.Tid, row => row);
+                                   const string readSql = @"SELECT tid, MAX(uid) AS ReadUid, MAX(pid) AS ReadFloor FROM pre_forum_read WHERE pid <> -1 GROUP BY tid";
+
+                                   readDic = readConnection.Query<Read>(readSql).ToDictionary(row => row.Tid, row => row);
+                               });
+
+        return readDic;
     }
 
     public static CommonSetting GetCommonSetting()
     {
         const string querySetting = @"SELECT * FROM pre_common_setting WHERE skey IN ('rewardexpiration','hideexpiration')";
 
-        using var conn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
-        conn.Open();
-
-        using var command = new MySqlCommand(querySetting, conn);
-
-        var reader = command.ExecuteReader();
-
         var commonSetting = new CommonSetting();
+        
+        CommonHelper.WatchTime(nameof(GetCommonSetting),
+                               () =>
+                               {
+                                   using var conn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+                                   conn.Open();
 
-        while (reader.Read())
-        {
-            var key = reader.GetString(0);
-            var value = reader.GetString(1);
+                                   using var command = new MySqlCommand(querySetting, conn);
 
-            switch (key)
-            {
-                case "rewardexpiration":
-                    commonSetting.RewardExpirationDay = Convert.ToInt32(value);
+                                   var reader = command.ExecuteReader();
 
-                    break;
-                case "hideexpiration":
-                    commonSetting.HideExpirationDay = Convert.ToInt32(value);
+                                   while (reader.Read())
+                                   {
+                                       var key = reader.GetString(0);
+                                       var value = reader.GetString(1);
 
-                    break;
-            }
-        }
+                                       switch (key)
+                                       {
+                                           case "rewardexpiration":
+                                               commonSetting.RewardExpirationDay = Convert.ToInt32(value);
 
-        reader.Close();
+                                               break;
+                                           case "hideexpiration":
+                                               commonSetting.HideExpirationDay = Convert.ToInt32(value);
 
+                                               break;
+                                       }
+                                   }
+
+                                   reader.Close();
+                               });
         return commonSetting;
     }
 }

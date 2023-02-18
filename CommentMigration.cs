@@ -14,8 +14,8 @@ namespace ForumDataMigration;
 
 public class CommentMigration
 {
-    private static readonly Dictionary<int, long> ArticleDic = RelationHelper.GetArticleDic();
-    private static readonly Dictionary<int, long> BoardDic = RelationHelper.GetBoardDic();
+    private static readonly HashSet<long> ArticleIdHash = RelationHelper.GetArticleIdHash();
+    private static readonly HashSet<long> BoardIdHash = RelationHelper.GetBoardIdHash();
 
     private const string EXTEND_DATA_RECOMMEND_COMMENT = "RecommendComment";
     private const string EXTEND_DATA_BOARD_ID = "BoardId";
@@ -41,15 +41,13 @@ public class CommentMigration
                                                      $"(\"{nameof(CommentAttachment.Id)}\",\"{nameof(CommentAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status as poststatus,post.comment,invisible,
+                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
                                                 WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder >= -3";
-
-    // WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.tid = 14605751";                                               
 
     private readonly ISnowflake _snowflake;
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(2);
@@ -69,7 +67,14 @@ public class CommentMigration
         var folderName = RetryHelper.GetCommentRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
+        
+        if (folderName != null)
+            Console.WriteLine("Retry on:" + folderName);
+        if(Setting.TestTid != null)
+            Console.WriteLine("Start Test:" + Setting.TestTid);
 
+        Thread.Sleep(3000);
+        
         //刪掉之前轉過的檔案
         if (folderName != null)
             FileHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH }, folderName);
@@ -100,6 +105,9 @@ public class CommentMigration
                                                                                                                         // 3. 執行內容
                                                                                                                        .ExecuteAsync(async () =>
                                                                                                                                      {
+                                                                                                                                         if (Setting.TestTid != null)
+                                                                                                                                             sql += $" AND thread.tid = {Setting.TestTid}";
+                                                                                                                                         
                                                                                                                                          await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
                                                                                                                                          var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
@@ -133,26 +141,22 @@ public class CommentMigration
         var commentAttachmentSb = new StringBuilder();
         var ignoreSb = new StringBuilder();
 
-        // var sw = new Stopwatch();
-        // sw.Start();
-        var attachmentDic = await AttachmentHelper.GetAttachmentDicAsync(RegexHelper.GetAttachmentGroups(posts), AttachmentSnowflake, cancellationToken);
-
-        // sw.Stop();
-        // Console.WriteLine($"selectMany Time => {sw.ElapsedMilliseconds}ms");
-
         var removedTid = 0;
         var previousTid = 0;
 
         for (var i = 0; i < posts.Length; i++)
         {
             var post = posts[i];
-
+            
+            if (!BoardIdHash.Contains(post.Fid))
+                continue;
+            
+            if (!ArticleIdHash.Contains(post.Tid))
+                continue;
+            
             if (post.Tid == removedTid)
                 continue;
-
-            var id = ArticleDic.GetValueOrDefault(post.Tid);
-            var boardId = BoardDic.GetValueOrDefault(post.Fid);
-
+            
             if (post.Tid != previousTid)
             {
                 previousTid = post.Tid;
@@ -163,7 +167,7 @@ public class CommentMigration
                 //第一筆如果不是first或sequence!=0不處理
                 if (post.First && post.Sequence == 0)
                 {
-                    (isDirty, reason) = IsDirty(id, boardId);
+                    (isDirty, reason) = IsDirty(post.Tid, post.Fid);
                 }
                 else
                 {
@@ -178,10 +182,8 @@ public class CommentMigration
 
                         if (!nextPost.First || nextPost.Sequence != 0) continue;
 
-                        var nextId = ArticleDic.GetValueOrDefault(nextPost.Tid);
-                        var nextBoardId = BoardDic.GetValueOrDefault(nextPost.Fid);
-
-                        var nextMemberId = nextPost.Authorid;
+                        var nextId = nextPost.Tid;
+                        var nextBoardId = nextPost.Fid;
 
                         (isDirty, reason) = IsDirty(nextId, nextBoardId);
 
@@ -198,24 +200,16 @@ public class CommentMigration
                 }
             }
 
-            var postResult = new CommentPostResult
-                             {
-                                 ArticleId = id,
-                                 BoardId = boardId,
-                                 MemberId = post.Authorid,
-                                 CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline),
-                                 CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000,
-                                 Post = post,
-                                 AttachmentDic = attachmentDic
-                             };
+            post.CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline);
+            post.CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000;
 
-            if (post.First && post.Sequence == 0) //文章
+            if (post is { First: true, Sequence: 0 }) //文章
             {
-                SetCommentFirst(postResult, commentSb, commentExtendDataSb, period, postTableId);
+                SetCommentFirst(post, commentSb, commentExtendDataSb, period, postTableId);
             }
             else if (post.Sequence != 0) //留言
             {
-                await SetCommentAsync(postResult, commentSb, commentExtendDataSb, attachmentSb, commentAttachmentSb, period, postTableId, cancellationToken);
+                await SetCommentAsync(post, commentSb, commentExtendDataSb, attachmentSb, commentAttachmentSb, period, postTableId, cancellationToken);
             }
         }
 
@@ -234,63 +228,67 @@ public class CommentMigration
         await Task.WhenAll(commentTask, commentExtendDataTask, ignoreTask, attachmentTask, commentAttachmentTask);
     }
 
-    private static void SetCommentFirst(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId)
+    private static void SetCommentFirst(CommentPost post, StringBuilder commentSb, StringBuilder commentExtendDataSb, Period period, int postTableId)
     {
-        var comment = postResult.Post;
-        comment.Id = postResult.ArticleId;
-        comment.RootId = postResult.ArticleId;
-        comment.Level = 1;
-        comment.Hierarchy = postResult.ArticleId.ToString();
-        comment.VisibleType = VisibleType.Public;
-        comment.SortingIndex = postResult.CreateMilliseconds;
-        comment.CreationDate = postResult.CreateDate;
-        comment.CreatorId = postResult.MemberId;
-        comment.ModificationDate = postResult.CreateDate;
-        comment.ModifierId = postResult.MemberId;
-        comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
-        comment.ReplyCount = postResult.Post.ReplyCount;
-        comment.Status = CommentStatus.NoneCommentStatus;
+        var comment = new Comment
+                      {
+                          Id = post.Tid,
+                          RootId = post.Tid,
+                          Level = 1,
+                          Hierarchy = post.Tid.ToString(),
+                          VisibleType = VisibleType.Public,
+                          SortingIndex = post.CreateMilliseconds,
+                          CreationDate = post.CreateDate,
+                          CreatorId = post.Authorid,
+                          ModificationDate = post.CreateDate,
+                          ModifierId = post.Authorid,
+                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
+                          ReplyCount = post.Replies,
+                          Status = CommentStatus.NoneCommentStatus
+                      };
 
         AppendCommentSb(comment, commentSb, period, postTableId);
 
-        commentExtendDataSb.AppendValueLine(postResult.ArticleId, EXTEND_DATA_BOARD_ID, postResult.BoardId,
+        commentExtendDataSb.AppendValueLine(post.Tid, EXTEND_DATA_BOARD_ID, post.Fid,
                                             comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 
-    private async Task SetCommentAsync(CommentPostResult postResult, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, Period period, int postTableId,
+    private async Task SetCommentAsync(CommentPost post, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, Period period, int postTableId,
                                        CancellationToken cancellationToken)
     {
-        var comment = postResult.Post;
-        var commentId = _snowflake.Generate();
-        comment.Id = commentId;
-        comment.RootId = postResult.ArticleId;
-        comment.ParentId = postResult.ArticleId;
-        comment.Level = 2;
-        comment.Hierarchy = string.Concat(postResult.ArticleId, "/", commentId);
-        comment.Content = RegexHelper.GetNewMessage(comment.Content, comment.Pid, commentId, postResult.MemberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb);
-        comment.VisibleType = comment.PostStatus == 1 ? VisibleType.Hidden : VisibleType.Public;
-        comment.SortingIndex = postResult.CreateMilliseconds;
-        comment.CreationDate = postResult.CreateDate;
-        comment.CreatorId = postResult.MemberId;
-        comment.ModificationDate = postResult.CreateDate;
-        comment.ModifierId = postResult.MemberId;
-        comment.DeleteStatus = comment.Invisible ? DeleteStatus.Deleted : DeleteStatus.None;
-        comment.Status = CommentStatus.NoneCommentStatus;
+        var comment = new Comment
+                      {
+                          Id = post.Pid,
+                          RootId = post.Tid,
+                          ParentId = post.Tid,
+                          Level = 2,
+                          Hierarchy = string.Concat(post.Tid, "/", post.Pid),
+                          Content = RegexHelper.GetNewMessage(post.Content, post.Tid % 10, post.Pid, post.Pid,
+                                                              post.Authorid, post.CreateDate, attachmentSb, commentAttachmentSb),
+                          VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
+                          SortingIndex = post.CreateMilliseconds,
+                          CreationDate = post.CreateDate,
+                          CreatorId = post.Authorid,
+                          ModificationDate = post.CreateDate,
+                          ModifierId = post.Authorid,
+                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
+                          Status = CommentStatus.NoneCommentStatus
+                      };
 
         PreForumPostcomment[]? postComments = null;
 
-        if (comment.Comment)
-            postComments = (await CommentHelper.GetPostCommentsAsync(comment.Tid, comment.Pid, cancellationToken)).ToArray();
+        if (post.Comment)
+            postComments = (await CommentHelper.GetPostCommentsAsync(post.Tid, post.Pid, cancellationToken)).ToArray();
 
         comment.ReplyCount = postComments?.Length ?? 0;
 
         AppendCommentSb(comment, commentSb, period, postTableId);
 
-        if (comment.StickDateline.HasValue)
+        if (post.StickDateline.HasValue)
         {
-            var stickDate = DateTimeOffset.FromUnixTimeSeconds(comment.StickDateline.Value);
+            var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
-            commentExtendDataSb.AppendValueLine(commentId, EXTEND_DATA_RECOMMEND_COMMENT, true,
+            commentExtendDataSb.AppendValueLine(post.Pid, EXTEND_DATA_RECOMMEND_COMMENT, true,
                                                 stickDate, 0, stickDate, 0, 0);
         }
 
@@ -305,17 +303,15 @@ public class CommentMigration
             var replyDate = DateTimeOffset.FromUnixTimeSeconds(postComment.Dateline);
             var memberId = postComment.Authorid;
 
-            postResult.ReplyMemberUid = postComment.Authorid;
-            postResult.ReplyMemberName = postComment.Author ?? string.Empty;
-
             var commentReply = new Comment
                                {
                                    Id = commentReplyId,
-                                   RootId = postResult.ArticleId,
-                                   ParentId = commentId,
+                                   RootId = post.Tid,
+                                   ParentId = post.Pid,
                                    Level = 3,
-                                   Hierarchy = $"{postResult.ArticleId}/{commentId}/{commentReplyId}",
-                                   Content = RegexHelper.GetNewMessage(postComment.Comment, postComment.Pid, commentReplyId, memberId, postResult.AttachmentDic, attachmentSb, commentAttachmentSb),
+                                   Hierarchy = $"{post.Tid}/{post.Pid}/{commentReplyId}",
+                                   Content = RegexHelper.GetNewMessage(postComment.Comment, post.Tid % 10, post.Pid, null,
+                                                                       postComment.Authorid, replyDate, attachmentSb, commentAttachmentSb),
                                    VisibleType = VisibleType.Public,
                                    Ip = postComment.Useip,
                                    Sequence = sequence++,
