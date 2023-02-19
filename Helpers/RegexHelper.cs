@@ -58,7 +58,7 @@ public static class RegexHelper
 
             var attachmentDic = AttachmentTableDic[tableNumber].GetValueOrDefault(pid);
 
-            var newAid = oldAid * 10 + 1;
+            var newAid = oldAid * 10 + tableNumber;
             
             if (attachmentDic == null || !attachmentDic.ContainsKey(newAid))
                 return string.Empty;

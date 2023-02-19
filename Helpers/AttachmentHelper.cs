@@ -223,7 +223,7 @@ public static class AttachmentHelper
                                                                                                          var attachmentDic = sqlConnection.Query<Attachment>(sql)
                                                                                                                                           .GroupBy(x => x.Pid)
                                                                                                                                           .ToDictionary(x => x.Key,
-                                                                                                                                                        x => x.ToDictionary(y => y.Aid * 10 + 1, y => y.IsImage));
+                                                                                                                                                        x => x.ToDictionary(y => y.Aid * 10 + tableNumber, y => y.IsImage));
 
                                                                                                          attachmentTableDic[tableNumber] = attachmentDic;
                                                                                                      });
