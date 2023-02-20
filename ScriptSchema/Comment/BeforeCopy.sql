@@ -7,9 +7,18 @@ ALTER TABLE "CommentExtendData"
     DROP CONSTRAINT IF EXISTS "PK_CommentExtendData" CASCADE,
     DROP CONSTRAINT IF EXISTS "FK_CommentExtendData_Comment_Id" CASCADE;
 
+ALTER TABLE "CommentAttachment"
+    DROP CONSTRAINT IF EXISTS "PK_CommentAttachment";
+
+DROP INDEX IF EXISTS "IX_CommentAttachment_AttachmentId";
+
 ALTER TABLE "Comment"
     SET UNLOGGED;
 ALTER TABLE "CommentExtendData"
+    SET UNLOGGED;
+ALTER TABLE "CommentAttachment"
+    SET UNLOGGED;
+ALTER TABLE "Like"
     SET UNLOGGED;
 
 -- DROP INDEX IF EXISTS "IX_Comment_ParentId";
@@ -19,3 +28,4 @@ ALTER TABLE "CommentExtendData"
 
 -- TRUNCATE "Comment";
 -- TRUNCATE "CommentExtendData";
+-- TRUNCATE "CommentAttachment";

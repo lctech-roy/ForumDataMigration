@@ -64,9 +64,18 @@ public static class FileHelper
 
         var fullPath = $"{directoryPath}/{fileName}";
 
-        Directory.CreateDirectory(directoryPath);
-        File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
-        Console.WriteLine(fullPath);
+        if (File.Exists(fullPath))
+        {
+            File.AppendAllText(fullPath, valueSb.ToString());
+            Console.WriteLine($"Append {fullPath}");
+        }
+        else
+        {
+            Directory.CreateDirectory(directoryPath);
+            File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
+            Console.WriteLine(fullPath);
+        }
+
         valueSb.Clear();
     }
 

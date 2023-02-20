@@ -104,10 +104,10 @@ public class ArticleMigration
         Thread.Sleep(3000);
 
         //刪掉之前轉過的檔案
-        if (folderName != null)
-            FileHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
-        else
-            FileHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
+        // if (folderName != null)
+        //     FileHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
+        // else
+        //     FileHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
 
         foreach (var period in periods)
         {

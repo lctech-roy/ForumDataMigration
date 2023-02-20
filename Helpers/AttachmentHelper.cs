@@ -195,7 +195,7 @@ public static class AttachmentHelper
 
     public static Dictionary<int, Dictionary<int, Dictionary<int, bool>>> GetAttachmentTableDic()
     {
-        int? pid = null;
+        List<int>? pids = null;
 
         if (Setting.TestTid != null)
         {
@@ -203,7 +203,7 @@ public static class AttachmentHelper
             using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
             var tableId = sqlConnection.QueryFirst<int>(getTableIdSql, new { tid = Setting.TestTid });
             var getPIdSql = $@"SELECT pid FROM pre_forum_post_{tableId} where tid =@tid";
-            pid = sqlConnection.QueryFirst<int>(getPIdSql, new { tid = Setting.TestTid });
+            pids = sqlConnection.Query<int>(getPIdSql, new { tid = Setting.TestTid }).ToList();
         }
 
         var attachmentTableDic = TableNumbers.ToDictionary(x => x, x => new Dictionary<int, Dictionary<int, bool>>());
@@ -215,8 +215,8 @@ public static class AttachmentHelper
                                                                                                      {
                                                                                                          var sql = $@"SELECT pid,aid,isimage FROM pre_forum_attachment_{tableNumber}";
 
-                                                                                                         if (pid != null)
-                                                                                                             sql += $" where pid={pid}";
+                                                                                                         if (pids?.Any() ?? false)
+                                                                                                             sql += $" where pid in ({string.Join(',', pids)})";
 
                                                                                                          using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 

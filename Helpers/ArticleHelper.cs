@@ -10,14 +10,16 @@ public static class ArticleHelper
 
     static ArticleHelper()
     {
-        var postTableIds = new List<int>();
-
-        for (var i = 0; i <= 150; i++)
-        {
-            postTableIds.Add(i);
-        }
-
-        PostTableIds = postTableIds;
+        const string getTableIdsSql = @"
+        SELECT DISTINCT(a.tableId) FROM (
+            SELECT CONVERT(SUBSTRING_INDEX(TABLE_NAME,'_', -1),UNSIGNED) AS tableId FROM information_schema.tables
+            WHERE table_schema = 'newjk' AND TABLE_NAME LIKE 'pre_forum_post_%'
+        ) a
+        WHERE a.tableId >= 0
+        ORDER BY a.tableId";
+        
+        using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+        PostTableIds = sqlConnection.Query<int>(getTableIdsSql).ToList();
     }
 
     public static List<int> GetPostTableIds(int? id = null)

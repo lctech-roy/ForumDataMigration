@@ -44,7 +44,8 @@ public class ArticleRatingMigration
     private const string POST0_RATING_ITEM_PATH = $"{POST_RATING_ITEM_PATH}/0";
 
     private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
-
+    private static readonly HashSet<long>  ArticleIdHash =  RelationContainer.GetArticleIdHash();
+    
     public ArticleRatingMigration(ISnowflake snowflake)
     {
         FileHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
@@ -89,19 +90,14 @@ public class ArticleRatingMigration
     private async Task ExecuteAsync(RateLog[] rateLogs, int postTableId, Period? period = null, CancellationToken cancellationToken = default)
     {
         if (!rateLogs.Any()) return;
-
-        var idDic = await RelationHelper.GetArticleIdDicAsync(rateLogs.Select(x => x.Tid).Distinct().ToArray(), cancellationToken);
-
-        if (!idDic.Any())
-            return;
-
+        
         var ratingSb = new StringBuilder();
         var ratingItemSb = new StringBuilder();
 
         foreach (var rateLog in rateLogs)
         {
             //對不到Tid的不處理
-            if (!idDic.ContainsKey(rateLog.Tid))
+            if (!ArticleIdHash.Contains(rateLog.Tid))
                 continue;
 
             var memberId = rateLog.Uid;
@@ -116,13 +112,11 @@ public class ArticleRatingMigration
                 var ratingId = _snowflake.Generate();
 
                 RatingIdDic.TryAdd((rateLog.Tid, rateLog.Uid), (ratingId, new List<byte> { rateLog.Extcredits }));
-
-                var id = idDic[rateLog.Tid];
-
+                
                 var rating = new ArticleRating()
                              {
                                  Id = ratingId,
-                                 ArticleId = id,
+                                 ArticleId = rateLog.Tid,
                                  VisibleType = VisibleType.Public,
                                  Content = rateLog.Reason,
                                  CreationDate = rateCreateDate,

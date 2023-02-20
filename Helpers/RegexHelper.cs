@@ -47,7 +47,7 @@ public static class RegexHelper
             
             //第二層回覆沒有附件
             if(!sourceId.HasValue)
-                return content;
+                return match.Value;
 
             if (string.IsNullOrWhiteSpace(content))
                 return string.Empty;

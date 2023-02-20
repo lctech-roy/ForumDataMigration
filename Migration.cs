@@ -48,17 +48,16 @@ public class Migration
 
     public async Task ExecuteArticleAsync(CancellationToken token)
     {
-        const string articleSchemaPath = $"{SCHEMA_PATH}/{nameof(Article)}";
         const string articlePath = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
-        const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Article)}";
-        const string articleAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleAttachment)}";
         const string articleAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
+
+        // const string articleSchemaPath = $"{SCHEMA_PATH}/{nameof(Article)}";
+        // const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
 
         // await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
         // {
         //     await cn.ExecuteCommandByPathAsync($"{articleSchemaPath}/{BEFORE_FILE_NAME}", token);
-        //     await cn.ExecuteCommandByPathAsync($"{articleAttachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
         // }
         //
         // await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
@@ -201,13 +200,15 @@ public class Migration
 
     public async Task ExecuteCommentAsync(CancellationToken token)
     {
-        const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
+        Thread.Sleep(3000);
+
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
-        const string commentAttachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(CommentAttachment)}";
         const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
-        const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
+
+        // const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
+        // const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
 
         // await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
         //     await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);

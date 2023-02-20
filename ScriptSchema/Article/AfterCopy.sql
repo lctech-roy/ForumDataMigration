@@ -10,16 +10,25 @@ $$
                 EXECUTE 'ALTER TABLE "' || tableName || '" ADD PRIMARY KEY ("Id");';
                 beginDate = beginDate + interval '1 year';
             END loop;
-        -- CREATE INDEX "IX_Article_PublishDate" ON "Article" ("PublishDate");
--- CREATE INDEX "IX_Article_BoardId" ON "Article" ("BoardId");
--- CREATE INDEX "IX_Article_CategoryId" ON "Article" ("CategoryId");
     end
 $$;
 
 ALTER TABLE "Article"
+    ADD CONSTRAINT "FK_Article_Board_BoardId" FOREIGN KEY ("BoardId") REFERENCES "public"."Board" ("Id");
+ALTER TABLE "Article"
+    ADD CONSTRAINT "FK_Article_ArticleCategory_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "public"."ArticleCategory" ("Id");
+ALTER TABLE "ArticleAttachment"
+    ADD CONSTRAINT "PK_ArticleAttachment" PRIMARY KEY ("Id", "AttachmentId");
+
+CREATE UNIQUE INDEX "IX_ArticleAttachment_AttachmentId" ON "ArticleAttachment" ("AttachmentId");
+
+ALTER TABLE "Article"
+    SET LOGGED;
+ALTER TABLE "ArticleAttachment"
     SET LOGGED;
 
 ANALYZE "Article";
+ANALYZE "ArticleAttachment";
 
 --刪除重複的資料
 -- DELETE FROM "Article"
@@ -27,10 +36,6 @@ ANALYZE "Article";
 --                FROM "Article"
 --                GROUP BY "Id"
 --                HAVING COUNT(*) > 1);
-
--- ALTER TABLE "ArticleReward"
---     ADD CONSTRAINT "PK_ArticleReward" PRIMARY KEY ("Id");
-
 
 -- 連載 Table seed Data
 -- TRUNCATE "ArticleSerialize";

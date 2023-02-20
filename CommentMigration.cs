@@ -41,7 +41,7 @@ public class CommentMigration
                                                      $"(\"{nameof(CommentAttachment.Id)}\",\"{nameof(CommentAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,invisible,
+                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,post.invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 
@@ -235,15 +235,20 @@ public class CommentMigration
                           Id = post.Tid,
                           RootId = post.Tid,
                           Level = 1,
+                          Sequence = post.Sequence,
+                          Ip = post.Ip,
+                          RelatedScore = post.RelatedScore,
+                          Title = post.Title,
+                          Content = string.Empty,
                           Hierarchy = post.Tid.ToString(),
-                          VisibleType = VisibleType.Public,
+                          ReplyCount = post.Replies,
                           SortingIndex = post.CreateMilliseconds,
                           CreationDate = post.CreateDate,
                           CreatorId = post.Authorid,
                           ModificationDate = post.CreateDate,
                           ModifierId = post.Authorid,
+                          VisibleType = VisibleType.Public,
                           DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
-                          ReplyCount = post.Replies,
                           Status = CommentStatus.NoneCommentStatus
                       };
 
@@ -263,14 +268,17 @@ public class CommentMigration
                           ParentId = post.Tid,
                           Level = 2,
                           Hierarchy = string.Concat(post.Tid, "/", post.Pid),
+                          Sequence = post.Sequence,
+                          Ip = post.Ip,
+                          RelatedScore = post.RelatedScore,
                           Content = RegexHelper.GetNewMessage(post.Content, post.Tid % 10, post.Pid, post.Pid,
                                                               post.Authorid, post.CreateDate, attachmentSb, commentAttachmentSb),
-                          VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           SortingIndex = post.CreateMilliseconds,
                           CreationDate = post.CreateDate,
                           CreatorId = post.Authorid,
                           ModificationDate = post.CreateDate,
                           ModifierId = post.Authorid,
+                          VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
                           Status = CommentStatus.NoneCommentStatus
                       };
@@ -335,8 +343,6 @@ public class CommentMigration
         if (commentSb.Length > maxStringBuilderLength)
         {
             FileHelper.WriteToFile($"{COMMENT_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_COMMENT_PREFIX, commentSb);
-
-            commentSb.Clear();
         }
 
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy,

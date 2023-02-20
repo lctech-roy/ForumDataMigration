@@ -14,17 +14,20 @@ $$
     end
 $$;
 
-ALTER TABLE "ArticleReward"
-    DROP CONSTRAINT IF EXISTS "PK_ArticleReward" CASCADE;
-
--- DROP INDEX IF EXISTS "IX_Article_PublishDate";
--- DROP INDEX IF EXISTS "IX_Article_BoardId";
--- DROP INDEX IF EXISTS "IX_Article_CategoryId";
+ALTER TABLE "Article"
+    DROP CONSTRAINT IF EXISTS "FK_Article_Board_BoardId";
+ALTER TABLE "Article"
+    DROP CONSTRAINT IF EXISTS "FK_Article_ArticleCategory_CategoryId";
+ALTER TABLE "ArticleAttachment"
+    DROP CONSTRAINT IF EXISTS "PK_ArticleAttachment";
+DROP INDEX IF EXISTS "IX_ArticleAttachment_AttachmentId";
 
 ALTER TABLE "Article"
     SET UNLOGGED;
-
+ALTER TABLE "ArticleAttachment"
+    SET UNLOGGED;
 
 -- TRUNCATE "Article";
+-- TRUNCATE "ArticleAttachment";
 
 

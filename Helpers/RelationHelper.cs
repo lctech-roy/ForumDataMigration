@@ -8,7 +8,7 @@ public static class RelationHelper
 {
     public static HashSet<long> GetArticleIdHash()
     {
-        const string queryArticleIdSql = @"SELECT ""Id"" FROM ""Board""";
+        const string queryArticleIdSql = @"SELECT ""Id"" FROM ""Article""";
         
         var articleIdHash = new HashSet<long>();
         
@@ -108,18 +108,6 @@ public static class RelationHelper
         using var conn = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
 
         var idDic = conn.Query<(long id, long medalId)>(queryMedalRelationSql).ToDictionary(t => t.medalId, t => t.id);
-
-        return idDic;
-    }
-
-    public static async Task<Dictionary<int, long>> GetArticleIdDicAsync(int[] tids, CancellationToken cancellationToken = default)
-    {
-        const string queryArticleIdSql = @"SELECT ""Id"",""Tid"" FROM ""ArticleRelation"" WHERE ""Tid"" =ANY(@tids)";
-
-        await using var conn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
-
-        var idDic = (await conn.QueryAsync<(long id, int tid)>(new CommandDefinition(queryArticleIdSql, new { tids }, cancellationToken: cancellationToken)))
-           .ToDictionary(t => t.tid, t => t.id);
 
         return idDic;
     }
