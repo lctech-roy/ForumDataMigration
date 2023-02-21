@@ -14,22 +14,6 @@ public class Migration
     private const string BEFORE_FILE_NAME = Setting.BEFORE_FILE_NAME;
     private const string AFTER_FILE_NAME = Setting.AFTER_FILE_NAME;
 
-    public void ExecuteRelation()
-    {
-        using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
-
-        cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{BEFORE_FILE_NAME}");
-
-        var periods = PeriodHelper.GetPeriods();
-
-        foreach (var period in periods)
-        {
-            cn.ExecuteAllTextsIfExists($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRelation)}/{period.FileName}");
-        }
-
-        cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleRelation)}/{AFTER_FILE_NAME}");
-    }
-
     public void ExecuteAttachment()
     {
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
@@ -121,22 +105,6 @@ public class Migration
         Console.WriteLine($"{nameof(ExecuteArticleRewardAsync)} Done!");
     }
 
-    // public void ExecuteAttachment()
-    // {
-    //     using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
-    //     cn.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ExternalAttachmentUrl)}/{BEFORE_FILE_NAME}");
-    //
-    //     const string path = $"{Setting.INSERT_DATA_PATH}/{nameof(ExternalAttachmentUrl)}";
-    //
-    //     var periods = PeriodHelper.GetPeriods();
-    //     var postTableIds = ArticleHelper.GetPostTableIds();
-    //
-    //     foreach (var filePath in periods.SelectMany(_ => postTableIds, (period, postTableId) => $"{path}/{period.FolderName}/{postTableId}.sql").Where(File.Exists))
-    //     {
-    //         cn.ExecuteAllTexts(filePath);
-    //     }
-    // }
-
     public static async Task ExecuteArticleVoteAsync(CancellationToken token)
     {
         const string articleVoteSchemaPath = $"{SCHEMA_PATH}/{nameof(ArticleVote)}";
@@ -205,7 +173,7 @@ public class Migration
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
         const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
-        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
+        // const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
 
         // const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
         // const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
@@ -253,18 +221,18 @@ public class Migration
                                                      FileHelper.ExecuteAllSqlFiles($"{commentAttachmentPath}/{period.FolderName}", Setting.NEW_COMMENT_CONNECTION);
                                              });
 
-        var attachmentTask = new Task(() =>
-                                      {
-                                          foreach (var period in periods)
-                                              FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
-                                      });
+        // var attachmentTask = new Task(() =>
+        //                               {
+        //                                   foreach (var period in periods)
+        //                                       FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
+        //                               });
 
         commentTask.Start();
         commentExtendDataTask.Start();
         commentAttachmentTask.Start();
-        attachmentTask.Start();
+        // attachmentTask.Start();
 
-        await Task.WhenAll(commentTask, commentExtendDataTask, commentAttachmentTask, attachmentTask);
+        await Task.WhenAll(commentTask, commentExtendDataTask, commentAttachmentTask);
 
         // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
         //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);

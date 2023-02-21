@@ -13,9 +13,6 @@ var serviceCollection = new ServiceCollection();
 // 2. 註冊服務
 serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint) new Random().Next(1, 31)));
 serviceCollection.AddSingleton<Migration>();
-serviceCollection.AddSingleton<ArticleRelationMigration>();
-
-//serviceCollection.AddSingleton<ArticleCommentMigration>();
 serviceCollection.AddSingleton<AttachmentMigration>();
 serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<CommentMigration>();
@@ -33,9 +30,6 @@ Directory.CreateDirectory(Setting.INSERT_DATA_PATH + "/Error");
 
 // 3. 執行主服務
 var migration = serviceProvider.GetRequiredService<Migration>();
-var relationMigration = serviceProvider.GetRequiredService<ArticleRelationMigration>();
-
-//var articleCommentMigration = serviceProvider.GetRequiredService<ArticleCommentMigration>();
 
 var attachmentMigration = serviceProvider.GetRequiredService<AttachmentMigration>();
 var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
@@ -57,11 +51,10 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // CommonHelper.WatchTime(nameof(migration.ExecuteAttachment), () => migration.ExecuteAttachment());
 
 // 3.文章,留言
-await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
-
-// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
 //
 // //4.文章評分

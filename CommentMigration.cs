@@ -67,14 +67,15 @@ public class CommentMigration
         var folderName = RetryHelper.GetCommentRetryDateStr();
         var postTableIds = ArticleHelper.GetPostTableIds();
         var periods = PeriodHelper.GetPeriods(folderName);
-        
+
         if (folderName != null)
             Console.WriteLine("Retry on:" + folderName);
-        if(Setting.TestTid != null)
+
+        if (Setting.TestTid != null)
             Console.WriteLine("Start Test:" + Setting.TestTid);
 
         Thread.Sleep(3000);
-        
+
         //刪掉之前轉過的檔案
         if (folderName != null)
             FileHelper.RemoveFilesByDate(new[] { COMMENT_PATH, COMMENT_EXTEND_DATA_PATH, ATTACHMENT_PATH, COMMENT_ATTACHMENT_PATH, ARTICLE_IGNORE_PATH }, folderName);
@@ -107,7 +108,7 @@ public class CommentMigration
                                                                                                                                      {
                                                                                                                                          if (Setting.TestTid != null)
                                                                                                                                              sql += $" AND thread.tid = {Setting.TestTid}";
-                                                                                                                                         
+
                                                                                                                                          await using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
 
                                                                                                                                          var command = new CommandDefinition(sql, new { postTableId, Start = period.StartSeconds, End = period.EndSeconds }, cancellationToken: token);
@@ -147,16 +148,16 @@ public class CommentMigration
         for (var i = 0; i < posts.Length; i++)
         {
             var post = posts[i];
-            
+
             if (!BoardIdHash.Contains(post.Fid))
                 continue;
-            
+
             if (!ArticleIdHash.Contains(post.Tid))
                 continue;
-            
+
             if (post.Tid == removedTid)
                 continue;
-            
+
             if (post.Tid != previousTid)
             {
                 previousTid = post.Tid;
@@ -261,18 +262,20 @@ public class CommentMigration
     private async Task SetCommentAsync(CommentPost post, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, Period period, int postTableId,
                                        CancellationToken cancellationToken)
     {
+        var newPid = post.Pid * 10;
+
         var comment = new Comment
                       {
-                          Id = post.Pid,
+                          Id = newPid,
                           RootId = post.Tid,
                           ParentId = post.Tid,
                           Level = 2,
-                          Hierarchy = string.Concat(post.Tid, "/", post.Pid),
+                          Hierarchy = string.Concat(post.Tid, "/", newPid),
                           Sequence = post.Sequence,
                           Ip = post.Ip,
                           RelatedScore = post.RelatedScore,
-                          Content = RegexHelper.GetNewMessage(post.Content, post.Tid % 10, post.Pid, post.Pid,
-                                                              post.Authorid, post.CreateDate, attachmentSb, commentAttachmentSb),
+                          Content = RegexHelper.GetNewMessage(post.Content, post.Tid % 10, post.Pid, post.Pid, post.Authorid, post.CreateDate,
+                                                              attachmentSb, commentAttachmentSb, isComment: true),
                           SortingIndex = post.CreateMilliseconds,
                           CreationDate = post.CreateDate,
                           CreatorId = post.Authorid,
@@ -296,7 +299,7 @@ public class CommentMigration
         {
             var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
-            commentExtendDataSb.AppendValueLine(post.Pid, EXTEND_DATA_RECOMMEND_COMMENT, true,
+            commentExtendDataSb.AppendValueLine(newPid, EXTEND_DATA_RECOMMEND_COMMENT, true,
                                                 stickDate, 0, stickDate, 0, 0);
         }
 
@@ -315,11 +318,11 @@ public class CommentMigration
                                {
                                    Id = commentReplyId,
                                    RootId = post.Tid,
-                                   ParentId = post.Pid,
+                                   ParentId = newPid,
                                    Level = 3,
-                                   Hierarchy = $"{post.Tid}/{post.Pid}/{commentReplyId}",
-                                   Content = RegexHelper.GetNewMessage(postComment.Comment, post.Tid % 10, post.Pid, null,
-                                                                       postComment.Authorid, replyDate, attachmentSb, commentAttachmentSb),
+                                   Hierarchy = $"{post.Tid}/{newPid}/{commentReplyId}",
+                                   Content = RegexHelper.GetNewMessage(postComment.Comment, post.Tid % 10, post.Pid, null, postComment.Authorid, replyDate,
+                                                                       attachmentSb, commentAttachmentSb, isComment: true),
                                    VisibleType = VisibleType.Public,
                                    Ip = postComment.Useip,
                                    Sequence = sequence++,
