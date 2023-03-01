@@ -21,6 +21,7 @@ serviceCollection.AddSingleton<ArticleVoteMigration>();
 serviceCollection.AddSingleton<ArticleRewardMigration>();
 serviceCollection.AddSingleton<GameItemMigration>();
 serviceCollection.AddSingleton<MemberBagMigration>();
+serviceCollection.AddSingleton<ParticipleMigration>();
 
 // 建立依賴服務提供者
 var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -40,6 +41,7 @@ var rewardMigration = serviceProvider.GetRequiredService<ArticleRewardMigration>
 
 var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
 var memberBagMigration = serviceProvider.GetRequiredService<MemberBagMigration>();
+var participleMigration = serviceProvider.GetRequiredService<ParticipleMigration>();
 
 var token = new CancellationTokenSource().Token;
 
@@ -54,7 +56,7 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
 //
 // //4.文章評分
@@ -75,5 +77,9 @@ await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async (
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteGameItemAsync), async () => await migration.ExecuteGameItemAsync());
 // CommonHelper.WatchTime(nameof(memberBagMigration),()=> memberBagMigration.Migration());
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteMemberBagAsync), async () => await migration.ExecuteMemberBagAsync());
+
+//7.敏感字
+await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await participleMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteParticipleAsync), async () => await migration.ExecuteParticipleAsync());
 
 Console.WriteLine("Hello, World!");

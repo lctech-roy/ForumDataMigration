@@ -22,6 +22,11 @@ public static class RegexHelper
     //                                                         };
 
     private const string ID = "Id";
+    private const string EMOJI = "emoji";
+    private const string TAG = "tag";
+    private const string ATTR = "attr";
+    private const string CONTENT = "content";
+    
     private const string ID_PATTERN = $@"^(?<{ID}>[\w]*).*";
 
     private const string SUBJECT_PATTERN = @"\s";
@@ -38,12 +43,12 @@ public static class RegexHelper
 
         string GetBbcode(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
-            return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Value;
+            return string.IsNullOrWhiteSpace(match.Groups[CONTENT].Value) ? string.Empty : match.Value;
         }
 
         string GetAttachBbcode(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
-            var content = match.Groups["content"].Value;
+            var content = match.Groups[CONTENT].Value;
 
             //第二層回覆沒有附件
             if (!sourceId.HasValue)
@@ -75,17 +80,17 @@ public static class RegexHelper
 
         string GetUrlBbcode(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
-            return string.IsNullOrWhiteSpace(match.Groups["content"].Value) ? string.Empty : match.Result("[url=${content}]${content}[/url]");
+            return string.IsNullOrWhiteSpace(match.Groups[CONTENT].Value) ? string.Empty : match.Result("[url=${content}]${content}[/url]");
         }
 
         string RemoveUnUsedHideAttr(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
-            return string.IsNullOrWhiteSpace(match.Groups["attr"].Value) ? match.Value : match.Result("[hide]${content}[/hide]");
+            return string.IsNullOrWhiteSpace(match.Groups[ATTR].Value) ? match.Value : match.Result("[hide]${content}[/hide]");
         }
 
         string GetYoutube(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
-            var content = match.Groups["content"].Value;
+            var content = match.Groups[CONTENT].Value;
 
             if (string.IsNullOrWhiteSpace(content))
                 return string.Empty;
@@ -102,7 +107,7 @@ public static class RegexHelper
 
         string GetVideo(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
-            var content = match.Groups["content"].Value;
+            var content = match.Groups[CONTENT].Value;
 
             //第二層回覆沒有附件
             if (!sourceId.HasValue)
@@ -135,7 +140,7 @@ public static class RegexHelper
             //避免產生重複的attachmentId
             ArtifactAttachmentTuple.pathIdDic.Remove(objectName);
 
-            var attr = match.Groups["attr"].Value;
+            var attr = match.Groups[ATTR].Value;
 
             var replacement = $"[video={attr}]{parentId}[/video]";
 
@@ -172,8 +177,8 @@ public static class RegexHelper
 
         var bbcodeKeys = string.Join("|", BbcodeDic.Keys);
 
-        Pattern = $"\\[(?<tag>(?:attach)?{bbcodeKeys})=?(?<attr>[^\\]]*)\\](?<content>[^\\[]*)\\[\\/(?:(?:attach)?{bbcodeKeys})]" +
-                  "|(?<emoji>{:([1-9]|10)_(199|[2-7][0-9]{2}|8[0-3][0-9]|84[0-6]):})";
+        Pattern = $"\\[(?<{TAG}>(?:attach)?{bbcodeKeys})=?(?<{ATTR}>[^\\]]*)\\](?<{CONTENT}>[^\\[]*)\\[\\/(?:(?:attach)?{bbcodeKeys})]" +
+                  $"|(?<{EMOJI}>{{:([1-9]|10)_(199|[2-7][0-9]{2}|8[0-3][0-9]|84[0-6]):}})";
 
         MessageRegex = new Regex(Pattern, RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
     }
@@ -184,15 +189,14 @@ public static class RegexHelper
     {
         var newMessage = MessageRegex.Replace(message, m =>
                                                        {
-                                                           if (!string.IsNullOrEmpty(m.Groups["emoji"].Value))
+                                                           if (!string.IsNullOrEmpty(m.Groups[EMOJI].Value))
                                                                return string.Empty;
 
-                                                           var tag = m.Groups["tag"].Value;
+                                                           var tag = m.Groups[TAG].Value;
 
                                                            if (string.IsNullOrEmpty(tag))
                                                                return m.Value;
-
-
+                                                           
                                                            if (!BbcodeDic.ContainsKey(tag)) return m.Value;
 
                                                            var replacement = BbcodeDic[tag](m, tableNumber, pid, sourceId, memberId, creationDate, attachmentSb, sourceAttachmentSb, isComment);

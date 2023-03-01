@@ -19,6 +19,7 @@ public static class Setting
     public const string NEW_GAME_CENTER_MEDAL_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_jkf_gamecenter_medal;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_ATTACHMENT_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_attachment;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_ARTIFACT_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_artifact_test;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
+    public const string NEW_PARTICIPLE_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_participle;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
 
     public const string D = "";
     public const string FORUM_URL = "https://www.jkforum.net/";

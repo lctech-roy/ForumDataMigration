@@ -10,6 +10,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Lctech.Comment\src\Lctech.Comment\Lctech.Comment.csproj" />
     <ProjectReference Include="..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj" />
+    <ProjectReference Include="..\Lctech.Participle\src\Lctech.Participle.Core\Lctech.Participle.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

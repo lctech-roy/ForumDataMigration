@@ -286,6 +286,10 @@ public class CommentMigration
                           Status = CommentStatus.NoneCommentStatus
                       };
 
+        //連載
+        if (post.Fid is 228 or 209)
+            comment.Title = SerializeHelper.GetTitle(post.Content);
+
         PreForumPostcomment[]? postComments = null;
 
         if (post.Comment)

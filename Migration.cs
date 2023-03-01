@@ -4,6 +4,7 @@ using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Lctech.Comment.Domain.Entities;
 using Lctech.Jkf.Forum.Domain.Entities;
+using Lctech.Participle.Domain.Entities;
 using Npgsql;
 
 namespace ForumDataMigration;
@@ -279,5 +280,16 @@ public class Migration
         await Task.WhenAll(bagTask, bagItemTask);
 
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(MemberBagItem)}/{AFTER_FILE_NAME}");
+    }
+    
+    public async Task ExecuteParticipleAsync()
+    {
+        await using var connection = new NpgsqlConnection(Setting.NEW_PARTICIPLE_CONNECTION);
+
+        connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(SensitiveWordFilter)}/{BEFORE_FILE_NAME}");
+
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(SensitiveWordFilter)}.sql");
+
+        connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(SensitiveWordFilter)}/{AFTER_FILE_NAME}");
     }
 }
