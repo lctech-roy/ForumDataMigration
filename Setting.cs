@@ -12,7 +12,7 @@ public static class Setting
 
     private const string HOST = "104.199.140.32";
     private const string PORT = "5433";
-    private const string PASSWORD = "9OYLemeN.xK=B^OH";
+    private const string PASSWORD = "fybfe9-xaTdon-dozziw";
     public const string NEW_FORUM_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_jkf_forum;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_COMMENT_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_comment;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_GAME_CENTER_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_jkf_gamecenter;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";

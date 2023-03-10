@@ -54,7 +54,7 @@ public class ParticipleMigration
                                                                    return commonWord.Find;
                                                                });
 
-            sensitiveWordFilter.Pattern = pattern;
+            sensitiveWordFilter.Pattern = pattern.Replace("?","\\?").Replace(".","\\.");
             sensitiveWordFilter.CreationDate = DateTimeOffset.UtcNow;
             sensitiveWordFilter.ModificationDate = DateTimeOffset.UtcNow;
             sensitiveWordFilter.CreatorId = 1;
