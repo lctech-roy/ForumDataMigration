@@ -22,6 +22,7 @@ serviceCollection.AddSingleton<ArticleRewardMigration>();
 serviceCollection.AddSingleton<GameItemMigration>();
 serviceCollection.AddSingleton<MemberBagMigration>();
 serviceCollection.AddSingleton<ParticipleMigration>();
+serviceCollection.AddSingleton<ArticleBlackListMemberMigration>();
 
 // 建立依賴服務提供者
 var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -42,6 +43,7 @@ var rewardMigration = serviceProvider.GetRequiredService<ArticleRewardMigration>
 var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
 var memberBagMigration = serviceProvider.GetRequiredService<MemberBagMigration>();
 var participleMigration = serviceProvider.GetRequiredService<ParticipleMigration>();
+var blackListMigration = serviceProvider.GetRequiredService<ArticleBlackListMemberMigration>();
 
 var token = new CancellationTokenSource().Token;
 
@@ -79,7 +81,11 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteMemberBagAsync), async () => await migration.ExecuteMemberBagAsync());
 
 //7.敏感字
-await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await participleMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteParticipleAsync), async () => await migration.ExecuteParticipleAsync());
+// await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await participleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteParticipleAsync), async () => await migration.ExecuteParticipleAsync());
+
+//8.1128黑名單
+//await CommonHelper.WatchTimeAsync(nameof(blackListMigration),async () => await blackListMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleBlackListMemberAsync), async () => await migration.ExecuteArticleBlackListMemberAsync());
 
 Console.WriteLine("Hello, World!");

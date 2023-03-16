@@ -174,6 +174,7 @@ public class Migration
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
         const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
+
         // const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
 
         // const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
@@ -231,6 +232,7 @@ public class Migration
         commentTask.Start();
         commentExtendDataTask.Start();
         commentAttachmentTask.Start();
+
         // attachmentTask.Start();
 
         await Task.WhenAll(commentTask, commentExtendDataTask, commentAttachmentTask);
@@ -281,7 +283,7 @@ public class Migration
 
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(MemberBagItem)}/{AFTER_FILE_NAME}");
     }
-    
+
     public async Task ExecuteParticipleAsync()
     {
         await using var connection = new NpgsqlConnection(Setting.NEW_PARTICIPLE_CONNECTION);
@@ -291,5 +293,16 @@ public class Migration
         connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(SensitiveWordFilter)}.sql");
 
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(SensitiveWordFilter)}/{AFTER_FILE_NAME}");
+    }
+
+    public async Task ExecuteArticleBlackListMemberAsync()
+    {
+        await using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+
+        connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleBlackListMember)}/{BEFORE_FILE_NAME}");
+
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleBlackListMember)}.sql");
+
+        connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleBlackListMember)}/{AFTER_FILE_NAME}");
     }
 }
