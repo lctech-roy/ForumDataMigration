@@ -57,7 +57,7 @@ public class ArticleMigration
     private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
     private const string QUERY_ARTICLE_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                               SELECT thread.tid,post.pid,thread.special
+                                               SELECT thread.tid,post.pid,post.invisible,thread.special
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
                                               ,thread.lastpost,postReply.authorid AS lastposter
@@ -220,19 +220,7 @@ public class ArticleMigration
                       {
                           Id = post.Tid,
                           Status = ArticleStatus.None,
-                          DeleteStatus = post.Displayorder switch
-                                         {
-                                             -1 => DeleteStatus.Deleted,
-                                             -2 => DeleteStatus.Deleted,
-                                             -3 => DeleteStatus.Deleted,
-                                             0 => DeleteStatus.None,
-                                             1 => DeleteStatus.None,
-                                             2 => DeleteStatus.None,
-                                             3 => DeleteStatus.None,
-                                             4 => DeleteStatus.None,
-                                             5 => DeleteStatus.None,
-                                             _ => throw new ArgumentOutOfRangeException($"Displayorder", "Not exist")
-                                         },
+                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
                                      1 => ArticleType.Vote,

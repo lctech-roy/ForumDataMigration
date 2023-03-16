@@ -38,6 +38,8 @@ public static class RetryHelper
 
     public static string? GetArticleRetryDateStr()
     {
+        if (Setting.TestTid != null) return null;
+        
         using var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
 
         return cn.QueryFirst<string?>(@"SELECT ""FolderName"" FROM ""ArticleRetry""");
@@ -67,6 +69,8 @@ public static class RetryHelper
 
     public static string? GetCommentRetryDateStr()
     {
+        if (Setting.TestTid != null) return null;
+        
         using var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION);
 
         return cn.QueryFirst<string?>(@"SELECT ""FolderName"" FROM ""CommentRetry""");
