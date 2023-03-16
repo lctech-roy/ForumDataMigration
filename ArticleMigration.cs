@@ -36,6 +36,7 @@ public class ArticleMigration
     private static readonly HashSet<long> CategoryIdHash = RelationHelper.GetCategoryIdHash();
     private static readonly Dictionary<(int, string), int?> ModDic = ArticleHelper.GetModDic();
     private static readonly Dictionary<long, Read> ReadDic = ArticleHelper.GetReadDic();
+    private static readonly Dictionary<string, long> MemberNameDic = MemberHelper.GetMemberNameDic();
 
     private static readonly Dictionary<int, string?> ColorDic = new()
                                                                 {
@@ -60,7 +61,7 @@ public class ArticleMigration
                                                SELECT thread.tid,post.pid,post.invisible,thread.special
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
-                                              ,thread.lastpost,postReply.authorid AS lastposter
+                                              ,thread.lastpost,thread.lastposter
                                               ,thread.cover,thread.thumb,post.tags,thread.sharetimes
                                               ,thread.digest,thread.readperm,thread.closed
                                               ,thread.status,thankCount.count AS thankCount,post.useip,post.usesig
@@ -77,7 +78,6 @@ public class ArticleMigration
                                               top.hexpiry,top.sexpiry
                                               FROM pre_forum_thread AS thread
                                               LEFT JOIN (SELECT * FROM pre_forum_post{0} WHERE `first` AND position = 1) post ON post.tid = thread.tid
-                                              LEFT JOIN pre_forum_post{0} postReply ON thread.replies > 0 AND postReply.tid = thread.tid AND postReply.dateline = thread.lastpost AND postReply.author = thread.lastposter
                                               LEFT JOIN pre_post_delay AS postDelay ON postDelay.tid = thread.tid
                                               LEFT JOIN pre_forum_thankcount AS thankCount ON thankCount.tid = thread.tid
                                               LEFT JOIN pre_forum_topthreads top ON top.tid = thread.tid
@@ -248,7 +248,7 @@ public class ArticleMigration
                           CategoryId = CategoryIdHash.Contains(post.Typeid) ? post.Typeid : null,
                           SortingIndex = post.CreateMilliseconds,
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
-                          LastReplierId = post.Lastposter,
+                          LastReplierId = MemberNameDic.ContainsKey(post.Lastposter) ? MemberNameDic[post.Lastposter] : null,
                           PinPriority = post.Displayorder,
                           Cover = SetCoverAttachment(post, attachmentSb),
                           Tag = post.Tags.ToNewTags(),

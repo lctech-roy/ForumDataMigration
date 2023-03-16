@@ -25,7 +25,7 @@ public class ArticlePost
     public int? ThankCount { get; set; }
     public uint? Ratetimes { get; set; } = 0;
     public uint? Lastpost { get; set; }
-    public int? Lastposter { get; set; }
+    public string Lastposter { get; set; } = default!;
     public uint? PostTime { get; set; }
     public int Authorid { get; set; }
     public uint Dateline { get; set; }
