@@ -44,8 +44,8 @@ public class ArticleRatingMigration
     private const string POST0_RATING_ITEM_PATH = $"{POST_RATING_ITEM_PATH}/0";
 
     private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
-    private static readonly HashSet<long>  ArticleIdHash =  RelationContainer.GetArticleIdHash();
-    
+    private static readonly HashSet<long> ArticleIdHash = RelationContainer.GetArticleIdHash();
+
     public ArticleRatingMigration(ISnowflake snowflake)
     {
         FileHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
@@ -90,7 +90,7 @@ public class ArticleRatingMigration
     private async Task ExecuteAsync(RateLog[] rateLogs, int postTableId, Period? period = null, CancellationToken cancellationToken = default)
     {
         if (!rateLogs.Any()) return;
-        
+
         var ratingSb = new StringBuilder();
         var ratingItemSb = new StringBuilder();
 
@@ -112,7 +112,7 @@ public class ArticleRatingMigration
                 var ratingId = _snowflake.Generate();
 
                 RatingIdDic.TryAdd((rateLog.Tid, rateLog.Uid), (ratingId, new List<byte> { rateLog.Extcredits }));
-                
+
                 var rating = new ArticleRating()
                              {
                                  Id = ratingId,

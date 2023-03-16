@@ -17,7 +17,7 @@ public static class ArticleHelper
         ) a
         WHERE a.tableId >= 0
         ORDER BY a.tableId";
-        
+
         using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
         PostTableIds = sqlConnection.Query<int>(getTableIdsSql).ToList();
     }
@@ -86,7 +86,7 @@ public static class ArticleHelper
         const string querySetting = @"SELECT * FROM pre_common_setting WHERE skey IN ('rewardexpiration','hideexpiration')";
 
         var commonSetting = new CommonSetting();
-        
+
         CommonHelper.WatchTime(nameof(GetCommonSetting),
                                () =>
                                {
@@ -117,6 +117,7 @@ public static class ArticleHelper
 
                                    reader.Close();
                                });
+
         return commonSetting;
     }
 }

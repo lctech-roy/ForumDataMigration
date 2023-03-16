@@ -1,4 +1,5 @@
-ALTER TABLE "SensitiveWordFilter" SET LOGGED;
+ALTER TABLE "SensitiveWordFilter"
+    SET LOGGED;
 
 ANALYZE "SensitiveWordFilter";
 

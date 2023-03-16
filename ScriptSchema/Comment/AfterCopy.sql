@@ -13,7 +13,7 @@ ALTER TABLE "CommentExtendData"
 
 ALTER TABLE "CommentAttachment"
     ADD CONSTRAINT "PK_CommentAttachment" PRIMARY KEY ("Id", "AttachmentId"),
-    ADD CONSTRAINT "FK_CommentAttachment_Comment_Id" FOREIGN KEY ("Id") REFERENCES "public"."Comment"("Id") ON DELETE CASCADE;
+    ADD CONSTRAINT "FK_CommentAttachment_Comment_Id" FOREIGN KEY ("Id") REFERENCES "public"."Comment" ("Id") ON DELETE CASCADE;
 
 CREATE UNIQUE INDEX "IX_CommentAttachment_AttachmentId" ON "CommentAttachment" ("AttachmentId");
 

@@ -54,16 +54,16 @@ public class ParticipleMigration
                                                                    return commonWord.Find;
                                                                });
 
-            sensitiveWordFilter.Pattern = pattern.Replace("?","\\?").Replace(".","\\.");
+            sensitiveWordFilter.Pattern = pattern.Replace("?", "\\?").Replace(".", "\\.");
             sensitiveWordFilter.CreationDate = DateTimeOffset.UtcNow;
             sensitiveWordFilter.ModificationDate = DateTimeOffset.UtcNow;
             sensitiveWordFilter.CreatorId = 1;
             sensitiveWordFilter.ModifierId = 1;
-            
-            commonWordSb.AppendValueLine(sensitiveWordFilter.Id, (int)sensitiveWordFilter.Action, sensitiveWordFilter.ReplaceWord.ToCopyText(),sensitiveWordFilter.Pattern.ToCopyText(),sensitiveWordFilter.Tags,
+
+            commonWordSb.AppendValueLine(sensitiveWordFilter.Id, (int) sensitiveWordFilter.Action, sensitiveWordFilter.ReplaceWord.ToCopyText(), sensitiveWordFilter.Pattern.ToCopyText(), sensitiveWordFilter.Tags,
                                          sensitiveWordFilter.CreationDate, sensitiveWordFilter.CreatorId, sensitiveWordFilter.ModificationDate, sensitiveWordFilter.ModifierId, sensitiveWordFilter.Version);
         }
-        
+
         File.WriteAllText($"{Setting.INSERT_DATA_PATH}/{nameof(SensitiveWordFilter)}.sql", commonWordSb.ToString());
     }
 }

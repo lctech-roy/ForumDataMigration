@@ -9,9 +9,9 @@ public static class RelationHelper
     public static HashSet<long> GetArticleIdHash()
     {
         const string queryArticleIdSql = @"SELECT ""Id"" FROM ""Article""";
-        
+
         var articleIdHash = new HashSet<long>();
-        
+
         CommonHelper.WatchTime(nameof(GetBoardIdHash),
                                () =>
                                {
@@ -37,7 +37,7 @@ public static class RelationHelper
     public static HashSet<long> GetBoardIdHash()
     {
         const string queryBoardIdSql = @"SELECT ""Id"" FROM ""Board""";
-        
+
         var boardIdHash = new HashSet<long>();
 
         CommonHelper.WatchTime(nameof(GetBoardIdHash),
@@ -58,11 +58,11 @@ public static class RelationHelper
 
                                    reader.Close();
                                });
-        
+
         return boardIdHash;
     }
 
-    public static  HashSet<long> GetCategoryIdHash()
+    public static HashSet<long> GetCategoryIdHash()
     {
         const string queryCategoryIdSql = $"SELECT \"Id\" FROM \"ArticleCategory\"";
 
@@ -89,7 +89,7 @@ public static class RelationHelper
 
         return categoryIdHash;
     }
-    
+
     public static Dictionary<long, long> GetGameItemRelationDic()
     {
         const string queryGameItemRelationSql = @"SELECT ""Id"",""MaterialId"" FROM ""GameItemRelation""";

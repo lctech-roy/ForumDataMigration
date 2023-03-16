@@ -26,7 +26,7 @@ public static class RegexHelper
     private const string TAG = "tag";
     private const string ATTR = "attr";
     private const string CONTENT = "content";
-    
+
     private const string ID_PATTERN = $@"^(?<{ID}>[\w]*).*";
 
     private const string SUBJECT_PATTERN = @"\s";
@@ -67,7 +67,7 @@ public static class RegexHelper
 
             if (attachmentDic == null || !attachmentDic.ContainsKey(newAid))
                 return string.Empty;
-            
+
             sourceAttachmentSb.AppendValueLine(isComment ? sourceId * 10 : sourceId, newAid, creationDate, memberId, creationDate, memberId, 0);
 
             var isImage = attachmentDic[newAid];
@@ -133,7 +133,7 @@ public static class RegexHelper
 
                 attachmentSb.AppendAttachmentValue(attachment);
 
-                sourceAttachmentSb.AppendValueLine( isComment ? sourceId * 10 : sourceId, attachment.Id,
+                sourceAttachmentSb.AppendValueLine(isComment ? sourceId * 10 : sourceId, attachment.Id,
                                                    attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
             }
 
@@ -196,7 +196,7 @@ public static class RegexHelper
 
                                                            if (string.IsNullOrEmpty(tag))
                                                                return m.Value;
-                                                           
+
                                                            if (!BbcodeDic.ContainsKey(tag)) return m.Value;
 
                                                            var replacement = BbcodeDic[tag](m, tableNumber, pid, sourceId, memberId, creationDate, attachmentSb, sourceAttachmentSb, isComment);

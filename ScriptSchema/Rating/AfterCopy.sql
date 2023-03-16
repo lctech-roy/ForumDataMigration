@@ -8,8 +8,10 @@ ALTER TABLE "ArticleRatingItem"
 
 CREATE UNIQUE INDEX "IX_ArticleRating_ArticleId_CreatorId" ON "ArticleRating" ("ArticleId", "CreatorId");
 
-ALTER TABLE "ArticleRating" SET LOGGED;
-ALTER TABLE "ArticleRatingItem" SET LOGGED;
+ALTER TABLE "ArticleRating"
+    SET LOGGED;
+ALTER TABLE "ArticleRatingItem"
+    SET LOGGED;
 
 ANALYZE "ArticleRating";
 ANALYZE "ArticleRatingItem";

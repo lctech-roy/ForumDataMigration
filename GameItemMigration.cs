@@ -1,7 +1,6 @@
 using System.Text;
 using Dapper;
 using ForumDataMigration.Extensions;
-using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Netcorext.Algorithms;

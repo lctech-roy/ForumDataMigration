@@ -4,7 +4,6 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
-using Npgsql;
 
 namespace ForumDataMigration;
 
@@ -76,7 +75,7 @@ public class AttachmentMigration
             attachmentSb.AppendValueLine(attachment.Id, attachment.Size.ToCopyValue(), attachment.ExternalLink, attachment.Bucket.ToCopyValue(),
                                          attachment.DownloadCount, attachment.ProcessingState, attachment.DeleteStatus, attachment.IsPublic,
                                          attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyText(), attachment.ContentType.ToCopyValue(), attachment.ParentId.ToCopyValue(),
-                                         attachment.CreationDate, attachment.Uid,  attachment.CreationDate, attachment.Uid, attachment.Version);
+                                         attachment.CreationDate, attachment.Uid, attachment.CreationDate, attachment.Uid, attachment.Version);
         }
 
         FileHelper.WriteToFile($"{Setting.ATTACHMENT_PATH}/{tableNumber}", $"{startAid}.sql", ATTACHMENT_PREFIX, attachmentSb);

@@ -59,10 +59,10 @@ public static class PeriodHelper
             using var sqlConnection = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
             var timeSeconds = sqlConnection.QueryFirst<int>(getDatelineSql, new { tid = Setting.TestTid });
             var dateTime = DateTimeOffset.FromUnixTimeSeconds(timeSeconds);
-            
+
             return GetPeriods(dateTime.Year, dateTime.Month);
         }
-        
+
         if (dateStr == null)
             return GetPeriods(null, null);
 

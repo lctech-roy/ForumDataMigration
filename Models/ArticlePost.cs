@@ -34,7 +34,7 @@ public class ArticlePost
     public bool Usesig { get; set; }
     public uint? Sexpiry { get; set; }
     public uint? Hexpiry { get; set; }
-    
+
     //擴充欄位
     public DateTimeOffset CreateDate { get; set; }
     public long CreateMilliseconds { get; set; }

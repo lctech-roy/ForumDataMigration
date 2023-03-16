@@ -9,7 +9,7 @@ public static class SerializeHelper
     public static string GetTitle(string content)
     {
         var breakLine = Environment.NewLine.ToCharArray();
-        
+
         content = content.Trim().TrimStart(breakLine);
 
         var regexResult = ContentRegex.Match(content).ToString().TrimEnd(breakLine);

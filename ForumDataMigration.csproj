@@ -8,33 +8,33 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Lctech.Comment\src\Lctech.Comment\Lctech.Comment.csproj" />
-    <ProjectReference Include="..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj" />
-    <ProjectReference Include="..\Lctech.Participle\src\Lctech.Participle.Core\Lctech.Participle.Core.csproj" />
+    <ProjectReference Include="..\Lctech.Comment\src\Lctech.Comment\Lctech.Comment.csproj"/>
+    <ProjectReference Include="..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj"/>
+    <ProjectReference Include="..\Lctech.Participle\src\Lctech.Participle.Core\Lctech.Participle.Core.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.0.123" />
-    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.9.60" />
-    <PackageReference Include="MySql.EntityFrameworkCore" Version="6.0.1" />
-    <PackageReference Include="MySqlConnector" Version="2.1.11" />
-    <PackageReference Include="Netcorext.Algorithms.Snowflake" Version="1.0.0" />
-    <PackageReference Include="Npgsql" Version="7.0.0-preview.6" />
-    <PackageReference Include="Polly" Version="7.2.3" />
-    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="6.0.2" />
-    <PackageReference Include="Slapper.AutoMapper" Version="2.0.5" />
+    <PackageReference Include="Dapper" Version="2.0.123"/>
+    <PackageReference Include="Microsoft.VisualStudio.Threading" Version="16.9.60"/>
+    <PackageReference Include="MySql.EntityFrameworkCore" Version="6.0.1"/>
+    <PackageReference Include="MySqlConnector" Version="2.1.11"/>
+    <PackageReference Include="Netcorext.Algorithms.Snowflake" Version="1.0.0"/>
+    <PackageReference Include="Npgsql" Version="7.0.0-preview.6"/>
+    <PackageReference Include="Polly" Version="7.2.3"/>
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="6.0.2"/>
+    <PackageReference Include="Slapper.AutoMapper" Version="2.0.5"/>
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="ScriptInsert\**" />
+    <Compile Remove="ScriptInsert\**"/>
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Remove="ScriptInsert\**" />
+    <EmbeddedResource Remove="ScriptInsert\**"/>
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="ScriptInsert\**" />
+    <None Remove="ScriptInsert\**"/>
   </ItemGroup>
 
 </Project>

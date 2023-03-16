@@ -17,8 +17,8 @@ public class CommentPost
     public int Sequence { get; set; }
     public string Title { get; set; } = default!;
     public string Ip { get; set; } = string.Empty;
-    public int RelatedScore{ get; set; }
-    
+    public int RelatedScore { get; set; }
+
     //擴充欄位
     public DateTimeOffset CreateDate { get; set; }
     public long CreateMilliseconds { get; set; }
