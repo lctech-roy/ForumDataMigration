@@ -9,7 +9,5 @@ ALTER TABLE "BagGameItem"
     ADD CONSTRAINT "FK_BagGameItem_GameItem_GameItemId" FOREIGN KEY ("GameItemId") REFERENCES "GameItem" ("Id") ON DELETE
         CASCADE;
 
-CREATE INDEX "IX_BagGameItem_GameItemId" ON "BagGameItem" ("GameItemId");
-
 ANALYZE "Bag";
 ANALYZE "BagGameItem";
