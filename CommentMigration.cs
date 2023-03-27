@@ -16,6 +16,7 @@ public class CommentMigration
 {
     private static readonly HashSet<long> ArticleIdHash = RelationHelper.GetArticleIdHash();
     private static readonly HashSet<long> BoardIdHash = RelationHelper.GetBoardIdHash();
+    private static readonly HashSet<long> ProhibitMemberIdHash = MemberHelper.GetProhibitMemberIdHash();
 
     private const string EXTEND_DATA_RECOMMEND_COMMENT = "RecommendComment";
     private const string EXTEND_DATA_BOARD_ID = "BoardId";
@@ -249,7 +250,7 @@ public class CommentMigration
                           ModificationDate = post.CreateDate,
                           ModifierId = post.Authorid,
                           VisibleType = VisibleType.Public,
-                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
+                          DeleteStatus = post.Invisible || ProhibitMemberIdHash.Contains(post.Authorid) ? DeleteStatus.Deleted : DeleteStatus.None,
                           Status = CommentStatus.NoneCommentStatus
                       };
 
@@ -282,7 +283,7 @@ public class CommentMigration
                           ModificationDate = post.CreateDate,
                           ModifierId = post.Authorid,
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
-                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
+                          DeleteStatus = post.Invisible || ProhibitMemberIdHash.Contains(post.Authorid) ? DeleteStatus.Deleted : DeleteStatus.None,
                           Status = CommentStatus.NoneCommentStatus
                       };
 
@@ -316,7 +317,7 @@ public class CommentMigration
         {
             var commentReplyId = _snowflake.Generate();
             var replyDate = DateTimeOffset.FromUnixTimeSeconds(postComment.Dateline);
-            var memberId = postComment.Authorid;
+            var authorId = postComment.Authorid;
 
             var commentReply = new Comment
                                {
@@ -333,10 +334,11 @@ public class CommentMigration
                                    SortingIndex = Convert.ToInt64(postComment.Dateline) * 1000,
                                    RelatedScore = 0,
                                    CreationDate = replyDate,
-                                   CreatorId = memberId,
+                                   CreatorId = authorId,
                                    ModificationDate = replyDate,
-                                   ModifierId = memberId,
-                                   Status = CommentStatus.NoneCommentStatus
+                                   ModifierId = authorId,
+                                   Status = CommentStatus.NoneCommentStatus,
+                                   DeleteStatus = ProhibitMemberIdHash.Contains(authorId) ? DeleteStatus.Deleted : DeleteStatus.None
                                };
 
             AppendCommentSb(commentReply, commentSb, period, postTableId);

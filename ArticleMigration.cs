@@ -34,6 +34,7 @@ public class ArticleMigration
 
     private static readonly HashSet<long> BoardIdHash = RelationHelper.GetBoardIdHash();
     private static readonly HashSet<long> CategoryIdHash = RelationHelper.GetCategoryIdHash();
+    private static readonly HashSet<long> ProhibitMemberIdHash = MemberHelper.GetProhibitMemberIdHash();
     private static readonly Dictionary<(int, string), int?> ModDic = ArticleHelper.GetModDic();
     private static readonly Dictionary<long, Read> ReadDic = ArticleHelper.GetReadDic();
     private static readonly Dictionary<string, long> MemberNameDic = MemberHelper.GetMemberNameDic();
@@ -220,7 +221,7 @@ public class ArticleMigration
                       {
                           Id = post.Tid,
                           Status = ArticleStatus.None,
-                          DeleteStatus = post.Invisible ? DeleteStatus.Deleted : DeleteStatus.None,
+                          DeleteStatus = post.Invisible | ProhibitMemberIdHash.Contains(post.Authorid) ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
                                      1 => ArticleType.Vote,

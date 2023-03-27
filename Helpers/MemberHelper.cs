@@ -22,4 +22,26 @@ public class MemberHelper
 
         return dic;
     }
+
+    ///<summary>
+    ///封鎖帳號
+    ///</summary>
+    public static HashSet<long> GetProhibitMemberIdHash()
+    {
+        const string sql = @"SELECT m.""Id"" FROM ""MemberGroup"" mg 
+        INNER JOIN ""Member"" m ON m.""Id""  = mg.""Id"" 
+        WHERE ""GroupId"" = 202359554410496";
+
+        var hashSet = CommonHelper.WatchTime(nameof(GetProhibitMemberIdHash)
+                                       , () =>
+                                         {
+                                             using var conn = new NpgsqlConnection(Setting.NEW_MEMBER_CONNECTION);
+
+                                             var idDic = conn.Query<long>(sql).ToHashSet();
+
+                                             return idDic;
+                                         });
+
+        return hashSet;
+    }
 }
