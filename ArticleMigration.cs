@@ -19,11 +19,11 @@ public class ArticleMigration
                                        $"(\"{nameof(Article.Id)}\",\"{nameof(Article.BoardId)}\",\"{nameof(Article.CategoryId)}\",\"{nameof(Article.Status)}\",\"{nameof(Article.DeleteStatus)}\"" +
                                        $",\"{nameof(Article.VisibleType)}\",\"{nameof(Article.Type)}\",\"{nameof(Article.ContentType)}\",\"{nameof(Article.PinType)}\"" +
                                        $",\"{nameof(Article.Title)}\",\"{nameof(Article.Content)}\",\"{nameof(Article.ViewCount)}\",\"{nameof(Article.ReplyCount)}\"" +
-                                       $",\"{nameof(Article.SortingIndex)}\",\"{nameof(Article.LastReplyDate)}\",\"{nameof(Article.LastReplierId)}\",\"{nameof(Article.PinPriority)}\"" +
+                                       $",\"{nameof(Article.SortingIndex)}\",\"{nameof(Article.LastReplyDate)}\",\"{nameof(Article.LastReplierId)}\"" +
                                        $",\"{nameof(Article.Cover)}\",\"{nameof(Article.Tag)}\",\"{nameof(Article.RatingCount)}\",\"{nameof(Article.Warning)}\"" +
                                        $",\"{nameof(Article.ShareCount)}\",\"{nameof(Article.ImageCount)}\",\"{nameof(Article.VideoCount)}\",\"{nameof(Article.DonatePoint)}\"" +
-                                       $",\"{nameof(Article.Highlight)}\",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.Recommend)}\",\"{nameof(Article.ReadPermission)}\"" +
-                                       $",\"{nameof(Article.CommentDisabled)}\",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
+                                       $",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.ReadPermission)}\",\"{nameof(Article.ContentSummary)}\"" +
+                                       $",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
                                        $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
                                        $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
@@ -46,8 +46,8 @@ public class ArticleMigration
 
     private static readonly CommonSetting CommonSetting = ArticleHelper.GetCommonSetting();
 
-    private const string IMAGE_PATTERN = @"\[(?:img|attachimg)](.*?)\[\/(?:img|attachimg)]";
-    private const string VIDEO_PATTERN = @"\[(media|video)(]|=)(.*?)\[\/(media|video)]";
+    private const string IMAGE_PATTERN = @"\[(img|attachimg)[^\]]*](.*?)\[\/\1]";
+    private const string VIDEO_PATTERN = @"\[(media|video)=?([^\]]*)](.*?)\[\/\1]";
     private const string HIDE_PATTERN = @"(\[\/?hide[^\]]*\]|{[^}]*})";
 
     private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -106,10 +106,10 @@ public class ArticleMigration
         Thread.Sleep(3000);
 
         //刪掉之前轉過的檔案
-        // if (folderName != null)
-        //     FileHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
-        // else
-        //     FileHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
+        if (folderName != null)
+            FileHelper.RemoveFilesByDate(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH }, folderName);
+        else
+            FileHelper.RemoveFiles(new[] { ARTICLE_PATH, ATTACHMENT_PATH, ARTICLE_ATTACHMENT_PATH });
 
         foreach (var period in periods)
         {
@@ -249,18 +249,14 @@ public class ArticleMigration
                           CategoryId = CategoryIdHash.Contains(post.Typeid) ? post.Typeid : null,
                           SortingIndex = post.CreateMilliseconds,
                           LastReplyDate = post.Lastpost.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Lastpost.Value) : null,
-                          LastReplierId = MemberNameDic.ContainsKey(post.Lastposter) ? MemberNameDic[post.Lastposter] : null,
-                          PinPriority = post.Displayorder,
+                          LastReplierId = MemberNameDic.TryGetValue(post.Lastposter, out var value) ? value : null,
                           Cover = SetCoverAttachment(post, attachmentSb),
                           Tag = post.Tags.ToNewTags(),
                           RatingCount = post.Ratetimes ?? 0,
                           ShareCount = post.Sharetimes,
                           DonatePoint = 0,
-                          Highlight = post.Highlight != 0,
                           HighlightColor = ColorDic.GetValueOrDefault(highlightInt),
-                          Recommend = post.Digest,
                           ReadPermission = post.Readperm,
-                          CommentDisabled = post.Closed == 1,
                           CommentVisibleType = post.Status == 34 ? VisibleType.Private : VisibleType.Public,
                           LikeCount = post.ThankCount ?? 0,
                           Ip = post.Useip,
@@ -285,20 +281,25 @@ public class ArticleMigration
         article.ImageCount = BbCodeImageRegex.Matches(article.Content).Count;
         article.VideoCount = BbCodeVideoRegex.Matches(article.Content).Count;
 
-        article.ContentType = article.ImageCount switch
-                              {
-                                  0 when article.VideoCount == 0 => ContentType.PaintText,
-                                  > 0 when article.VideoCount > 0 => ContentType.Complex,
-                                  _ => article.VideoCount > 0 ? ContentType.Video : ContentType.Image
-                              };
+        article.ContentType = article is { ImageCount: > 0, VideoCount: > 0 }
+                                  ? ContentType.ImageAndVideo
+                                  : article.ImageCount > 0
+                                      ? ContentType.Image
+                                      : article.VideoCount > 0
+                                          ? ContentType.Video
+                                          : ContentType.PaintText;
+
+        article.ContentSummary = (article.Price > 0
+                                      ? article.Content.GetFreeContent().RemoveHideContent()
+                                      : article.Content.RemoveHideContent()
+                                 ).GetContentSummary();
 
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
                            (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
-                           article.LastReplierId.ToCopyValue(), article.PinPriority,
-                           article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.Warning, article.ShareCount,
-                           article.ImageCount, article.VideoCount, article.DonatePoint, article.Highlight, article.HighlightColor.ToCopyValue(),
-                           article.Recommend, article.ReadPermission, article.CommentDisabled, (int) article.CommentVisibleType, article.LikeCount,
+                           article.LastReplierId.ToCopyValue(), article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.Warning,
+                           article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
+                           article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount,
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
                            article.PublishDate, article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),

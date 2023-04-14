@@ -55,7 +55,7 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // CommonHelper.WatchTime(nameof(migration.ExecuteAttachment), () => migration.ExecuteAttachment());
 
 // 3.文章,留言
-// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
@@ -86,6 +86,6 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 //8.1128黑名單
 //await CommonHelper.WatchTimeAsync(nameof(blackListMigration),async () => await blackListMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleBlackListMemberAsync), async () => await migration.ExecuteArticleBlackListMemberAsync());
+//await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleBlackListMemberAsync), async () => await migration.ExecuteArticleBlackListMemberAsync());
 
 Console.WriteLine("Hello, World!");
