@@ -216,7 +216,8 @@ public class ArticleMigration
     {
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
-
+        var publishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : post.CreateDate;
+        
         var article = new Article
                       {
                           Id = post.Tid,
@@ -263,8 +264,8 @@ public class ArticleMigration
                           Price = post.Price,
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
-                          PublishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : post.CreateDate,
-                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? post.CreateDate.AddDays(CommonSetting.HideExpirationDay) : null,
+                          PublishDate = publishDate,
+                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? publishDate.AddDays(CommonSetting.HideExpirationDay) : null,
                           PinExpirationDate = post.Sexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
                           HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset(),
                           RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset(),
