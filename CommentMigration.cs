@@ -312,16 +312,22 @@ public class CommentMigration
             return;
 
         var sequence = 1;
-
+        
+        //第二層回覆Id補0預留空間
+        var commentReplyId = newPid * 10 + 1;
+        
         foreach (var postComment in postComments)
         {
-            var commentReplyId = _snowflake.Generate();
             var replyDate = DateTimeOffset.FromUnixTimeSeconds(postComment.Dateline);
             var authorId = postComment.Authorid;
 
+            //避免最後一碼是0跟其他第一層回覆的Id重複
+            if (commentReplyId % 10 == 0)
+                commentReplyId++;
+
             var commentReply = new Comment
                                {
-                                   Id = commentReplyId,
+                                   Id = commentReplyId++,
                                    RootId = post.Tid,
                                    ParentId = newPid,
                                    Level = 3,

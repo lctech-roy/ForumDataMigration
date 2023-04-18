@@ -48,7 +48,7 @@ public class ArticleMigration
 
     private const string IMAGE_PATTERN = @"\[(img|attachimg)[^\]]*](.*?)\[\/\1]";
     private const string VIDEO_PATTERN = @"\[(media|video)=?([^\]]*)](.*?)\[\/\1]";
-    private const string HIDE_PATTERN = @"(\[\/?hide[^\]]*\]|{[^}]*})";
+    private const string HIDE_PATTERN =  @"\[(hide)[^\]]*]([\s\S]*)\[\/\1]";
 
     private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
