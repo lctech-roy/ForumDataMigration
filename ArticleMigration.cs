@@ -23,8 +23,8 @@ public class ArticleMigration
                                        $",\"{nameof(Article.Cover)}\",\"{nameof(Article.Tag)}\",\"{nameof(Article.RatingCount)}\",\"{nameof(Article.Warning)}\"" +
                                        $",\"{nameof(Article.ShareCount)}\",\"{nameof(Article.ImageCount)}\",\"{nameof(Article.VideoCount)}\",\"{nameof(Article.DonatePoint)}\"" +
                                        $",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.ReadPermission)}\",\"{nameof(Article.ContentSummary)}\"" +
-                                       $",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
-                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
+                                       $",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.UnlockHideCount)}\",\"{nameof(Article.Ip)}\"" +
+                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\",\"{nameof(Article.VisibleTime)}\"" +
                                        $",\"{nameof(Article.HideBbCodeExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
@@ -48,7 +48,7 @@ public class ArticleMigration
 
     private const string IMAGE_PATTERN = @"\[(img|attachimg)[^\]]*](.*?)\[\/\1]";
     private const string VIDEO_PATTERN = @"\[(media|video)=?([^\]]*)](.*?)\[\/\1]";
-    private const string HIDE_PATTERN =  @"\[(hide)[^\]]*]([\s\S]*)\[\/\1]";
+    private const string HIDE_PATTERN = @"\[(hide)[^\]]*]([\s\S]*)\[\/\1]";
 
     private static readonly Regex BbCodeImageRegex = new(IMAGE_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BbCodeVideoRegex = new(VIDEO_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -85,7 +85,8 @@ public class ArticleMigration
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
 
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
-    private static readonly DateTimeOffset MaxDate = DateTimeOffset.MaxValue;
+    private const long MAX_UNIX_TIME = 32535215999;
+    private static readonly DateTimeOffset MaxDate = DateTimeOffset.FromUnixTimeSeconds(MAX_UNIX_TIME);
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
@@ -218,7 +219,16 @@ public class ArticleMigration
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
         var publishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : post.CreateDate;
-        var recommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset();
+
+        var pinType = post.Displayorder switch
+                      {
+                          1 => PinType.Board,
+                          2 => PinType.Area,
+                          3 => PinType.Global,
+                          4 => PinType.Advertise,
+                          5 => PinType.Advertise5X,
+                          _ => PinType.None
+                      };
 
         var article = new Article
                       {
@@ -232,15 +242,7 @@ public class ArticleMigration
                                      3 => ArticleType.Reward,
                                      _ => post.Fid is 228 or 209 ? ArticleType.Serialized : ArticleType.Article
                                  },
-                          PinType = post.Displayorder switch
-                                    {
-                                        1 => PinType.Board,
-                                        2 => PinType.Area,
-                                        3 => PinType.Global,
-                                        4 => PinType.Advertise,
-                                        5 => PinType.Advertise5X,
-                                        _ => PinType.None
-                                    },
+                          PinType = pinType,
                           VisibleType = post.Status == 1 ? VisibleType.Hidden : VisibleType.Public,
                           Title = RegexHelper.GetNewSubject(post.Subject),
                           Content = RegexHelper.GetNewMessage(post.Message, post.Tid % 10, post.Pid, post.Tid,
@@ -262,17 +264,20 @@ public class ArticleMigration
                           ReadPermission = post.Readperm,
                           CommentVisibleType = post.Status == 34 ? VisibleType.Private : VisibleType.Public,
                           LikeCount = post.ThankCount ?? 0,
+                          UnlockHideCount = post.ThankCount ?? 0,
                           Ip = post.Useip,
                           Price = post.Price,
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
                           PublishDate = publishDate,
                           HideBbCodeExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? publishDate.AddDays(CommonSetting.HideExpirationDay) : null,
-                          PinExpirationDate = post.Sexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
-                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : 
-                                                        ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset() ?? (post.Highlight != 0 ? MaxDate : null),
-                          RecommendExpirationDate =  ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset() ?? (post.Digest ? MaxDate : null),
-                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset()  ?? (post.Closed == 1 ? MaxDate : null),
+                          PinExpirationDate = post.Sexpiry.HasValue
+                                                  ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value)
+                                                  : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset()
+                                                 ?? (pinType != PinType.None ? MaxDate : null),
+                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset() ?? (post.Highlight != 0 ? MaxDate : null),
+                          RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset() ?? (post.Digest ? MaxDate : null),
+                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset() ?? (post.Closed == 1 ? MaxDate : null),
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           Signature = post.Usesig,
@@ -298,14 +303,16 @@ public class ArticleMigration
                                       : article.Content.RemoveHideContent()
                                  ).GetContentSummary();
 
+        article.VisibleTime = article.DeleteStatus == DeleteStatus.Deleted || article.VisibleType == VisibleType.Hidden ? MAX_UNIX_TIME : article.PublishDate.ToUnixTimeSeconds();
+
         sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
                            (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
                            article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
                            article.LastReplierId.ToCopyValue(), article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.Warning,
                            article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
-                           article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount,
+                           article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount, article.UnlockHideCount,
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
-                           article.PublishDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+                           article.PublishDate, article.VisibleTime, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
