@@ -25,7 +25,7 @@ public class ArticleMigration
                                        $",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.ReadPermission)}\",\"{nameof(Article.ContentSummary)}\"" +
                                        $",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.Ip)}\"" +
                                        $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\"" +
-                                       $",\"{nameof(Article.HideExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
+                                       $",\"{nameof(Article.HideBbCodeExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
@@ -85,6 +85,7 @@ public class ArticleMigration
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
 
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
+    private static readonly DateTimeOffset MaxDate = DateTimeOffset.MaxValue;
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
@@ -217,11 +218,12 @@ public class ArticleMigration
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
         var publishDate = post.PostTime.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.PostTime.Value) : post.CreateDate;
-        
+        var recommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset();
+
         var article = new Article
                       {
                           Id = post.Tid,
-                          Status = ArticleStatus.None,
+                          Status = ArticleStatus.Published,
                           DeleteStatus = post.Invisible | ProhibitMemberIdHash.Contains(post.Authorid) ? DeleteStatus.Deleted : DeleteStatus.None,
                           Type = post.Special switch
                                  {
@@ -265,11 +267,12 @@ public class ArticleMigration
                           AuditorId = read?.ReadUid,
                           AuditFloor = read?.ReadFloor,
                           PublishDate = publishDate,
-                          HideExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? publishDate.AddDays(CommonSetting.HideExpirationDay) : null,
+                          HideBbCodeExpirationDate = BbCodeHideTagRegex.IsMatch(post.Message) ? publishDate.AddDays(CommonSetting.HideExpirationDay) : null,
                           PinExpirationDate = post.Sexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset(),
-                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset(),
-                          RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset(),
-                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset(),
+                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : 
+                                                        ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset() ?? (post.Highlight != 0 ? MaxDate : null),
+                          RecommendExpirationDate =  ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset() ?? (post.Digest ? MaxDate : null),
+                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset()  ?? (post.Closed == 1 ? MaxDate : null),
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           Signature = post.Usesig,
@@ -302,7 +305,7 @@ public class ArticleMigration
                            article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
                            article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount,
                            article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
-                           article.PublishDate, article.HideExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+                           article.PublishDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                            article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                            article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
                            article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
