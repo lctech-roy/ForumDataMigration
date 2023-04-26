@@ -305,4 +305,18 @@ public class Migration
 
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleBlackListMember)}/{AFTER_FILE_NAME}");
     }
+    
+    public async Task ExecuteTaskAsync()
+    {
+        await using var connection = new NpgsqlConnection(Setting.NEW_TASK_CONNECTION);
+
+        // connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.Task)}/{BEFORE_FILE_NAME}");
+
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.Task)}.sql");
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.TaskExtendData)}.sql");
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.TaskRelation)}.sql");
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.TaskReward)}.sql");
+        
+        // connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.Task)}/{AFTER_FILE_NAME}");
+    }
 }

@@ -11,6 +11,7 @@
     <ProjectReference Include="..\Lctech.Comment\src\Lctech.Comment\Lctech.Comment.csproj" />
     <ProjectReference Include="..\Lctech.Jkf.Forum.Core\Lctech.Jkf.Forum.Core.csproj" />
     <ProjectReference Include="..\Lctech.Participle\src\Lctech.Participle.Core\Lctech.Participle.Core.csproj" />
+    <ProjectReference Include="..\Lctech.TaskCenter\src\Lctech.TaskCenter\Lctech.TaskCenter.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +24,7 @@
     <PackageReference Include="Polly" Version="7.2.3" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="6.0.2" />
     <PackageReference Include="Slapper.AutoMapper" Version="2.0.5" />
+    <PackageReference Include="Netcorext.Extensions.Linq" Version="1.0.1-dev.*" />
   </ItemGroup>
 
   <ItemGroup>
