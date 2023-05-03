@@ -47,7 +47,6 @@ var participleMigration = serviceProvider.GetRequiredService<ParticipleMigration
 var blackListMigration = serviceProvider.GetRequiredService<ArticleBlackListMemberMigration>();
 var taskMigration = serviceProvider.GetRequiredService<TaskMigration>();
 
-
 var token = new CancellationTokenSource().Token;
 
 Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;

@@ -23,7 +23,7 @@ public static class Setting
     public const string NEW_PARTICIPLE_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_participle;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_MEMBER_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_jkf_member;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_TASK_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_taskcenter;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
-
+    public const string CREDIT_CONNECTION = $"Host={HOST};Port={PORT};Username=postgres;Password={PASSWORD};Database=lctech_credit;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
 
     public const string D = "";
     public const string FORUM_URL = "https://www.jkforum.net/";

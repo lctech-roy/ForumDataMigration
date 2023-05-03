@@ -144,8 +144,8 @@ public class Migration
         const string ratingPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRating)}";
         const string ratingItemPath = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleRatingItem)}";
 
-        await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
-            await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{BEFORE_FILE_NAME}", token);
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+        //     await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{BEFORE_FILE_NAME}", token);
 
         var copyRatingTask = new Task(() =>
                                       {
@@ -163,8 +163,8 @@ public class Migration
         copyRatingItemTask.Start();
         await Task.WhenAll(copyRatingTask, copyRatingItemTask);
 
-        await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
-            await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{AFTER_FILE_NAME}", token);
+        // await using (var cn = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION))
+        //     await cn.ExecuteCommandByPathAsync($"{ratingSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
     public async Task ExecuteCommentAsync(CancellationToken token)

@@ -48,16 +48,16 @@ public class ArticleRatingMigration
 
     public ArticleRatingMigration(ISnowflake snowflake)
     {
-        FileHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
-
-        Directory.CreateDirectory(POST0_RATING_PATH);
-        Directory.CreateDirectory(POST0_RATING_ITEM_PATH);
-
         _snowflake = snowflake;
     }
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
+        FileHelper.RemoveFiles(new[] { POST_RATING_PATH, POST_RATING_ITEM_PATH });
+
+        Directory.CreateDirectory(POST0_RATING_PATH);
+        Directory.CreateDirectory(POST0_RATING_ITEM_PATH);
+        
         var periods = PeriodHelper.GetPeriods();
 
         var post0Sql = string.Concat(string.Format(QUERY_RATE_SQL, ""), QUERY_RATE_SQL_DATE_CONDITION, QUERY_RATE_SQL_GROUP);

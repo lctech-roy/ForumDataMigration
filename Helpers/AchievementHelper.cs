@@ -1,3 +1,4 @@
+using Lctech.Jkf.Forum.Core.Models;
 using Lctech.TaskCenter.Models.Achievement;
 using Lctech.TaskCenter.Models.Enums;
 
@@ -11,7 +12,7 @@ public static class AchievementHelper
                        {
                            new()
                            {
-                               Group = "HavingGold",
+                               Group = Constants.TASK_GROUP_HAVING_GOLD,
                                Name = "金幣",
                                Description = "擁有金幣",
                                LayerSettings = new (int interval, int subLevel)[]
@@ -82,7 +83,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ObtainGold",
+                               Group = Constants.TASK_GROUP_OBTAIN_GOLD,
                                Name = "金幣",
                                Description = "獲得金幣",
                                LayerSettings = new (int interval, int subLevel)[]
@@ -111,7 +112,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ConsumeGold",
+                               Group = Constants.TASK_GROUP_CONSUME_GOLD,
                                Name = "金幣",
                                Description = "消耗金幣",
                                LayerSettings = new (int interval, int subLevel)[]
@@ -140,7 +141,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "HavingHeart",
+                               Group = Constants.TASK_GROUP_HAVING_HEART,
                                Name = "愛心",
                                Description = "擁有愛心",
                                LayerSettings = new (int interval, int subLevel)[]
@@ -169,7 +170,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ObtainHeart",
+                               Group = Constants.TASK_GROUP_OBTAIN_HEART,
                                Name = "愛心",
                                Description = "獲得愛心",
                                LayerSettings = new (int interval, int subLevel)[]
@@ -198,7 +199,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ConsumeHeart",
+                               Group = Constants.TASK_GROUP_CONSUME_HEART,
                                Name = "愛心",
                                Description = "消耗愛心",
                                LayerSettings =
@@ -228,9 +229,9 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "GiveHeart",
-                               Name = "送出愛心",
-                               Description = "送出愛心次數",
+                               Group = Constants.TASK_GROUP_HAVING_SEND,
+                               Name = "擁有送出",
+                               Description = "擁有送出",
                                LayerSettings =
                                    new (int interval, int subLevel)[]
                                    {
@@ -258,7 +259,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "HavingReputation",
+                               Group = Constants.TASK_GROUP_HAVING_REPUTATION,
                                Name = "名聲",
                                Description = "擁有名聲",
                                LayerSettings =
@@ -288,7 +289,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "HavingStrength",
+                               Group = Constants.TASK_GROUP_HAVING_STRENGTH,
                                Name = "體力",
                                Description = "擁有體力",
                                LayerSettings =
@@ -308,7 +309,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ObtainStrength",
+                               Group = Constants.TASK_GROUP_OBTAIN_STRENGTH,
                                Name = "體力",
                                Description = "獲得體力",
                                LayerSettings =
@@ -338,7 +339,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ConsumeStrength",
+                               Group = Constants.TASK_GROUP_CONSUME_STRENGTH,
                                Name = "體力",
                                Description = "消耗體力",
                                LayerSettings =
@@ -368,9 +369,9 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "GiveInvitation",
+                               Group = Constants.TASK_GROUP_HAVING_INVITATION,
                                Name = "邀請",
-                               Description = "發送邀請",
+                               Description = "擁有邀請",
                                LayerSettings =
                                    new (int interval, int subLevel)[]
                                    {
@@ -398,9 +399,9 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "ClickLike",
+                               Group = Constants.TASK_GROUP_COMMENT_CLICK_LIKE,
                                Name = "點讚留言",
-                               Description = "點讚次數",
+                               Description = "點讚留言次數",
                                LayerSettings =
                                    new (int interval, int subLevel)[]
                                    {
@@ -428,9 +429,9 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "LikeClicked",
+                               Group = Constants.TASK_GROUP_COMMENT_LIKE_CLICKED,
                                Name = "留言被點讚",
-                               Description = "被點讚次數",
+                               Description = "留言被點讚次數",
                                LayerSettings =
                                    new (int interval, int subLevel)[]
                                    {
@@ -458,7 +459,7 @@ public static class AchievementHelper
                            },
                            new()
                            {
-                               Group = "TotalSign",
+                               Group = Constants.TASK_GROUP_TOTAL_SIGN,
                                Name = "每日簽到",
                                Description = "累積總簽到數",
                                LayerSettings =

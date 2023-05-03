@@ -165,11 +165,6 @@ public class TaskMigration
         
         foreach (var task in tasks)
         {
-    // private const string TASK_SQL = $"COPY \"{nameof(Task)}\" " +
-    //                                 $"(\"{nameof(Task.Id)}\",\"{nameof(Task.Name)}\",\"{nameof(Task.Description)}\",\"{nameof(Task.Source)}\",\"{nameof(Task.RequiredPoint)}\"" +
-    //                                 $",\"{nameof(Task.OriginGroupId)}\",\"{nameof(Task.OriginGroup)}\",\"{nameof(Task.IsOriginGroup)}\",\"{nameof(Task.IsDelete)}\"" +
-    //                                 $",\"{nameof(Task.IsHidden)}\",\"{nameof(Task.Type)}\",\"{nameof(Task.Level)},\"{nameof(Task.SubLevel)}\"" + Setting.COPY_ENTITY_SUFFIX;
-            
             taskSb.AppendValueLine(task.Id, task.Name.ToCopyValue(),task.Description.ToCopyValue(),task.Source, task.RequiredPoint.ToCopyValue(),
                                    task.OriginGroupId, task.OriginGroup, task.IsOriginGroup, task.IsDelete,
                                    task.IsHidden,(int)task.Type,task.Level.ToCopyValue(),task.SubLevel.ToCopyValue(),
