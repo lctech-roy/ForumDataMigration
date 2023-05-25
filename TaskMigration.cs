@@ -1,6 +1,7 @@
 using System.Text;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helpers;
+using Lctech.Jkf.Forum.Core.Models;
 using Lctech.TaskCenter.Domain.Entities;
 using Lctech.TaskCenter.Models.Enums;
 using Netcorext.Algorithms;
@@ -40,6 +41,23 @@ public class TaskMigration
         var settings = AchievementHelper.GetAchievementSettings().ToArray();
         
         var tasks = new List<Task>();
+
+        var rankGroupId = _snowflake.Generate();
+        
+        var rankTask = new Task
+                       {
+                           Id = rankGroupId,
+                           Type = TaskType.Achievement,
+                           Source = Constants.FORUM_SOURCE,
+                           OriginGroup = Constants.TASK_GROUP_ACHIEVEMENT_RANK,
+                           IsOriginGroup = true,
+                           OriginGroupId = rankGroupId,
+                           Name = "成就值",
+                           Description = "擁有成就值",
+                           RequiredPoint = -1
+                       };
+        
+        tasks.Add(rankTask);
         
         foreach (var setting in settings)
         {
@@ -67,9 +85,11 @@ public class TaskMigration
             setting.LayerSettings
                    .ForEach(x =>
                             {
-                                for (var i = 0; i < x.SubLevel; i++)
+                                for (var i = 1; i <= x.SubLevel; i++)
                                 {
                                     var id = _snowflake.Generate();
+
+                                    requiredPoint += x.Interval;
                                     
                                     var task = new Task()
                                                {
@@ -97,7 +117,17 @@ public class TaskMigration
                                                                                     SortingIndex = ++sortingIndex,
                                                                                 }
                                                                             }
-                                                                          : new List<TaskRelation>()
+                                                                          : new List<TaskRelation>(),
+                                                   TaskRewards = new List<TaskReward>()
+                                                                 {
+                                                                     new()
+                                                                     {
+                                                                         Id = id,
+                                                                         RewardId = 0,
+                                                                         RewardType = RewardType.Achievement,
+                                                                         Count = 10,
+                                                                     }
+                                                                 }
                                                };
 
                                     if (!previousId.HasValue)
@@ -113,27 +143,18 @@ public class TaskMigration
                                                                               SortingIndex = 0,
                                                                           });
                                     }
-                                    
-                                    if (previousId.HasValue)
+
+                                    if(i == x.SubLevel && x.RewardSetting != null)
                                         task.TaskRewards.Add(new TaskReward
                                                              {
                                                                  Id = id,
-                                                                 RewardId = 0,
-                                                                 RewardType = RewardType.Achievement,
-                                                                 Count = 10,
+                                                                 RewardId = x.RewardSetting.RewardId,
+                                                                 RewardType = x.RewardSetting.RewardType,
+                                                                 Count = x.RewardSetting.Count,
                                                              });
-
-                                    if (i == 0)
+                                    
+                                    if (i == 1)
                                     {
-                                        if (x.RewardSetting != null)
-                                            task.TaskRewards.Add(new TaskReward
-                                                                 {
-                                                                     Id = id,
-                                                                     RewardId = x.RewardSetting.RewardId,
-                                                                     RewardType = x.RewardSetting.RewardType,
-                                                                     Count = x.RewardSetting.Count,
-                                                                 });
-
                                         task.ExtendData.Add(new TaskExtendData()
                                                             {
                                                                 Id = id,
@@ -150,8 +171,7 @@ public class TaskMigration
                                     }
 
                                     tasks.Add(task);
-
-                                    requiredPoint += x.Interval;
+                                    
                                     previousId = task.Id;
                                 }
                             });

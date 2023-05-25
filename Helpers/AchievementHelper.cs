@@ -44,31 +44,31 @@ public static class AchievementHelper
 
                                                             layerSetting.RewardSetting = level switch
                                                                                          {
-                                                                                             2 => new RewardSetting
+                                                                                             1 => new RewardSetting
                                                                                                   {
                                                                                                       RewardType = RewardType.Item,
                                                                                                       RewardId = 238034384192096, //勇氣之羽
+                                                                                                      Count = 1
+                                                                                                  },
+                                                                                             2 => new RewardSetting
+                                                                                                  {
+                                                                                                      RewardType = RewardType.Item,
+                                                                                                      RewardId = 238034379997292, //古代銀幣
                                                                                                       Count = 1
                                                                                                   },
                                                                                              3 => new RewardSetting
                                                                                                   {
                                                                                                       RewardType = RewardType.Item,
-                                                                                                      RewardId = 238034379997292, //古代銀幣
-                                                                                                      Count = 1
+                                                                                                      RewardId = 238034384192096, //勇氣之羽
+                                                                                                      Count = 2
                                                                                                   },
                                                                                              4 => new RewardSetting
                                                                                                   {
                                                                                                       RewardType = RewardType.Item,
-                                                                                                      RewardId = 238034384192096, //勇氣之羽
-                                                                                                      Count = 2
-                                                                                                  },
-                                                                                             5 => new RewardSetting
-                                                                                                  {
-                                                                                                      RewardType = RewardType.Item,
                                                                                                       RewardId = 238034379997292, //古代銀幣
                                                                                                       Count = 2
                                                                                                   },
-                                                                                             6 => new RewardSetting
+                                                                                             5 => new RewardSetting
                                                                                                   {
                                                                                                       RewardType = RewardType.Item,
                                                                                                       RewardId = 238034379997537, //中型體力藥水
