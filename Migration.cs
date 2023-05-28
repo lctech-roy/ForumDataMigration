@@ -15,20 +15,34 @@ public class Migration
     private const string BEFORE_FILE_NAME = Setting.BEFORE_FILE_NAME;
     private const string AFTER_FILE_NAME = Setting.AFTER_FILE_NAME;
 
-    public void ExecuteAttachment()
+    public async Task ExecuteAttachmentAsync()
     {
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}";
+        const string attachmentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_ExtendData";
 
         var tableNumbers = AttachmentHelper.TableNumbers;
 
-        CommonHelper.WatchTime(nameof(ExecuteAttachment),
-                               () =>
-                               {
-                                   foreach (var tableNumber in tableNumbers)
-                                   {
-                                       FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{tableNumber}", Setting.NEW_ATTACHMENT_CONNECTION);
-                                   }
-                               });
+
+        var task = new Task(() =>
+                            {
+                                foreach (var tableNumber in tableNumbers)
+                                {
+                                    FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{tableNumber}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                }
+                            });
+
+        var extendDataTask = new Task(() =>
+                                      {
+                                          foreach (var tableNumber in tableNumbers)
+                                          {
+                                              FileHelper.ExecuteAllSqlFiles($"{attachmentExtendDataPath}/{tableNumber}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                          }
+                                      });
+
+        task.Start();
+        extendDataTask.Start();
+
+        await Task.WhenAll(task, extendDataTask);
     }
 
     public async Task ExecuteArticleAsync(CancellationToken token)
@@ -305,7 +319,7 @@ public class Migration
 
         connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(ArticleBlackListMember)}/{AFTER_FILE_NAME}");
     }
-    
+
     public async Task ExecuteTaskAsync()
     {
         await using var connection = new NpgsqlConnection(Setting.NEW_TASK_CONNECTION);
@@ -316,7 +330,7 @@ public class Migration
         connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.TaskExtendData)}.sql");
         connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.TaskRelation)}.sql");
         connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.TaskReward)}.sql");
-        
+
         // connection.ExecuteCommandByPath($"{SCHEMA_PATH}/{nameof(Lctech.TaskCenter.Domain.Entities.Task)}/{AFTER_FILE_NAME}");
     }
 }

@@ -7,6 +7,8 @@ namespace ForumDataMigration.Helpers;
 
 public static class FileHelper
 {
+    private static UTF8Encoding _encoding = new UTF8Encoding(true, false);
+
     public static async Task CombineMultipleFilesIntoSingleFileAsync(string inputDirectoryPath, string inputFileNamePattern, string outputFilePath, CancellationToken cancellationToken = default)
     {
         var inputFilePaths = Directory.GetFiles(inputDirectoryPath, inputFileNamePattern, SearchOption.AllDirectories);
@@ -66,13 +68,17 @@ public static class FileHelper
 
         if (File.Exists(fullPath))
         {
-            File.AppendAllText(fullPath, valueSb.ToString());
+            File.AppendAllText(fullPath, valueSb.ToString(), _encoding);
+
+            // File.AppendAllText(fullPath, valueSb.ToString());
             Console.WriteLine($"Append {fullPath}");
         }
         else
         {
             Directory.CreateDirectory(directoryPath);
-            File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
+            File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()), _encoding);
+
+            // File.WriteAllText(fullPath, string.Concat(copyPrefix, valueSb.ToString()));
             Console.WriteLine(fullPath);
         }
 

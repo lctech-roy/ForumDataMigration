@@ -24,7 +24,7 @@ public class ArticleMigration
                                        $",\"{nameof(Article.ShareCount)}\",\"{nameof(Article.ImageCount)}\",\"{nameof(Article.VideoCount)}\",\"{nameof(Article.DonatePoint)}\"" +
                                        $",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.ReadPermission)}\",\"{nameof(Article.ContentSummary)}\"" +
                                        $",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.UnlockHideCount)}\",\"{nameof(Article.Ip)}\"" +
-                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\",\"{nameof(Article.VisibleTime)}\"" +
+                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\",\"{nameof(Article.VisibleTime)}\",\"{nameof(Article.KeywordModificationDate)}\"" +
                                        $",\"{nameof(Article.HideBbCodeExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
@@ -190,7 +190,7 @@ public class ArticleMigration
 
             try
             {
-                SetArticle(post, sb, attachmentSb, articleAttachmentSb);
+                SetArticle(post, sb, attachmentSb, articleAttachmentSb,period,postTableId);
             }
             catch (Exception e)
             {
@@ -214,7 +214,7 @@ public class ArticleMigration
         await Task.WhenAll(task, attachmentTask, articleAttachmentTask);
     }
 
-    private static void SetArticle(ArticlePost post, StringBuilder sb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb)
+    private static void SetArticle(ArticlePost post, StringBuilder sb, StringBuilder attachmentSb, StringBuilder articleAttachmentSb,Period period,int postTableId)
     {
         var highlightInt = post.Highlight % 10; //只要取個位數
         var read = ReadDic.GetValueOrDefault(post.Tid);
@@ -280,6 +280,7 @@ public class ArticleMigration
                           CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset() ?? (post.Closed == 1 ? MaxDate : null),
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
+                          KeywordModificationDate = post.CreateDate,
                           Signature = post.Usesig,
                           CreatorId = post.Authorid,
                           ModifierId = post.Authorid,
@@ -305,19 +306,43 @@ public class ArticleMigration
 
         article.VisibleTime = article.DeleteStatus == DeleteStatus.Deleted || article.VisibleType == VisibleType.Hidden ? MAX_UNIX_TIME : article.PublishDate.ToUnixTimeSeconds();
 
-        sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
-                           (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
-                           article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
-                           article.LastReplierId.ToCopyValue(), article.Cover.ToCopyValue(), article.Tag, article.RatingCount, article.Warning,
-                           article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
-                           article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount, article.UnlockHideCount,
-                           article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(),
-                           article.PublishDate, article.VisibleTime, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
-                           article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
-                           article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
-                           article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
+        AppendArticleSb(article, sb, period, postTableId);
+        
+        // sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
+        //                    (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
+        //                    article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
+        //                    article.LastReplierId.ToCopyValue(), article.Cover.ToCopyValue(), article.Tag.ToCopyText(), article.RatingCount, article.Warning,
+        //                    article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
+        //                    article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount, article.UnlockHideCount,
+        //                    article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(), article.PublishDate, 
+        //                    article.VisibleTime, article.KeywordModificationDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+        //                    article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
+        //                    article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
+        //                    article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
     }
 
+    private static void AppendArticleSb(Article article, StringBuilder articleSb, Period period, int postTableId)
+    {
+        const int maxStringBuilderLength = 600000;
+
+        if (articleSb.Length > maxStringBuilderLength)
+        {
+            FileHelper.WriteToFile($"{ARTICLE_PATH}/{period.FolderName}", $"{postTableId}.sql", COPY_PREFIX, articleSb); 
+        }
+
+        articleSb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
+                                  (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
+                                  article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
+                                  article.LastReplierId.ToCopyValue(), article.Cover.ToCopyValue(), article.Tag.ToCopyText(), article.RatingCount, article.Warning,
+                                  article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
+                                  article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount, article.UnlockHideCount,
+                                  article.Ip, article.Price.ToCopyValue(), article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(), article.PublishDate, 
+                                  article.VisibleTime, article.KeywordModificationDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
+                                  article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
+                                  article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
+                                  article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
+    }
+    
     private static long? SetCoverAttachment(ArticlePost post, StringBuilder attachmentSb)
     {
         var isCover = post.Cover is not ("" or "0");

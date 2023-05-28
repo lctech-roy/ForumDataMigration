@@ -38,9 +38,27 @@ public static class RegexHelper
 
     static RegexHelper()
     {
+        // AttachmentTableDic = new Dictionary<int, Dictionary<int, Dictionary<int, bool>>>()
+        //                      {
+        //                          {0,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {1,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {2,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {3,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {4,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {5,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {6,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {7,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {8,new Dictionary<int, Dictionary<int, bool>>()},
+        //                          {9,new Dictionary<int, Dictionary<int, bool>>()},
+        //                      };
+        
         AttachmentTableDic = AttachmentHelper.GetAttachmentTableDic();
         ArtifactAttachmentTuple = AttachmentHelper.GetArtifactAttachmentDic();
+        
+        // AttachmentTableDic = AttachmentHelper.GetAttachmentTableDic();
+        // ArtifactAttachmentTuple = AttachmentHelper.GetArtifactAttachmentDic();
 
+        
         string GetBbcode(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
             return string.IsNullOrWhiteSpace(match.Groups[CONTENT].Value) ? string.Empty : match.Value;

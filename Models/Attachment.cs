@@ -12,6 +12,7 @@ public class Attachment : Entity
     public string? StoragePath { get; set; }
     public string? Name { get; set; }
     public string? ContentType { get; set; }
+    public string? Extension { get; set; }
     public long? ParentId { get; set; }
     public string? Bucket { get; set; }
 

@@ -39,7 +39,7 @@ public static class AttachmentHelper
         CommonHelper.WatchTime(nameof(GetArtifactAttachmentDic)
                              , () =>
                                {
-                                   using var cn = new NpgsqlConnection(Setting.NEW_ARTIFACT_CONNECTION);
+                                   using var cn = new NpgsqlConnection(Setting.NEW_TRANSCODER_CONNECTION);
 
                                    var attachments = cn.Query<Attachment>(command);
 

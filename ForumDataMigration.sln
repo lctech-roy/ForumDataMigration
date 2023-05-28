@@ -8,6 +8,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Comment", "..\Lctech
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Participle.Core", "..\Lctech.Participle\src\Lctech.Participle.Core\Lctech.Participle.Core.csproj", "{9530A9A2-EA7C-4416-AF02-68424B4468D3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.TaskCenter", "..\Lctech.TaskCenter\src\Lctech.TaskCenter\Lctech.TaskCenter.csproj", "{431798C6-635E-4350-A846-F2AAB0663DA3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lctech.Attachment.Core", "..\Lctech.Attachment\src\Lctech.Attachment.Core\Lctech.Attachment.Core.csproj", "{3C0F910D-5A12-4793-828A-954BFAFCDE92}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,6 +34,14 @@ Global
 		{9530A9A2-EA7C-4416-AF02-68424B4468D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9530A9A2-EA7C-4416-AF02-68424B4468D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9530A9A2-EA7C-4416-AF02-68424B4468D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{431798C6-635E-4350-A846-F2AAB0663DA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{431798C6-635E-4350-A846-F2AAB0663DA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{431798C6-635E-4350-A846-F2AAB0663DA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{431798C6-635E-4350-A846-F2AAB0663DA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3C0F910D-5A12-4793-828A-954BFAFCDE92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3C0F910D-5A12-4793-828A-954BFAFCDE92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3C0F910D-5A12-4793-828A-954BFAFCDE92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3C0F910D-5A12-4793-828A-954BFAFCDE92}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
