@@ -72,7 +72,7 @@ public static class PeriodHelper
         return GetPeriods(year, month);
     }
 
-    public static List<Period> GetPeriods(int? year, int? month)
+    private static List<Period> GetPeriods(int? year, int? month)
     {
         if (!year.HasValue && !month.HasValue)
             return Periods;

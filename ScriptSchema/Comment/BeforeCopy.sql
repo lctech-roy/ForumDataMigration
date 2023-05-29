@@ -12,6 +12,14 @@ ALTER TABLE "CommentAttachment"
 
 DROP INDEX IF EXISTS "IX_CommentAttachment_AttachmentId";
 
+DROP INDEX IF EXISTS "IX_Comment_ParentId";
+DROP INDEX IF EXISTS "IX_Comment_RootId";
+DROP INDEX IF EXISTS "IX_Comment_CreatorId";
+DROP INDEX IF EXISTS "IX_Comment_CreationDate";
+
+DROP INDEX IF EXISTS "IX_CommentExtendData_Key";
+DROP INDEX IF EXISTS "IX_CommentExtendData_Value";
+
 ALTER TABLE "Comment"
     SET UNLOGGED;
 ALTER TABLE "CommentExtendData"
@@ -21,10 +29,9 @@ ALTER TABLE "CommentAttachment"
 ALTER TABLE "Like"
     SET UNLOGGED;
 
--- DROP INDEX IF EXISTS "IX_Comment_ParentId";
--- DROP INDEX IF EXISTS "IX_Comment_RootId";
--- DROP INDEX IF EXISTS "IX_CommentExtendData_Key";
--- DROP INDEX IF EXISTS "IX_CommentExtendData_Value";
+DROP TRIGGER IF EXISTS insert_comment ON "Comment";
+
+DROP FUNCTION IF EXISTS update_comment_sequence;
 
 -- TRUNCATE "Comment";
 -- TRUNCATE "CommentExtendData";

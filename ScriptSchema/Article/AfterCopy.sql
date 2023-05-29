@@ -1,18 +1,3 @@
--- do
--- $$
---     DECLARE
---         beginDate         timestamptz := '2007-01-01';
---         DECLARE tableName varchar;
---     begin
---         WHILE EXTRACT(YEAR FROM beginDate) <= EXTRACT(Year FROM NOW()) + 1
---             LOOP
---                 tableName = 'Article_' || EXTRACT(YEAR FROM beginDate);
---                 EXECUTE 'ALTER TABLE "' || tableName || '" ADD PRIMARY KEY ("Id");';
---                 beginDate = beginDate + interval '1 year';
---             END loop;
---     end
--- $$;
-
 ALTER TABLE "Article"
     SET LOGGED;
 ALTER TABLE "ArticleAttachment"
@@ -24,9 +9,9 @@ ALTER TABLE "Article"
     ADD CONSTRAINT "FK_Article_Board_BoardId" FOREIGN KEY ("BoardId") REFERENCES "public"."Board" ("Id");
 ALTER TABLE "Article"
     ADD CONSTRAINT "FK_Article_ArticleCategory_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "public"."ArticleCategory" ("Id");
+
 ALTER TABLE "ArticleAttachment"
     ADD CONSTRAINT "PK_ArticleAttachment" PRIMARY KEY ("Id", "AttachmentId");
-
 CREATE UNIQUE INDEX "IX_ArticleAttachment_AttachmentId" ON "ArticleAttachment" ("AttachmentId");
 
 --將Fk加回去

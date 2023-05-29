@@ -62,11 +62,13 @@ public class Migration
         // await using (var cn2 = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION))        
         //     await cn2.ExecuteCommandByPathAsync($"{attachmentSchemaPath}/{BEFORE_FILE_NAME}", token);
 
-        var folderName = RetryHelper.GetArticleRetryDateStr();
-        var periods = PeriodHelper.GetPeriods(folderName);
+        var periods = PeriodHelper.GetPeriods();
 
         if (Setting.USE_UPDATED_DATE)
         {
+            var folderName = RetryHelper.GetArticleRetryDateStr();
+            periods = PeriodHelper.GetPeriods(folderName);
+
             var removeArticleTask = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_FORUM_CONNECTION, nameof(Article), folderName!); });
 
             var removeAttachmentTask = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_ATTACHMENT_CONNECTION, nameof(Attachment), folderName!); });
@@ -77,22 +79,29 @@ public class Migration
             await Task.WhenAll(removeArticleTask, removeAttachmentTask);
         }
 
+
         var task = new Task(() =>
                             {
                                 foreach (var period in periods)
+                                {
                                     FileHelper.ExecuteAllSqlFiles($"{articlePath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
+                                }
                             });
 
         var articleAttachmentTask = new Task(() =>
                                              {
                                                  foreach (var period in periods)
+                                                 {
                                                      FileHelper.ExecuteAllSqlFiles($"{articleAttachmentPath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
+                                                 }
                                              });
 
         var attachmentTask = new Task(() =>
                                       {
                                           foreach (var period in periods)
+                                          {
                                               FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
+                                          }
                                       });
 
         task.Start();
@@ -189,7 +198,7 @@ public class Migration
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
         const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
 
-        // const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
+        const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
 
         // const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
         // const string attachmentSchemaPath = $"{SCHEMA_PATH}/{nameof(Attachment)}";
@@ -204,11 +213,14 @@ public class Migration
         //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{BEFORE_FILE_NAME}", token);
         // }
 
-        var folderName = RetryHelper.GetCommentRetryDateStr();
-        var periods = PeriodHelper.GetPeriods(folderName);
+
+        var periods = PeriodHelper.GetPeriods();
 
         if (Setting.USE_UPDATED_DATE)
         {
+            var folderName = RetryHelper.GetCommentRetryDateStr();
+            periods = PeriodHelper.GetPeriods();
+
             var removeComment = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_COMMENT_CONNECTION, nameof(Comment), folderName!); });
 
             var removeCommentExtendDataTask = new Task(() => { RetryHelper.RemoveDataByDateStr(Setting.NEW_COMMENT_CONNECTION, nameof(CommentExtendData), folderName!); });
@@ -246,6 +258,7 @@ public class Migration
         commentTask.Start();
         commentExtendDataTask.Start();
         commentAttachmentTask.Start();
+        // attachmentTask.Start();
 
         // attachmentTask.Start();
 

@@ -186,7 +186,7 @@ public class ArticleMigration
             articleIdHash.Add(post.Tid);
 
             post.CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline);
-            post.CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000;
+            post.CreateMilliseconds = post.Dateline * 1000L;
 
             try
             {

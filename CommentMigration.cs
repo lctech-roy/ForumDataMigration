@@ -32,7 +32,7 @@ public class CommentMigration
                                                $"(\"{nameof(Comment.Id)}\",\"{nameof(Comment.RootId)}\",\"{nameof(Comment.ParentId)}\",\"{nameof(Comment.Level)}\",\"{nameof(Comment.Hierarchy)}\"" +
                                                $",\"{nameof(Comment.SortingIndex)}\",\"{nameof(Comment.Title)}\",\"{nameof(Comment.Content)}\",\"{nameof(Comment.VisibleType)}\",\"{nameof(Comment.Ip)}\"" +
                                                $",\"{nameof(Comment.Sequence)}\",\"{nameof(Comment.RelatedScore)}\",\"{nameof(Comment.ReplyCount)}\",\"{nameof(Comment.LikeCount)}\"" +
-                                               $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.DeleteStatus)}\",\"{nameof(Comment.Status)}\"" + Setting.COPY_ENTITY_SUFFIX;
+                                               $",\"{nameof(Comment.DislikeCount)}\",\"{nameof(Comment.DeleteStatus)}\",\"{nameof(Comment.Status)}\",\"{nameof(Comment.KeywordModificationDate)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_COMMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(CommentExtendData)}\" (\"{nameof(CommentExtendData.Id)}\",\"{nameof(CommentExtendData.Key)}\",\"{nameof(CommentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
@@ -167,7 +167,7 @@ public class CommentMigration
                 var reason = "";
 
                 //第一筆如果不是first或sequence!=0不處理
-                if (post.First && post.Sequence == 0)
+                if (post is { First: true, Sequence: 0 })
                 {
                     (isDirty, reason) = IsDirty(post.Tid, post.Fid);
                 }
@@ -203,7 +203,7 @@ public class CommentMigration
             }
 
             post.CreateDate = DateTimeOffset.FromUnixTimeSeconds(post.Dateline);
-            post.CreateMilliseconds = Convert.ToInt64(post.Dateline) * 1000;
+            post.CreateMilliseconds = post.Dateline * 1000L;
 
             if (post is { First: true, Sequence: 0 }) //文章
             {
@@ -245,6 +245,7 @@ public class CommentMigration
                           Hierarchy = post.Tid.ToString(),
                           ReplyCount = post.Replies,
                           SortingIndex = post.CreateMilliseconds,
+                          KeywordModificationDate =  post.CreateDate,
                           CreationDate = post.CreateDate,
                           CreatorId = post.Authorid,
                           ModificationDate = post.CreateDate,
@@ -263,7 +264,7 @@ public class CommentMigration
     private async Task SetCommentAsync(CommentPost post, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, Period period, int postTableId,
                                        CancellationToken cancellationToken)
     {
-        var newPid = post.Pid * 10;
+        var newPid = post.Pid * 10L;
 
         var comment = new Comment
                       {
@@ -278,6 +279,7 @@ public class CommentMigration
                           Content = RegexHelper.GetNewMessage(post.Content, post.Tid % 10, post.Pid, post.Pid, post.Authorid, post.CreateDate,
                                                               attachmentSb, commentAttachmentSb, true),
                           SortingIndex = post.CreateMilliseconds,
+                          KeywordModificationDate =  post.CreateDate,
                           CreationDate = post.CreateDate,
                           CreatorId = post.Authorid,
                           ModificationDate = post.CreateDate,
@@ -314,7 +316,7 @@ public class CommentMigration
         var sequence = 1;
 
         //第二層回覆Id補0預留空間
-        var commentReplyId = newPid * 100;
+        var commentReplyId = newPid * 100L;
 
         foreach (var postComment in postComments)
         {
@@ -325,7 +327,7 @@ public class CommentMigration
 
             var commentReply = new Comment
                                {
-                                   Id = commentReplyId++,
+                                   Id = commentReplyId,
                                    RootId = post.Tid,
                                    ParentId = newPid,
                                    Level = 3,
@@ -335,8 +337,9 @@ public class CommentMigration
                                    VisibleType = VisibleType.Public,
                                    Ip = postComment.Useip,
                                    Sequence = sequence++,
-                                   SortingIndex = Convert.ToInt64(postComment.Dateline) * 1000,
+                                   SortingIndex = postComment.Dateline * 1000L,
                                    RelatedScore = 0,
+                                   KeywordModificationDate =  post.CreateDate,
                                    CreationDate = replyDate,
                                    CreatorId = authorId,
                                    ModificationDate = replyDate,
@@ -351,7 +354,7 @@ public class CommentMigration
 
     private static void AppendCommentSb(Comment comment, StringBuilder commentSb, Period period, int postTableId)
     {
-        const int maxStringBuilderLength = 60000;
+        const int maxStringBuilderLength = 120000;
 
         if (commentSb.Length > maxStringBuilderLength)
         {
@@ -361,7 +364,7 @@ public class CommentMigration
         commentSb.AppendValueLine(comment.Id, comment.RootId, comment.ParentId.ToCopyValue(), comment.Level, comment.Hierarchy,
                                   comment.SortingIndex, comment.Title != null ? comment.Title.ToCopyText() : comment.Title.ToCopyValue(),
                                   comment.Content.ToCopyText(), (int) comment.VisibleType, comment.Ip!, comment.Sequence, comment.RelatedScore,
-                                  comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus, (int) comment.Status,
+                                  comment.ReplyCount, comment.LikeCount, comment.DislikeCount, (int) comment.DeleteStatus, (int) comment.Status,comment.KeywordModificationDate.ToCopyValue(),
                                   comment.CreationDate, comment.CreatorId, comment.ModificationDate, comment.ModifierId, comment.Version);
     }
 

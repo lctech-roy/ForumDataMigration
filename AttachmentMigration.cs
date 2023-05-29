@@ -76,7 +76,7 @@ public class AttachmentMigration
 
         foreach (var attachment in attachments)
         {
-            attachment.Id = attachment.Aid * 10 + tableNumber;
+            attachment.Id = attachment.Aid * 10L + tableNumber;
             attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.FORUM_ATTACHMENT_PATH, attachment.ExternalLink);
             attachment.CreationDate = DateTimeOffset.FromUnixTimeSeconds(attachment.Dateline);
             attachment.Extension = Path.GetExtension(attachment.Name)?.ToLower();

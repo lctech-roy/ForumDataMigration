@@ -54,11 +54,7 @@ public static class RegexHelper
         
         AttachmentTableDic = AttachmentHelper.GetAttachmentTableDic();
         ArtifactAttachmentTuple = AttachmentHelper.GetArtifactAttachmentDic();
-        
-        // AttachmentTableDic = AttachmentHelper.GetAttachmentTableDic();
-        // ArtifactAttachmentTuple = AttachmentHelper.GetArtifactAttachmentDic();
 
-        
         string GetBbcode(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
         {
             return string.IsNullOrWhiteSpace(match.Groups[CONTENT].Value) ? string.Empty : match.Value;
@@ -231,7 +227,7 @@ public static class RegexHelper
         if (!attachments?.Any() ?? true)
             return newMessage;
 
-
+        //補上有上傳檔案卻沒有在內文的bbcode
         var newMessageSb = new StringBuilder(newMessage);
 
         foreach (var (aid, isImage) in attachments)
@@ -239,6 +235,7 @@ public static class RegexHelper
             newMessageSb.Append(Environment.NewLine);
             newMessageSb.Append(AttachmentHelper.GetBbcode(aid, isImage));
 
+            //補上 article & comment attachment的關聯資料
             sourceAttachmentSb.AppendValueLine(isComment ? sourceId * 10 : sourceId, aid, creationDate, memberId, creationDate, memberId, 0);
         }
 
