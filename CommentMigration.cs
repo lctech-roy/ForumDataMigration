@@ -41,8 +41,7 @@ public class CommentMigration
     private const string COMMENT_ATTACHMENT_PREFIX = $"COPY \"{nameof(CommentAttachment)}\" " +
                                                      $"(\"{nameof(CommentAttachment.Id)}\",\"{nameof(CommentAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
-    private const string QUERY_COMMENT_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                                SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,post.invisible,
+    private const string QUERY_COMMENT_SQL = @"SELECT thread.fid,thread.tid,thread.replies,post.pid,post.authorid,post.dateline,post.first,post.status,post.comment,post.invisible,
                                                 IF(`first`, thread.subject, null) AS Title,IF(`first`, '', post.message) AS Content,useip AS Ip,post.`position` -1 AS Sequence,
                                                 likescore AS RelatedScore,postStick.dateline AS stickDateline
                                                 FROM pre_forum_thread AS thread 

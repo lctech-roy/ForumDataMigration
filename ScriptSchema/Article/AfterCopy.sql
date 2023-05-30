@@ -54,6 +54,6 @@ ANALYZE "ArticleAttachment";
 --     0 AS "Version","CreatorId",
 --     "CreatorId" AS "ModifierId"
 -- FROM "Article"
--- WHERE "BoardId" IN (243402579247336,243402579247386)
+-- WHERE "BoardId" IN (228,209)
 
 

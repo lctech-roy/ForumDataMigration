@@ -58,8 +58,7 @@ public class ArticleMigration
     private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Article)}";
     private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
 
-    private const string QUERY_ARTICLE_SQL = @"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-                                               SELECT thread.tid,post.pid,post.invisible,thread.special
+    private const string QUERY_ARTICLE_SQL = @"SELECT thread.tid,post.pid,post.invisible,thread.special
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
                                               ,thread.lastpost,thread.lastposter

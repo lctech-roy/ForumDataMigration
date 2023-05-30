@@ -16,7 +16,7 @@ public class GameItemMigration
     private const string BAG_GAME_ITEM_SQL = $"COPY \"{nameof(BagGameItem)}\" " +
                                              $"(\"{nameof(BagGameItem.Id)}\",\"{nameof(BagGameItem.GameItemId)}\",\"{nameof(BagGameItem.Quantity)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
-    private const string QUERY_BAG_GAME_ITEM_SQL = $@"SELECT inventory_id::INT AS Id, material_id::INT AS GameItemId, stock AS Quantity, created_at AS CreationDate, updated_at AS ModificationDate 
+    private const string QUERY_BAG_GAME_ITEM_SQL = @"SELECT inventory_id::INT AS Id, material_id::INT AS GameItemId, stock AS Quantity, created_at AS CreationDate, updated_at AS ModificationDate 
                                                       FROM material_asset ORDER BY inventory_id, material_id";
 
     private readonly ISnowflake _snowflake;
