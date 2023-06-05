@@ -5,6 +5,7 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
+using Lctech.Jkf.Forum.Core.Models;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
@@ -86,7 +87,7 @@ public class ArticleMigration
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
     private const long MAX_UNIX_TIME = 32535215999;
     private static readonly DateTimeOffset MaxDate = DateTimeOffset.FromUnixTimeSeconds(MAX_UNIX_TIME);
-
+    private static readonly DateTimeOffset MinDate = DateTimeOffset.FromUnixTimeSeconds(Constants.MINIMUM_EXPIRATION_UNIX_TIME_SECONDS);
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         RetryHelper.CreateArticleRetryTable();
@@ -273,7 +274,7 @@ public class ArticleMigration
                           PinExpirationDate = post.Sexpiry.HasValue
                                                   ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value)
                                                   : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset()
-                                                 ?? (pinType != PinType.None ? MaxDate : null),
+                                                 ?? (pinType != PinType.None ? MaxDate : MinDate),
                           HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset() ?? (post.Highlight != 0 ? MaxDate : null),
                           RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset() ?? (post.Digest ? MaxDate : null),
                           CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset() ?? (post.Closed == 1 ? MaxDate : null),
