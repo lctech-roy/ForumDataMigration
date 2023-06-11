@@ -6,6 +6,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS "IX_Attachment_Bucket_StoragePath_Name" ON "At
 ALTER TABLE "AttachmentExtendData"
     ADD CONSTRAINT "PK_AttachmentExtendData" PRIMARY KEY ("Id","Key");
 
+CREATE INDEX IF NOT EXISTS "IX_AttachmentExtendData_Key" ON "AttachmentExtendData" ("Key");
+CREATE INDEX IF NOT EXISTS "IX_AttachmentExtendData_Value" ON "AttachmentExtendData" ("Value");
+
 ALTER TABLE "AttachmentExtendData"
     SET LOGGED;
 ALTER TABLE "Attachment"

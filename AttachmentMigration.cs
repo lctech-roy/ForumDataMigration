@@ -6,12 +6,16 @@ using ForumDataMigration.Helpers;
 using Lctech.Attachment.Core.Domain.Entities;
 using Lctech.Comment.Domain.Entities;
 using Lctech.Jkf.Forum.Core.Models;
+using Microsoft.AspNetCore.StaticFiles;
+using Netcorext.Extensions.Commons;
 using Attachment = ForumDataMigration.Models.Attachment;
 
 namespace ForumDataMigration;
 
 public class AttachmentMigration
 {
+    private readonly FileExtensionContentTypeProvider _fileExtensionContentTypeProvider;
+
     private const string ATTACHMENT_PREFIX = $"COPY \"{nameof(Attachment)}\" " +
                                              $"(\"{nameof(Attachment.Id)}\",\"{nameof(Attachment.Size)}\",\"{nameof(Attachment.ExternalLink)}\",\"{nameof(Attachment.Bucket)}\"" +
                                              $",\"{nameof(Attachment.DownloadCount)}\",\"{nameof(Attachment.ProcessingState)}\",\"{nameof(Attachment.DeleteStatus)}\",\"{nameof(Attachment.IsPublic)}\"" +
@@ -22,7 +26,12 @@ public class AttachmentMigration
 
     private const string ATTACHMENT_EXTEND_DATA_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_ExtendData";
 
-    public static async Task MigrationAsync(CancellationToken cancellationToken)
+    public AttachmentMigration(FileExtensionContentTypeProvider fileExtensionContentTypeProvider)
+    {
+        _fileExtensionContentTypeProvider = fileExtensionContentTypeProvider;
+    }
+    
+    public async Task MigrationAsync(CancellationToken cancellationToken)
     {
         int? progressedMaxAid = null;
 
@@ -69,7 +78,7 @@ public class AttachmentMigration
                                                                                                       });
     }
 
-    private static void Execute(IEnumerable<Attachment> attachments, int tableNumber, int startAid)
+    private void Execute(IEnumerable<Attachment> attachments, int tableNumber, int startAid)
     {
         var attachmentSb = new StringBuilder();
         var attachmentExtendDataSb = new StringBuilder();
@@ -80,10 +89,13 @@ public class AttachmentMigration
             attachment.ExternalLink = string.Concat(attachment.Remote ? Setting.ATTACHMENT_URL : Setting.FORUM_URL, Setting.FORUM_ATTACHMENT_PATH, attachment.ExternalLink);
             attachment.CreationDate = DateTimeOffset.FromUnixTimeSeconds(attachment.Dateline);
             attachment.Extension = Path.GetExtension(attachment.Name)?.ToLower();
-
+            
+            if (!attachment.Name.IsEmpty() && _fileExtensionContentTypeProvider.TryGetContentType(attachment.Name, out var contentType))
+                attachment.ContentType = contentType;
+            
             attachmentSb.AppendValueLine(attachment.Id, attachment.Size.ToCopyValue(), attachment.ExternalLink, attachment.Bucket.ToCopyValue(),
                                          attachment.DownloadCount, attachment.ProcessingState, attachment.DeleteStatus, attachment.IsPublic,
-                                         attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyText(), attachment.ContentType.ToCopyValue(), attachment.Extension.ToCopyText(), attachment.ParentId.ToCopyValue(),
+                                         attachment.StoragePath.ToCopyValue(), attachment.Name.ToCopyText(), attachment.ContentType.ToCopyText(), attachment.Extension.ToCopyText(), attachment.ParentId.ToCopyValue(),
                                          attachment.CreationDate, attachment.Uid, attachment.CreationDate, attachment.Uid, attachment.Version);
 
             attachmentExtendDataSb.AppendValueLine(attachment.Id, Constants.EXTEND_DATA_ARTICLE_ID, attachment.Tid,

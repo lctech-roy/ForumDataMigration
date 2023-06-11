@@ -3,7 +3,10 @@
 using System.Globalization;
 using ForumDataMigration;
 using ForumDataMigration.Helper;
+using Lctech.Comment.Settings;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Netcorext.Algorithms;
 
 
@@ -24,6 +27,15 @@ serviceCollection.AddSingleton<MemberBagMigration>();
 serviceCollection.AddSingleton<ParticipleMigration>();
 serviceCollection.AddSingleton<ArticleBlackListMemberMigration>();
 serviceCollection.AddSingleton<TaskMigration>();
+
+serviceCollection.AddSingleton<FileExtensionContentTypeProvider>(_ =>
+                                                                 {
+                                                                     var fileExtensionContentTypeProvider = new FileExtensionContentTypeProvider();
+                                                                     fileExtensionContentTypeProvider.Mappings.Add(".heif","image/heif");
+                                                                     fileExtensionContentTypeProvider.Mappings.Add(".heic","image/heic");
+
+                                                                     return fileExtensionContentTypeProvider;
+                                                                 });
 
 // 建立依賴服務提供者
 var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -53,8 +65,8 @@ Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 // 2.附件
-// await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await AttachmentMigration.MigrationAsync(token));
-// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), () => migration.ExecuteAttachmentAsync());
+await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await attachmentMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), () => migration.ExecuteAttachmentAsync());
 
 // 3.文章,留言
 // await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
@@ -73,8 +85,8 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync("copy vote", async () => await Migration.ExecuteArticleVoteAsync(token));
 
 // //5.文章懸賞
-await CommonHelper.WatchTimeAsync("reward", async () => await ArticleRewardMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync("copy reward", async () => await migration.ExecuteArticleRewardAsync(token));
+// await CommonHelper.WatchTimeAsync("reward", async () => await ArticleRewardMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync("copy reward", async () => await migration.ExecuteArticleRewardAsync(token));
 
 //6.遊戲中心
 // CommonHelper.WatchTime(nameof(gameItemMigration),()=> gameItemMigration.Migration());
@@ -87,8 +99,8 @@ await CommonHelper.WatchTimeAsync("copy reward", async () => await migration.Exe
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteParticipleAsync), async () => await migration.ExecuteParticipleAsync());
 
 //8.1128黑名單
-//await CommonHelper.WatchTimeAsync(nameof(blackListMigration),async () => await blackListMigration.MigrationAsync(token));
-//await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleBlackListMemberAsync), async () => await migration.ExecuteArticleBlackListMemberAsync());
+// await CommonHelper.WatchTimeAsync(nameof(blackListMigration),async () => await blackListMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleBlackListMemberAsync), async () => await migration.ExecuteArticleBlackListMemberAsync());
 
 //9.任務設定
 // CommonHelper.WatchTime(nameof(TaskMigration), () => taskMigration.Migration());

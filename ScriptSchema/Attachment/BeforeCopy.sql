@@ -6,6 +6,10 @@ ALTER TABLE "AttachmentExtendData"
 
 DROP INDEX IF EXISTS "IX_Attachment_Bucket_StoragePath_Name";
 
+DROP INDEX IF EXISTS "IX_AttachmentExtendData_Value";
+
+DROP INDEX IF EXISTS "IX_AttachmentExtendData_Key";
+
 ALTER TABLE "AttachmentExtendData"
     SET UNLOGGED;
 
