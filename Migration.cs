@@ -268,7 +268,13 @@ public class Migration
         //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
     }
 
-
+    public void ExecuteAttachmentCommentId()
+    { 
+        using var connection = new NpgsqlConnection(Setting.NEW_ATTACHMENT_CONNECTION);
+        
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_CommentId_ExtendData.sql");
+    }
+    
     public async Task ExecuteGameItemAsync()
     {
         await using var connection = new NpgsqlConnection(Setting.NEW_GAME_CENTER_CONNECTION);

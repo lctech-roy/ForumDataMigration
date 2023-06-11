@@ -14,11 +14,12 @@ using Netcorext.Algorithms;
 var serviceCollection = new ServiceCollection();
 
 // 2. 註冊服務
-serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint) new Random().Next(1, 31)));
+serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint)new Random().Next(1, 31)));
 serviceCollection.AddSingleton<Migration>();
 serviceCollection.AddSingleton<AttachmentMigration>();
 serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<CommentMigration>();
+serviceCollection.AddSingleton<AttachmentCommentIdMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
 serviceCollection.AddSingleton<ArticleRewardMigration>();
@@ -31,8 +32,8 @@ serviceCollection.AddSingleton<TaskMigration>();
 serviceCollection.AddSingleton<FileExtensionContentTypeProvider>(_ =>
                                                                  {
                                                                      var fileExtensionContentTypeProvider = new FileExtensionContentTypeProvider();
-                                                                     fileExtensionContentTypeProvider.Mappings.Add(".heif","image/heif");
-                                                                     fileExtensionContentTypeProvider.Mappings.Add(".heic","image/heic");
+                                                                     fileExtensionContentTypeProvider.Mappings.Add(".heif", "image/heif");
+                                                                     fileExtensionContentTypeProvider.Mappings.Add(".heic", "image/heic");
 
                                                                      return fileExtensionContentTypeProvider;
                                                                  });
@@ -49,6 +50,7 @@ var migration = serviceProvider.GetRequiredService<Migration>();
 var attachmentMigration = serviceProvider.GetRequiredService<AttachmentMigration>();
 var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
 var commentMigration = serviceProvider.GetRequiredService<CommentMigration>();
+var attachmentCommentIdMigration = serviceProvider.GetRequiredService<AttachmentCommentIdMigration>();
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
 var rewardMigration = serviceProvider.GetRequiredService<ArticleRewardMigration>();
@@ -65,14 +67,18 @@ Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
 // 2.附件
-await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await attachmentMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), () => migration.ExecuteAttachmentAsync());
+// await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await attachmentMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), () => migration.ExecuteAttachmentAsync());
 
 // 3.文章,留言
 // await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token)); 
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
+
+//3. 留言CommentId extend data
+// await CommonHelper.WatchTimeAsync(nameof(attachmentCommentIdMigration), async () => await attachmentCommentIdMigration.MigrationAsync(token));
+CommonHelper.WatchTime(nameof(migration.ExecuteAttachmentCommentId), () => migration.ExecuteAttachmentCommentId());
 
 //
 // //4.文章評分
