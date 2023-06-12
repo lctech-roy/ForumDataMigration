@@ -120,4 +120,27 @@ public static class ArticleHelper
 
         return commonSetting;
     }
+    
+    public static Dictionary<long, ArticleDeletion> GetArticleDeletionDic()
+    {
+         const string queryTreadModSql = @"SELECT DISTINCT b.tid AS Id,b.uid AS DeleterId,b.dateline AS DeletionDateInt,b.reason AS DeletionReason FROM
+                                                (SELECT tid,MAX(dateline) as dateline FROM pre_forum_threadmod
+                                                WHERE action='DEL'
+                                                GROUP BY tid) a
+                                                INNER JOIN pre_forum_threadmod b ON a.tid = b.tid AND a.dateline = b.dateline";
+         
+         Dictionary<long, ArticleDeletion> articleDeletionDic = null!;
+
+          CommonHelper.WatchTime(nameof(queryTreadModSql),
+                                            () =>
+                                           {
+                                                using var cn = new MySqlConnection(Setting.OLD_FORUM_CONNECTION);
+
+                                               var command = new CommandDefinition(queryTreadModSql);
+
+                                               articleDeletionDic = cn.Query<ArticleDeletion>(command).ToDictionary(x => x.Id, x => x);
+                                           });
+
+          return articleDeletionDic;
+    }
 }

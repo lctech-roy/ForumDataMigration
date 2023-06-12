@@ -20,6 +20,7 @@ serviceCollection.AddSingleton<AttachmentMigration>();
 serviceCollection.AddSingleton<ArticleMigration>();
 serviceCollection.AddSingleton<CommentMigration>();
 serviceCollection.AddSingleton<AttachmentCommentIdMigration>();
+serviceCollection.AddSingleton<ArticleDeletionMigration>();
 serviceCollection.AddSingleton<ArticleRatingMigration>();
 serviceCollection.AddSingleton<ArticleVoteMigration>();
 serviceCollection.AddSingleton<ArticleRewardMigration>();
@@ -51,6 +52,7 @@ var attachmentMigration = serviceProvider.GetRequiredService<AttachmentMigration
 var articleMigration = serviceProvider.GetRequiredService<ArticleMigration>();
 var commentMigration = serviceProvider.GetRequiredService<CommentMigration>();
 var attachmentCommentIdMigration = serviceProvider.GetRequiredService<AttachmentCommentIdMigration>();
+var articleDeletionMigration = serviceProvider.GetRequiredService<ArticleDeletionMigration>();
 var ratingMigration = serviceProvider.GetRequiredService<ArticleRatingMigration>();
 var voteMigration = serviceProvider.GetRequiredService<ArticleVoteMigration>();
 var rewardMigration = serviceProvider.GetRequiredService<ArticleRewardMigration>();
@@ -76,9 +78,13 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token)); 
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
-//3. 留言CommentId extend data
+// 3.1. 留言Attachment CommentId extend data
 // await CommonHelper.WatchTimeAsync(nameof(attachmentCommentIdMigration), async () => await attachmentCommentIdMigration.MigrationAsync(token));
-CommonHelper.WatchTime(nameof(migration.ExecuteAttachmentCommentId), () => migration.ExecuteAttachmentCommentId());
+// CommonHelper.WatchTime(nameof(migration.ExecuteAttachmentCommentId), () => migration.ExecuteAttachmentCommentId());
+
+// 文章Deletion ##舊的暫時不用轉##
+// await CommonHelper.WatchTimeAsync(nameof(articleDeletionMigration), async () => await articleDeletionMigration.MigrationAsync(token)); 
+// CommonHelper.WatchTime(nameof(migration.ExecuteArticleDeletion), () => migration.ExecuteArticleDeletion());
 
 //
 // //4.文章評分

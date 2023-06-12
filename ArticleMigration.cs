@@ -28,6 +28,7 @@ public class ArticleMigration
                                        $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\",\"{nameof(Article.VisibleTime)}\",\"{nameof(Article.KeywordModificationDate)}\"" +
                                        $",\"{nameof(Article.HideBbCodeExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
                                        $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
+                                       $",\"{nameof(Article.DeletionDate)}\",\"{nameof(Article.DeleterId)}\",\"{nameof(Article.DeletionReason)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
     private const string ARTICLE_ATTACHMENT_PREFIX = $"COPY \"{nameof(ArticleAttachment)}\" " +
@@ -38,8 +39,9 @@ public class ArticleMigration
     private static readonly HashSet<long> ProhibitMemberIdHash = MemberHelper.GetProhibitMemberIdHash();
     private static readonly Dictionary<(int, string), int?> ModDic = ArticleHelper.GetModDic();
     private static readonly Dictionary<long, Read> ReadDic = ArticleHelper.GetReadDic();
+    private static readonly Dictionary<long, ArticleDeletion> ArticleDeletionDic = ArticleHelper.GetArticleDeletionDic();
     private static readonly Dictionary<string, long> MemberNameDic = MemberHelper.GetMemberNameDic();
-
+    
     private static readonly Dictionary<int, string?> ColorDic = new()
                                                                 {
                                                                     { 0, null }, { 1, "#EE1B2E" }, { 2, "#EE5023" }, { 3, "#996600" }, { 4, "#3C9D40" }, { 5, "#2897C5" }, { 6, "#2B65B7" }, { 7, "#8F2A90" }, { 8, "#EC1282" }
@@ -88,6 +90,8 @@ public class ArticleMigration
     private const long MAX_UNIX_TIME = 32535215999;
     private static readonly DateTimeOffset MaxDate = DateTimeOffset.FromUnixTimeSeconds(MAX_UNIX_TIME);
     private static readonly DateTimeOffset MinDate = Constants.MinimumTime;
+    
+    
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
@@ -250,7 +254,7 @@ public class ArticleMigration
                                                               post.Authorid, post.CreateDate, attachmentSb, articleAttachmentSb),
                           ViewCount = post.Views,
                           ReplyCount = post.Replies,
-                          HotScore = post.Views / 100 + post.Replies,
+                          HotScore = Convert.ToDecimal(post.Views) / 100 + post.Replies,
                           BoardId = post.Fid,
                           CategoryId = CategoryIdHash.Contains(post.Typeid) ? post.Typeid : null,
                           SortingIndex = post.CreateMilliseconds,
@@ -307,19 +311,21 @@ public class ArticleMigration
 
         article.VisibleTime = article.DeleteStatus == DeleteStatus.Deleted || article.VisibleType == VisibleType.Hidden ? MAX_UNIX_TIME : article.PublishDate.ToUnixTimeSeconds();
 
-        AppendArticleSb(article, sb, period, postTableId);
+        if (article.DeleteStatus == DeleteStatus.Deleted)
+        {
+            var articleDeletion = ArticleDeletionDic!.GetValueOrDefault(article.Id, null);
 
-        // sb.AppendValueLine(article.Id, article.BoardId, article.CategoryId.ToCopyValue(), (int) article.Status, (int) article.DeleteStatus,
-        //                    (int) article.VisibleType, (int) article.Type, (int) article.ContentType, (int) article.PinType, article.Title.ToCopyText(),
-        //                    article.Content.ToCopyText(), article.ViewCount, article.ReplyCount, article.SortingIndex, article.LastReplyDate.ToCopyValue(),
-        //                    article.LastReplierId.ToCopyValue(), article.Cover.ToCopyValue(), article.Tag.ToCopyText(), article.RatingCount, article.Warning,
-        //                    article.ShareCount, article.ImageCount, article.VideoCount, article.DonatePoint, article.HighlightColor.ToCopyValue(),
-        //                    article.ReadPermission, article.ContentSummary.ToCopyText(), (int) article.CommentVisibleType, article.LikeCount, article.UnlockHideCount,
-        //                    article.Ip, article.Price, article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(), article.PublishDate, 
-        //                    article.VisibleTime, article.KeywordModificationDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
-        //                    article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
-        //                    article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int) article.FreeType, article.HotScore,
-        //                    article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
+            if (articleDeletion != null)
+            {
+                article.DeletionDate = articleDeletion.DeletionDate;
+                article.DeleterId = articleDeletion.DeleterId;
+                article.DeletionReason = articleDeletion.DeletionReason;
+            }
+            else
+                article.DeletionDate = article.CreationDate;
+        }
+
+        AppendArticleSb(article, sb, period, postTableId);
     }
 
     private static void AppendArticleSb(Article article, StringBuilder articleSb, Period period, int postTableId)
@@ -341,6 +347,7 @@ public class ArticleMigration
                                   article.VisibleTime, article.KeywordModificationDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
                                   article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                                   article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int)article.FreeType, article.HotScore,
+                                  article.DeletionDate.ToCopyValue(),article.DeleterId.ToCopyValue(),article.DeletionReason.ToCopyText(),
                                   article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
     }
 

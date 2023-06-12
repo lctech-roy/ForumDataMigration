@@ -6,6 +6,7 @@ using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
 using Lctech.Comment.Domain.Entities;
 using Lctech.Comment.Enums;
+using Lctech.Jkf.Forum.Core.Models;
 using MySqlConnector;
 using Netcorext.Algorithms;
 using Polly;
@@ -263,15 +264,15 @@ public class CommentMigration
     private async Task SetCommentAsync(CommentPost post, StringBuilder commentSb, StringBuilder commentExtendDataSb, StringBuilder attachmentSb, StringBuilder commentAttachmentSb, Period period, int postTableId,
                                        CancellationToken cancellationToken)
     {
-        var newPid = post.Pid * 10L;
+        var commentId = post.Pid * 10L;
 
         var comment = new Comment
                       {
-                          Id = newPid,
+                          Id = commentId,
                           RootId = post.Tid,
                           ParentId = post.Tid,
                           Level = 2,
-                          Hierarchy = string.Concat(post.Tid, "/", newPid),
+                          Hierarchy = string.Concat(post.Tid, "/", commentId),
                           Sequence = post.Sequence,
                           Ip = post.Ip,
                           RelatedScore = post.RelatedScore,
@@ -305,17 +306,23 @@ public class CommentMigration
         {
             var stickDate = DateTimeOffset.FromUnixTimeSeconds(post.StickDateline.Value);
 
-            commentExtendDataSb.AppendValueLine(newPid, EXTEND_DATA_RECOMMEND_COMMENT, true,
+            commentExtendDataSb.AppendValueLine(commentId, EXTEND_DATA_RECOMMEND_COMMENT, true,
                                                 stickDate, 0, stickDate, 0, 0);
         }
 
+        if (comment.DeleteStatus == DeleteStatus.Deleted)
+        {
+            commentExtendDataSb.AppendValueLine(commentId, Constants.EXTEND_DATA_DELETION_DATE_KEY, comment.CreationDate.ToUniversalTime().ToString("O"),
+                                                comment.CreationDate, 0, comment.CreationDate, 0, 0);
+        }
+        
         if (postComments == null || !postComments.Any())
             return;
 
         var sequence = 1;
 
         //第二層回覆Id補0預留空間
-        var commentReplyId = newPid * 100L;
+        var commentReplyId = commentId * 100L;
 
         foreach (var postComment in postComments)
         {
@@ -328,9 +335,9 @@ public class CommentMigration
                                {
                                    Id = commentReplyId,
                                    RootId = post.Tid,
-                                   ParentId = newPid,
+                                   ParentId = commentId,
                                    Level = 3,
-                                   Hierarchy = $"{post.Tid}/{newPid}/{commentReplyId}",
+                                   Hierarchy = $"{post.Tid}/{commentId}/{commentReplyId}",
                                    Content = RegexHelper.GetNewMessage(postComment.Comment, post.Tid % 10, post.Pid, null, postComment.Authorid, replyDate,
                                                                        attachmentSb, commentAttachmentSb, true),
                                    VisibleType = VisibleType.Public,
@@ -348,6 +355,12 @@ public class CommentMigration
                                };
 
             AppendCommentSb(commentReply, commentSb, period, postTableId);
+            
+            if (commentReply.DeleteStatus == DeleteStatus.Deleted)
+            {
+                commentExtendDataSb.AppendValueLine(commentReplyId, Constants.EXTEND_DATA_DELETION_DATE_KEY, commentReply.CreationDate.ToUniversalTime().ToString("O"),
+                                                    commentReply.CreationDate, 0, commentReply.CreationDate, 0, 0);
+            }
         }
     }
 

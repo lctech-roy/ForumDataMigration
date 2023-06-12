@@ -275,6 +275,13 @@ public class Migration
         connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_CommentId_ExtendData.sql");
     }
     
+    public void ExecuteArticleDeletion()
+    { 
+        using var connection = new NpgsqlConnection(Setting.NEW_FORUM_CONNECTION);
+        
+        connection.ExecuteAllTexts($"{Setting.INSERT_DATA_PATH}/{nameof(ArticleDeletion)}.sql");
+    }
+    
     public async Task ExecuteGameItemAsync()
     {
         await using var connection = new NpgsqlConnection(Setting.NEW_GAME_CENTER_CONNECTION);
