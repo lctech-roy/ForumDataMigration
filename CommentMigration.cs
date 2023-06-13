@@ -314,6 +314,8 @@ public class CommentMigration
         {
             commentExtendDataSb.AppendValueLine(commentId, Constants.EXTEND_DATA_DELETION_DATE_KEY, comment.CreationDate.ToUniversalTime().ToString("O"),
                                                 comment.CreationDate, 0, comment.CreationDate, 0, 0);
+            commentExtendDataSb.AppendValueLine(commentId, Constants.EXTEND_DATA_DELETER_ID_KEY, "0",
+                                                comment.CreationDate, 0, comment.CreationDate, 0, 0);
         }
         
         if (postComments == null || !postComments.Any())
@@ -360,6 +362,8 @@ public class CommentMigration
             {
                 commentExtendDataSb.AppendValueLine(commentReplyId, Constants.EXTEND_DATA_DELETION_DATE_KEY, commentReply.CreationDate.ToUniversalTime().ToString("O"),
                                                     commentReply.CreationDate, 0, commentReply.CreationDate, 0, 0);
+                commentExtendDataSb.AppendValueLine(commentId, Constants.EXTEND_DATA_DELETER_ID_KEY, "0",
+                                                    comment.CreationDate, 0, comment.CreationDate, 0, 0);
             }
         }
     }

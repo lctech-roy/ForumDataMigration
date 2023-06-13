@@ -87,11 +87,6 @@ public class ArticleMigration
                                               WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND post.tid is not null AND thread.displayorder >= -3";
 
     private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(1);
-    private const long MAX_UNIX_TIME = 32535215999;
-    private static readonly DateTimeOffset MaxDate = DateTimeOffset.FromUnixTimeSeconds(MAX_UNIX_TIME);
-    private static readonly DateTimeOffset MinDate = Constants.MinimumTime;
-    
-    
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
@@ -279,10 +274,10 @@ public class ArticleMigration
                           PinExpirationDate = post.Sexpiry.HasValue
                                                   ? DateTimeOffset.FromUnixTimeSeconds(post.Sexpiry.Value)
                                                   : ModDic.GetValueOrDefault((post.Tid, "EST")).ToDatetimeOffset()
-                                                 ?? (pinType != PinType.None ? MaxDate : MinDate),
-                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset() ?? (post.Highlight != 0 ? MaxDate : null),
-                          RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset() ?? (post.Digest ? MaxDate : null),
-                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset() ?? (post.Closed == 1 ? MaxDate : null),
+                                                 ?? (pinType != PinType.None ?  Constants.MaximumTime : Constants.MinimumTime),
+                          HighlightExpirationDate = post.Hexpiry.HasValue ? DateTimeOffset.FromUnixTimeSeconds(post.Hexpiry.Value) : ModDic.GetValueOrDefault((post.Tid, "EHL")).ToDatetimeOffset() ?? (post.Highlight != 0 ? Constants.MaximumTime : null),
+                          RecommendExpirationDate = ModDic.GetValueOrDefault((post.Tid, "EDI")).ToDatetimeOffset() ?? (post.Digest ? Constants.MaximumTime : null),
+                          CommentDisabledExpirationDate = ModDic.GetValueOrDefault((post.Tid, "ECL")).ToDatetimeOffset() ?? (post.Closed == 1 ? Constants.MaximumTime : null),
                           InVisibleArticleExpirationDate = ModDic.GetValueOrDefault((post.Tid, "BNP")).ToDatetimeOffset() ??
                                                            ModDic.GetValueOrDefault((post.Tid, "UBN")).ToDatetimeOffset(),
                           KeywordModificationDate = post.CreateDate,
@@ -309,7 +304,8 @@ public class ArticleMigration
                                       : article.Content.RemoveHideContent()
                                  ).GetContentSummary();
 
-        article.VisibleTime = article.DeleteStatus == DeleteStatus.Deleted || article.VisibleType == VisibleType.Hidden ? MAX_UNIX_TIME : article.PublishDate.ToUnixTimeSeconds();
+        article.VisibleTime = article.DeleteStatus == DeleteStatus.Deleted ? Constants.ArticleDeleteVisibleTime.ToUnixTimeSeconds() : 
+                              article.VisibleType == VisibleType.Hidden ? Constants.ArticleVisibleHideVisibleTime.ToUnixTimeSeconds() : article.PublishDate.ToUnixTimeSeconds();
 
         if (article.DeleteStatus == DeleteStatus.Deleted)
         {
@@ -322,7 +318,10 @@ public class ArticleMigration
                 article.DeletionReason = articleDeletion.DeletionReason;
             }
             else
+            {
                 article.DeletionDate = article.CreationDate;
+                article.DeleterId = 0;
+            }
         }
 
         AppendArticleSb(article, sb, period, postTableId);
