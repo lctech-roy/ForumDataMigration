@@ -40,10 +40,10 @@ public static class StringExtension
         return sb.ToString();
     }
 
-    public static string? ToNewTags(this string tagStr)
+    public static string ToNewTags(this string tagStr)
     {
         if (string.IsNullOrWhiteSpace(tagStr) || tagStr == "0")
-            return null;
+            return string.Empty;
 
         var newTagStr = "";
         var starPoint = 0;
