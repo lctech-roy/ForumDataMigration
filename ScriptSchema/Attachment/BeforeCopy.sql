@@ -4,6 +4,8 @@ ALTER TABLE "Attachment"
 ALTER TABLE "AttachmentExtendData"
     DROP CONSTRAINT IF EXISTS "PK_AttachmentExtendData" CASCADE;
 
+DROP INDEX IF EXISTS "IX_Comment_KeywordModificationDate_Level";
+
 DROP INDEX IF EXISTS "IX_Attachment_Bucket_StoragePath_Name";
 
 DROP INDEX IF EXISTS "IX_AttachmentExtendData_Value";

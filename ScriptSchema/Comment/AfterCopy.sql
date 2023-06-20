@@ -28,6 +28,8 @@ CREATE INDEX "IX_Comment_CreationDate" ON "Comment" ("CreationDate");
 CREATE INDEX "IX_CommentExtendData_Key" ON "CommentExtendData" ("Key");
 CREATE INDEX "IX_CommentExtendData_Value" ON "CommentExtendData" ("Value");
 
+CREATE INDEX IF NOT EXISTS "IX_Comment_KeywordModificationDate_Level" ON "Comment" ("KeywordModificationDate","Level");
+
 -- 更新連載資料(程式更新,用不到了)
 -- UPDATE "Comment" SET
 --                      "Content" = regexp_replace("Content",'\s*',''),

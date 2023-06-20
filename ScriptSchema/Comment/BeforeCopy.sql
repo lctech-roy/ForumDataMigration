@@ -16,6 +16,7 @@ DROP INDEX IF EXISTS "IX_Comment_ParentId";
 DROP INDEX IF EXISTS "IX_Comment_RootId";
 DROP INDEX IF EXISTS "IX_Comment_CreatorId";
 DROP INDEX IF EXISTS "IX_Comment_CreationDate";
+DROP INDEX IF EXISTS "IX_Comment_KeywordModificationDate_Level";
 
 DROP INDEX IF EXISTS "IX_CommentExtendData_Key";
 DROP INDEX IF EXISTS "IX_CommentExtendData_Value";
