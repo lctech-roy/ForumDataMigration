@@ -22,7 +22,7 @@ public class MemberBagMigration
     {
         #region 轉檔前準備相關資料
 
-        var gameItemRelationDic = RelationHelper.GetMedalRelationDic();
+        var medalIdHash = RelationHelper.GetMedalIdHash();
 
         #endregion
 
@@ -42,9 +42,8 @@ public class MemberBagMigration
         {
             if (bagGameItem.Id == 0) continue;
 
-            bagGameItem.MedalId = gameItemRelationDic.GetValueOrDefault(bagGameItem.MedalId);
-
-            if (bagGameItem.MedalId == 0) continue;
+            if(!medalIdHash.Contains(bagGameItem.MedalId))
+                continue;
 
             if (bagGameItem.Id != previousBagItem.Id)
                 bagSb.AppendValueLine(bagGameItem.Id,

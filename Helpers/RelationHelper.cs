@@ -101,14 +101,14 @@ public static class RelationHelper
         return idDic;
     }
 
-    public static Dictionary<long, long> GetMedalRelationDic()
+    public static HashSet<long> GetMedalIdHash()
     {
-        const string queryMedalRelationSql = @"SELECT ""Id"",""OriMedalId"" FROM ""MedalRelation""";
+        const string queryMedalRelationSql = @"SELECT ""Id"" FROM ""Medal""";
 
         using var conn = new NpgsqlConnection(Setting.NEW_GAME_CENTER_MEDAL_CONNECTION);
 
-        var idDic = conn.Query<(long id, long medalId)>(queryMedalRelationSql).ToDictionary(t => t.medalId, t => t.id);
+        var hashSet = conn.Query<long>(queryMedalRelationSql).ToHashSet();
 
-        return idDic;
+        return hashSet;
     }
 }
