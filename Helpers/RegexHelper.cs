@@ -165,8 +165,13 @@ public static class RegexHelper
         BbcodeDic.Add("attach", GetAttachBbcode);
         BbcodeDic.Add("attachimg", GetAttachBbcode);
         BbcodeDic.Add("media", GetUrlBbcode);
+        BbcodeDic.Add("all", GetUrlBbcode);
+        BbcodeDic.Add("mp4", GetUrlBbcode);
+        BbcodeDic.Add("mov", GetUrlBbcode);
+        BbcodeDic.Add("mpeg", GetUrlBbcode);
+        BbcodeDic.Add("hevc", GetUrlBbcode);
         BbcodeDic.Add("video", GetVideo);
-
+        
         #region embed part
 
         BbcodeDic.Add("youtube", GetYoutube);

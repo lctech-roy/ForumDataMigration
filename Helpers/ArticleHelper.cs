@@ -124,10 +124,10 @@ public static class ArticleHelper
     public static Dictionary<long, ArticleDeletion> GetArticleDeletionDic()
     {
          const string queryTreadModSql = @"SELECT DISTINCT b.tid AS Id,b.uid AS DeleterId,b.dateline AS DeletionDateInt,b.reason AS DeletionReason FROM
-                                                (SELECT tid,MAX(dateline) as dateline FROM pre_forum_threadmod
-                                                WHERE action='DEL'
+                                                (SELECT tid,MAX(dateline) as dateline,MIN(uid) as uid FROM pre_forum_threadmod
+                                                WHERE action='DEL'-- AND tid = 14348509
                                                 GROUP BY tid) a
-                                                INNER JOIN pre_forum_threadmod b ON a.tid = b.tid AND a.dateline = b.dateline";
+                                                INNER JOIN pre_forum_threadmod b ON a.tid = b.tid AND a.dateline = b.dateline AND a.uid = b.uid";
          
          Dictionary<long, ArticleDeletion> articleDeletionDic = null!;
 
