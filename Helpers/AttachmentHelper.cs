@@ -1,4 +1,7 @@
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
+using System.Web;
 using Dapper;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
@@ -17,6 +20,16 @@ public static class AttachmentHelper
                                             Setting.COPY_ENTITY_SUFFIX;
 
     public static readonly int[] TableNumbers = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    
+    
+    private static readonly Regex FileNameRegex = new("[ [\\]]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Dictionary<string, string> FileNameReplaceDic = new()
+                                                                            {
+                                                                                { " ", "&nbsp;" },
+                                                                                { "[", "&#91;" },
+                                                                                { "]", "5&#93;" }
+                                                                            };
 
     private const string IMAGE_TAG = "img";
     private const string FILE_TAG = "file";
@@ -60,7 +73,7 @@ public static class AttachmentHelper
         return (pathIdDic, attachmentDic);
     }
 
-    public static Dictionary<int, Dictionary<int, Dictionary<int, bool>>> GetAttachmentTableDic()
+    public static Dictionary<int, Dictionary<int, Dictionary<int, Attachment>>> GetAttachmentTableDic()
     {
         List<int>? pids = null;
 
@@ -73,14 +86,14 @@ public static class AttachmentHelper
             pids = sqlConnection.Query<int>(getPIdSql, new { tid = Setting.TestTid }).ToList();
         }
 
-        var attachmentTableDic = TableNumbers.ToDictionary(x => x, x => new Dictionary<int, Dictionary<int, bool>>());
+        var attachmentTableDic = TableNumbers.ToDictionary(x => x, x => new Dictionary<int, Dictionary<int, Attachment>>());
 
         CommonHelper.WatchTime(nameof(GetAttachmentTableDic)
                              , () =>
                                {
                                    Parallel.ForEach(TableNumbers, CommonHelper.GetParallelOptions(), (tableNumber) =>
                                                                                                      {
-                                                                                                         var sql = $@"SELECT pid,aid,isimage FROM pre_forum_attachment_{tableNumber}";
+                                                                                                         var sql = $@"SELECT pid,aid,isimage, IF (isimage = FALSE,filename,NULL) AS Name, IF(isimage = FALSE,filesize,NULL) AS Size FROM pre_forum_attachment_{tableNumber}";
 
                                                                                                          if (pids?.Any() ?? false)
                                                                                                              sql += $" where pid in ({string.Join(',', pids)})";
@@ -90,7 +103,7 @@ public static class AttachmentHelper
                                                                                                          var attachmentDic = sqlConnection.Query<Attachment>(sql)
                                                                                                                                           .GroupBy(x => x.Pid)
                                                                                                                                           .ToDictionary(x => x.Key,
-                                                                                                                                                        x => x.ToDictionary(y => y.Aid * 10 + tableNumber, y => y.IsImage));
+                                                                                                                                                        x => x.ToDictionary(y => y.Aid * 10 + tableNumber, y => y));
 
                                                                                                          attachmentTableDic[tableNumber] = attachmentDic;
                                                                                                      });
@@ -99,10 +112,18 @@ public static class AttachmentHelper
         return attachmentTableDic;
     }
 
-    public static string GetBbcode(int aid, bool isImage)
+    public static string GetBbcode(int aid, Attachment attachment)
     {
-        var tag = isImage ? IMAGE_TAG : FILE_TAG;
+        if(attachment.IsImage)
+            return string.Concat("[", IMAGE_TAG, "]", aid, "[/", IMAGE_TAG, "]");
 
-        return string.Concat("[", tag, "]", aid, "[/", tag, "]");
+        if (attachment.Name != null)
+        {
+            attachment.Name = "<" + attachment.Name + ">";
+            attachment.Name = HttpUtility.HtmlEncode(attachment.Name);
+            attachment.Name = FileNameRegex.Replace(attachment.Name, m => FileNameReplaceDic[m.Value]);
+        }
+            
+        return $"[{FILE_TAG}={attachment.Name ?? string.Empty},{attachment.Size}]{aid}[/{FILE_TAG}]";
     }
 }

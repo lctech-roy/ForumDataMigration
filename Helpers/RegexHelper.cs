@@ -34,7 +34,7 @@ public static class RegexHelper
     private static readonly Regex IdRegex = new(ID_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex SubjectRegex = new(SUBJECT_PATTERN, RegexOptions.Compiled);
     private static readonly (Dictionary<string, long> pathIdDic, Dictionary<long, List<Attachment>> attachmentDic) ArtifactAttachmentTuple;
-    private static readonly Dictionary<int, Dictionary<int, Dictionary<int, bool>>> AttachmentTableDic;
+    private static readonly Dictionary<int, Dictionary<int, Dictionary<int, Attachment>>> AttachmentTableDic;
 
     static RegexHelper()
     {
@@ -84,12 +84,12 @@ public static class RegexHelper
 
             sourceAttachmentSb.AppendValueLine(isComment ? sourceId * 10 : sourceId, newAid, creationDate, memberId, creationDate, memberId, 0);
 
-            var isImage = attachmentDic[newAid];
+            var attachment = attachmentDic[newAid];
 
             //避免產生重複的attachmentId
             attachmentDic.Remove(newAid);
 
-            return AttachmentHelper.GetBbcode(newAid, isImage);
+            return AttachmentHelper.GetBbcode(newAid, attachment);
         }
 
         string GetUrlBbcode(Match match, int tableNumber, int pid, long? sourceId, long memberId, DateTimeOffset creationDate, StringBuilder attachmentSb, StringBuilder sourceAttachmentSb, bool isComment)
