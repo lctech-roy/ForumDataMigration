@@ -45,6 +45,7 @@ public class ArticleRatingMigration
 
     private static readonly ConcurrentDictionary<(int tid, int uid), (long, List<byte>)> RatingIdDic = new();
     private static readonly HashSet<long> ArticleIdHash = RelationContainer.GetArticleIdHash();
+    private static readonly HashSet<long> ProhibitMemberIdHash = MemberHelper.GetProhibitMemberIdHash();
 
     public ArticleRatingMigration(ISnowflake snowflake)
     {
@@ -105,6 +106,9 @@ public class ArticleRatingMigration
             if (memberId == default)
                 continue;
 
+            if (ProhibitMemberIdHash.Contains(memberId))
+                continue;
+            
             var rateCreateDate = DateTimeOffset.FromUnixTimeSeconds(rateLog.Dateline);
 
             if (!RatingIdDic.ContainsKey((rateLog.Tid, rateLog.Uid)))

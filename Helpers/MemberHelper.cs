@@ -24,13 +24,13 @@ public class MemberHelper
     }
 
     ///<summary>
-    ///封鎖帳號
+    ///封鎖帳號,禁止發言
     ///</summary>
     public static HashSet<long> GetProhibitMemberIdHash()
     {
         const string sql = @"SELECT m.""Id"" FROM ""MemberGroup"" mg 
         INNER JOIN ""Member"" m ON m.""Id""  = mg.""Id"" 
-        WHERE ""GroupId"" = 202359554410496";
+        WHERE ""GroupId"" = 5 OR ""GroupId"" = 4";
 
         var hashSet = CommonHelper.WatchTime(nameof(GetProhibitMemberIdHash)
                                        , () =>
