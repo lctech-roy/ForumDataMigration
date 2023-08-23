@@ -31,6 +31,7 @@ public class ArticleRatingMigration
 
     private const string COPY_RATING_SQL = $"COPY \"{nameof(ArticleRating)}\" " +
                                            $"(\"{nameof(ArticleRating.Id)}\",\"{nameof(ArticleRating.ArticleId)}\",\"{nameof(ArticleRating.VisibleType)}\",\"{nameof(ArticleRating.Content)}\"" +
+                                           $",\"{nameof(ArticleRating.DeleteStatus)}\",\"{nameof(ArticleRating.DeletionDate)}\",\"{nameof(ArticleRating.DeleterId)}\"" +
                                            Setting.COPY_ENTITY_SUFFIX;
 
     private const string COPY_RATING_ITEM_SQL = $"COPY \"{nameof(ArticleRatingItem)}\" " +
@@ -58,7 +59,7 @@ public class ArticleRatingMigration
 
         Directory.CreateDirectory(POST0_RATING_PATH);
         Directory.CreateDirectory(POST0_RATING_ITEM_PATH);
-        
+
         var periods = PeriodHelper.GetPeriods();
 
         var post0Sql = string.Concat(string.Format(QUERY_RATE_SQL, ""), QUERY_RATE_SQL_DATE_CONDITION, QUERY_RATE_SQL_GROUP);
@@ -106,9 +107,6 @@ public class ArticleRatingMigration
             if (memberId == default)
                 continue;
 
-            if (ProhibitMemberIdHash.Contains(memberId))
-                continue;
-            
             var rateCreateDate = DateTimeOffset.FromUnixTimeSeconds(rateLog.Dateline);
 
             if (!RatingIdDic.ContainsKey((rateLog.Tid, rateLog.Uid)))
@@ -117,19 +115,30 @@ public class ArticleRatingMigration
 
                 RatingIdDic.TryAdd((rateLog.Tid, rateLog.Uid), (ratingId, new List<byte> { rateLog.Extcredits }));
 
+                var isDeleted = ProhibitMemberIdHash.Contains(memberId);
+
                 var rating = new ArticleRating()
                              {
                                  Id = ratingId,
                                  ArticleId = rateLog.Tid,
                                  VisibleType = VisibleType.Public,
                                  Content = rateLog.Reason,
+                                 DeleteStatus = DeleteStatus.None,
                                  CreationDate = rateCreateDate,
                                  CreatorId = memberId,
                                  ModificationDate = rateCreateDate,
                                  ModifierId = memberId,
                              };
 
-                ratingSb.AppendValueLine(rating.Id, rating.ArticleId, (int) rating.VisibleType, rating.Content.ToCopyText(),
+                if (ProhibitMemberIdHash.Contains(memberId))
+                {
+                    rating.DeleteStatus = DeleteStatus.Deleted;
+                    rating.DeletionDate = rating.CreationDate;
+                    rating.DeleterId = 0;
+                }
+
+                ratingSb.AppendValueLine(rating.Id, rating.ArticleId, (int)rating.VisibleType, rating.Content.ToCopyText(),
+                                         (int)rating.DeleteStatus, rating.DeletionDate.ToCopyValue(), rating.DeleterId.ToCopyValue(),
                                          rating.CreationDate, rating.CreatorId, rating.ModificationDate, rating.ModifierId, rating.Version);
 
                 var ratingItem = new ArticleRatingItem()
