@@ -15,6 +15,7 @@ var serviceCollection = new ServiceCollection();
 
 // 2. 註冊服務
 serviceCollection.AddSingleton<ISnowflake>(_ => new SnowflakeJavaScriptSafeInteger((uint)new Random().Next(1, 31)));
+serviceCollection.AddSingleton<MigrationCheck>();
 serviceCollection.AddSingleton<Migration>();
 serviceCollection.AddSingleton<AttachmentMigration>();
 serviceCollection.AddSingleton<ArticleMigration>();
@@ -46,6 +47,7 @@ Directory.CreateDirectory(Setting.INSERT_DATA_PATH);
 Directory.CreateDirectory(Setting.INSERT_DATA_PATH + "/Error");
 
 // 3. 執行主服務
+var migrationCheck = serviceProvider.GetRequiredService<MigrationCheck>();
 var migration = serviceProvider.GetRequiredService<Migration>();
 
 var attachmentMigration = serviceProvider.GetRequiredService<AttachmentMigration>();
@@ -68,14 +70,17 @@ var token = new CancellationTokenSource().Token;
 Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
+// 1.檢核Article必要資料表：
+// await CommonHelper.WatchTimeAsync(nameof(migrationCheck), async () => await migrationCheck.CheckAsync(token));
+
 // 2.附件
 // await CommonHelper.WatchTimeAsync(nameof(attachmentMigration), async () => await attachmentMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), () => migration.ExecuteAttachmentAsync());
 
 // 3.文章,留言
-// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
-// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
-// await CommonHelper.WatchTimeAsync(nameof(CommentMigration), async () => await commentMigration.MigrationAsync(token)); 
+await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(commentMigration), async () => await commentMigration.MigrationAsync(token)); 
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
 // 3.1. 留言Attachment CommentId extend data
@@ -107,7 +112,7 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteMemberBagAsync), async () => await migration.ExecuteMemberBagAsync());
 
 //7.敏感字
-// await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await participleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await par`ticipleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteParticipleAsync), async () => await migration.ExecuteParticipleAsync());
 
 //8.1128黑名單

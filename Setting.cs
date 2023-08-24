@@ -22,13 +22,20 @@ public static class Setting
     // private const string HOST = "104.199.140.32";
     // private const string USER_NAME = "postgres";
     // private const string PASSWORD = "fybfe9-xaTdon-dozziw";
+    // private const string PORT = "5432";
     
     //v2 stage
-    private const string HOST = "34.81.88.250";
-    private const string USER_NAME = "jkforum";
-    private const string PASSWORD = "5vvJumLnhFnu";
+    private const string HOST = "35.189.163.100";
+    private const string USER_NAME = "postgres";
+    private const string PASSWORD = "Vc&v_|3x@7Z>l2J1";
+    private const string PORT = "30151";
     
-    private const string PORT = "5432";
+    //v2 prod
+    // private const string HOST = "34.81.88.250";
+    // private const string USER_NAME = "jkforum";
+    // private const string PASSWORD = "5vvJumLnhFnu";
+    // private const string PORT = "5432";
+
     public const string NEW_FORUM_CONNECTION = $"Host={HOST};Port={PORT};Username={USER_NAME};Password={PASSWORD};Database=lctech_jkf_forum;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_COMMENT_CONNECTION = $"Host={HOST};Port={PORT};Username={USER_NAME};Password={PASSWORD};Database=lctech_comment;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";
     public const string NEW_GAME_CENTER_CONNECTION = $"Host={HOST};Port={PORT};Username={USER_NAME};Password={PASSWORD};Database=lctech_jkf_gamecenter;Timeout=1024;CommandTimeout=1800;Maximum Pool Size=80;SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true";

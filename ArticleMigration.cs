@@ -25,10 +25,11 @@ public class ArticleMigration
                                        $",\"{nameof(Article.ShareCount)}\",\"{nameof(Article.ImageCount)}\",\"{nameof(Article.VideoCount)}\",\"{nameof(Article.DonatePoint)}\"" +
                                        $",\"{nameof(Article.HighlightColor)}\",\"{nameof(Article.ReadPermission)}\",\"{nameof(Article.ContentSummary)}\"" +
                                        $",\"{nameof(Article.CommentVisibleType)}\",\"{nameof(Article.LikeCount)}\",\"{nameof(Article.UnlockHideCount)}\",\"{nameof(Article.Ip)}\"" +
-                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\",\"{nameof(Article.VisibleTime)}\",\"{nameof(Article.KeywordModificationDate)}\"" +
-                                       $",\"{nameof(Article.HideBbCodeExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
-                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\",\"{nameof(Article.HotScore)}\"" +
-                                       $",\"{nameof(Article.DeletionDate)}\",\"{nameof(Article.DeleterId)}\",\"{nameof(Article.DeletionReason)}\"" +
+                                       $",\"{nameof(Article.Price)}\",\"{nameof(Article.AuditorId)}\",\"{nameof(Article.AuditFloor)}\",\"{nameof(Article.PublishDate)}\",\"{nameof(Article.VisibleTime)}\"" +
+                                       $",\"{nameof(Article.KeywordModificationDate)}\",\"{nameof(Article.HideBbCodeExpirationDate)}\",\"{nameof(Article.PinExpirationDate)}\"" +
+                                       $",\"{nameof(Article.Recommend)}\",\"{nameof(Article.RecommendExpirationDate)}\",\"{nameof(Article.HighlightExpirationDate)}\"" +
+                                       $",\"{nameof(Article.CommentDisabledExpirationDate)}\",\"{nameof(Article.InVisibleArticleExpirationDate)}\",\"{nameof(Article.Signature)}\",\"{nameof(Article.FreeType)}\"" +
+                                       $",\"{nameof(Article.HotScore)}\",\"{nameof(Article.DeletionDate)}\",\"{nameof(Article.DeleterId)}\",\"{nameof(Article.DeletionReason)}\"" +
                                        Setting.COPY_ENTITY_SUFFIX;
 
     private const string ARTICLE_ATTACHMENT_PREFIX = $"COPY \"{nameof(ArticleAttachment)}\" " +
@@ -307,6 +308,8 @@ public class ArticleMigration
         article.VisibleTime = article.DeleteStatus == DeleteStatus.Deleted ? Constants.ArticleDeleteVisibleTime.ToUnixTimeSeconds() : 
                               article.VisibleType == VisibleType.Hidden ? Constants.ArticleVisibleHideVisibleTime.ToUnixTimeSeconds() : article.PublishDate.ToUnixTimeSeconds();
 
+        article.Recommend = article.RecommendExpirationDate != null;
+        
         if (article.DeleteStatus == DeleteStatus.Deleted)
         {
             var articleDeletion = ArticleDeletionDic!.GetValueOrDefault(article.Id, null);
@@ -344,7 +347,7 @@ public class ArticleMigration
                                   article.ReadPermission, article.ContentSummary.ToCopyText(), (int)article.CommentVisibleType, article.LikeCount, article.UnlockHideCount,
                                   article.Ip, article.Price.ToCopyValue(), article.AuditorId.ToCopyValue(), article.AuditFloor.ToCopyValue(), article.PublishDate,
                                   article.VisibleTime, article.KeywordModificationDate, article.HideBbCodeExpirationDate.ToCopyValue(), article.PinExpirationDate.ToCopyValue(),
-                                  article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
+                                  article.Recommend,article.RecommendExpirationDate.ToCopyValue(), article.HighlightExpirationDate.ToCopyValue(), article.CommentDisabledExpirationDate.ToCopyValue(),
                                   article.InVisibleArticleExpirationDate.ToCopyValue(), article.Signature, (int)article.FreeType, article.HotScore,
                                   article.DeletionDate.ToCopyValue(),article.DeleterId.ToCopyValue(),article.DeletionReason.ToCopyText(),
                                   article.CreationDate, article.CreatorId, article.ModificationDate, article.ModifierId, article.Version);
