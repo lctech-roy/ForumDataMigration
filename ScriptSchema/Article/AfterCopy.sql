@@ -37,16 +37,6 @@ ALTER TABLE "ArticleMassageHistory" ADD CONSTRAINT "FK_ArticleMassageHistory_Art
 ANALYZE "Article";
 ANALYZE "ArticleAttachment";
 
---TEMP
--- UPDATE "Article"
--- SET "Recommend" =
---         CASE WHEN "RecommendExpirationDate" IS NULL
---                  THEN FALSE
---              ELSE TRUE
---             END
--- ;
-
-
 --刪除重複的資料
 -- DELETE FROM "Article"
 -- WHERE ctid IN (SELECT MIN(ctid) as ctid
