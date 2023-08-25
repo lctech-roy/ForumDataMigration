@@ -8,7 +8,6 @@ using Lctech.Comment.Domain.Entities;
 using Lctech.Comment.Enums;
 using Lctech.Jkf.Forum.Core.Models;
 using MySqlConnector;
-using Netcorext.Algorithms;
 using Polly;
 
 namespace ForumDataMigration;
@@ -49,14 +48,6 @@ public class CommentMigration
                                                 LEFT JOIN `pre_forum_post{0}` AS post ON post.tid = thread.tid
                                                 LEFT JOIN pre_forum_poststick AS postStick ON postStick.tid = post.tid AND postStick.pid = post.pid
                                                 WHERE thread.posttableid = @postTableId AND thread.dateline >= @Start AND thread.dateline < @End AND thread.displayorder >= -3";
-
-    private readonly ISnowflake _snowflake;
-    private static readonly ISnowflake AttachmentSnowflake = new SnowflakeJavaScriptSafeInteger(2);
-
-    public CommentMigration(ISnowflake snowflake)
-    {
-        _snowflake = snowflake;
-    }
 
     public async Task MigrationAsync(CancellationToken cancellationToken)
     {
@@ -362,8 +353,8 @@ public class CommentMigration
             {
                 commentExtendDataSb.AppendValueLine(commentReplyId, Constants.EXTEND_DATA_DELETION_DATE_KEY, commentReply.CreationDate.ToUniversalTime().ToString("O"),
                                                     commentReply.CreationDate, 0, commentReply.CreationDate, 0, 0);
-                commentExtendDataSb.AppendValueLine(commentId, Constants.EXTEND_DATA_DELETER_ID_KEY, "0",
-                                                    comment.CreationDate, 0, comment.CreationDate, 0, 0);
+                commentExtendDataSb.AppendValueLine(commentReplyId, Constants.EXTEND_DATA_DELETER_ID_KEY, "0",
+                                                    commentReply.CreationDate, 0, commentReply.CreationDate, 0, 0);
             }
         }
     }
