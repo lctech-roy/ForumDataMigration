@@ -14,11 +14,6 @@ CREATE INDEX IF NOT EXISTS "IX_Attachment_DeleteStatus" ON "Attachment" ("Delete
 CREATE INDEX IF NOT EXISTS "IX_Attachment_CreationDate" ON "Attachment" ("CreationDate");
 CREATE INDEX IF NOT EXISTS "IX_Attachment_ContentType" ON "Attachment" ("ContentType");
 
-DROP INDEX IF EXISTS "IX_Attachment_Extension";
-DROP INDEX IF EXISTS "IX_Attachment_DeleteStatus";
-DROP INDEX IF EXISTS "IX_Attachment_CreationDate";
-DROP INDEX IF EXISTS "IX_Attachment_ContentType";
-
 CREATE INDEX IF NOT EXISTS "IX_AttachmentExtendData_Key" ON "AttachmentExtendData" ("Key");
 CREATE INDEX IF NOT EXISTS "IX_AttachmentExtendData_Value" ON "AttachmentExtendData" ("Value");
 
