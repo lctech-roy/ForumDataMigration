@@ -78,8 +78,7 @@ public class Migration
 
             await Task.WhenAll(removeArticleTask, removeAttachmentTask);
         }
-
-
+        
         var task = new Task(() =>
                             {
                                 foreach (var period in periods)
@@ -87,7 +86,7 @@ public class Migration
                                     FileHelper.ExecuteAllSqlFiles($"{articlePath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
                                 }
                             });
-
+        
         var articleAttachmentTask = new Task(() =>
                                              {
                                                  foreach (var period in periods)
@@ -95,7 +94,7 @@ public class Migration
                                                      FileHelper.ExecuteAllSqlFiles($"{articleAttachmentPath}/{period.FolderName}", Setting.NEW_FORUM_CONNECTION);
                                                  }
                                              });
-
+        
         var attachmentTask = new Task(() =>
                                       {
                                           foreach (var period in periods)
@@ -103,11 +102,11 @@ public class Migration
                                               FileHelper.ExecuteAllSqlFiles($"{attachmentPath}/{period.FolderName}", Setting.NEW_ATTACHMENT_CONNECTION);
                                           }
                                       });
-
+        
         task.Start();
         articleAttachmentTask.Start();
         attachmentTask.Start();
-
+        
         await Task.WhenAll(task, articleAttachmentTask, attachmentTask);
 
         Console.WriteLine($"{nameof(ExecuteArticleAsync)} Done!");
@@ -197,7 +196,6 @@ public class Migration
         const string commentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Comment)}";
         const string commentExtendDataPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentExtendData)}";
         const string commentAttachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(CommentAttachment)}";
-
         const string attachmentPath = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Comment)}";
 
         // const string commentSchemaPath = $"{SCHEMA_PATH}/{nameof(Comment)}";
@@ -230,7 +228,8 @@ public class Migration
 
             await Task.WhenAll(removeComment, removeCommentExtendDataTask);
         }
-
+        
+        
         var commentTask = new Task(() =>
                                    {
                                        foreach (var period in periods)
@@ -260,10 +259,10 @@ public class Migration
         commentAttachmentTask.Start();
         // attachmentTask.Start();
 
-        // attachmentTask.Start();
-
         await Task.WhenAll(commentTask, commentExtendDataTask, commentAttachmentTask);
 
+        FileHelper.ExecuteAllSqlFiles(Setting.VIDEO_ATTACHMENT_EXTEND_DATA_PATH, Setting.NEW_ATTACHMENT_CONNECTION);
+        
         // await using (var cn = new NpgsqlConnection(Setting.NEW_COMMENT_CONNECTION))
         //     await cn.ExecuteCommandByPathAsync($"{commentSchemaPath}/{AFTER_FILE_NAME}", token);
     }

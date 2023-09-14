@@ -32,7 +32,7 @@ public static class StringExtension
         var sb = new StringBuilder(str);
 
         sb.Replace(Setting.D, "");
-        sb.Replace("\\", "\\\\");
+        sb.Replace("\\", @"\\");
         sb.Replace("\r", "\\r");
         sb.Replace("\n", "\\n");
         sb.Replace("\u0000", "");

@@ -5,12 +5,14 @@ using ForumDataMigration.Extensions;
 using ForumDataMigration.Helper;
 using ForumDataMigration.Helpers;
 using ForumDataMigration.Models;
+using Lctech.Attachment.Core.Domain.Entities;
 using Lctech.Jkf.Forum.Core.Models;
 using Lctech.Jkf.Forum.Domain.Entities;
 using Lctech.Jkf.Forum.Enums;
 using MySqlConnector;
 using Netcorext.Algorithms;
 using Polly;
+using Attachment = ForumDataMigration.Models.Attachment;
 
 namespace ForumDataMigration;
 
@@ -35,6 +37,8 @@ public class ArticleMigration
     private const string ARTICLE_ATTACHMENT_PREFIX = $"COPY \"{nameof(ArticleAttachment)}\" " +
                                                      $"(\"{nameof(ArticleAttachment.Id)}\",\"{nameof(ArticleAttachment.AttachmentId)}\"" + Setting.COPY_ENTITY_SUFFIX;
 
+    private const string COPY_ATTACHMENT_EXTEND_DATA_PREFIX = $"COPY \"{nameof(AttachmentExtendData)}\" (\"{nameof(AttachmentExtendData.Id)}\",\"{nameof(AttachmentExtendData.Key)}\",\"{nameof(AttachmentExtendData.Value)}\"" + Setting.COPY_ENTITY_SUFFIX;
+    
     private static readonly HashSet<long> BoardIdHash = RelationHelper.GetBoardIdHash();
     private static readonly HashSet<long> CategoryIdHash = RelationHelper.GetCategoryIdHash();
     private static readonly HashSet<long> ProhibitMemberIdHash = MemberHelper.GetProhibitMemberIdHash();
@@ -61,7 +65,7 @@ public class ArticleMigration
     private const string ARTICLE_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Article)}";
     private const string ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(Attachment)}_{nameof(Article)}";
     private const string ARTICLE_ATTACHMENT_PATH = $"{Setting.INSERT_DATA_PATH}/{nameof(ArticleAttachment)}";
-
+    
     private const string QUERY_ARTICLE_SQL = @"SELECT thread.tid,post.pid,post.invisible,thread.special
                                               ,postDelay.post_time AS postTime,thread.subject,post.message,thread.views
                                               ,thread.replies,thread.fid,thread.typeid,post.dateline
@@ -165,6 +169,8 @@ public class ArticleMigration
                 throw;
             }
         }
+        
+        FileHelper.WriteToFile(Setting.VIDEO_ATTACHMENT_EXTEND_DATA_PATH, $"{nameof(Setting.VIDEO_ATTACHMENT_EXTEND_DATA)}.sql", COPY_ATTACHMENT_EXTEND_DATA_PREFIX, RegexHelper.VideoAttachmentExtendDataSb);
     }
 
     private static async Task ExecuteAsync(List<ArticlePost> posts, int postTableId, Period period, CancellationToken cancellationToken = default)

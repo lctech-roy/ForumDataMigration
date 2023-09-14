@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ForumDataMigration.Extensions;
 using ForumDataMigration.Models;
+using Lctech.Jkf.Forum.Core.Models;
 
 namespace ForumDataMigration.Helpers;
 
@@ -35,6 +36,7 @@ public static class RegexHelper
     private static readonly Regex SubjectRegex = new(SUBJECT_PATTERN, RegexOptions.Compiled);
     private static readonly (Dictionary<string, long> pathIdDic, Dictionary<long, List<Attachment>> attachmentDic) ArtifactAttachmentTuple;
     private static readonly Dictionary<int, Dictionary<int, Dictionary<int, Attachment>>> AttachmentTableDic;
+    public static StringBuilder VideoAttachmentExtendDataSb = new();
 
     static RegexHelper()
     {
@@ -146,7 +148,9 @@ public static class RegexHelper
                 attachment.ModifierId = memberId;
 
                 attachmentSb.AppendAttachmentValue(attachment);
-
+                VideoAttachmentExtendDataSb.AppendValueLine(attachment.Id, Constants.EXTEND_DATA_ARTICLE_ID, sourceId.Value,
+                                                       attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
+                
                 sourceAttachmentSb.AppendValueLine(isComment ? sourceId * 10 : sourceId, attachment.Id,
                                                    attachment.CreationDate, attachment.CreatorId, attachment.ModificationDate, attachment.ModifierId, attachment.Version);
             }

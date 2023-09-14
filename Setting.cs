@@ -1,5 +1,6 @@
-using ForumDataMigration.Models;
+using Lctech.Attachment.Core.Domain.Entities;
 using Netcorext.EntityFramework.UserIdentityPattern.Entities;
+using Attachment = ForumDataMigration.Models.Attachment;
 
 namespace ForumDataMigration;
 
@@ -54,6 +55,8 @@ public static class Setting
     public const string FORUM_ATTACHMENT_PATH = "data/attachment/forum/";
     public const string INSERT_DATA_PATH = "../../../ScriptInsert";
     public const string ATTACHMENT_PATH = $"{INSERT_DATA_PATH}/{nameof(Attachment)}";
+    public const string VIDEO_ATTACHMENT_EXTEND_DATA = $"Viedo{nameof(AttachmentExtendData)}";
+    public const string VIDEO_ATTACHMENT_EXTEND_DATA_PATH = $"{INSERT_DATA_PATH}/{VIDEO_ATTACHMENT_EXTEND_DATA}";
 
     public const string COPY_ENTITY_SUFFIX = $",\"{nameof(Entity.CreationDate)}\",\"{nameof(Entity.CreatorId)}\",\"{nameof(Entity.ModificationDate)}\",\"{nameof(Entity.ModifierId)}\",\"{nameof(Entity.Version)}\") " +
                                              $"FROM STDIN (DELIMITER '{D}')\n";
