@@ -13,6 +13,7 @@ public static class BbCodeRegexExtensions
     private static readonly Regex FreeContentRegex = new(FREE_CONTENT_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex UrlRegex = new(URL_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex FontRegex = new(FONT_PATTERN, RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ContentRegex = new(@"^(?!\s*$).+\s", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
     public static string RemoveHideContent(this string content)
     {
@@ -23,7 +24,7 @@ public static class BbCodeRegexExtensions
     {
         return FreeContentRegex.Matches(content).FirstOrDefault()?.Groups[2].Value ?? string.Empty;
     }
-    
+
     public static string GetContentSummary(this string content)
     {
         var result = UrlRegex.Replace(content, "");
@@ -31,5 +32,19 @@ public static class BbCodeRegexExtensions
         result = result[..(result.Length >= 200 ? 200 : result.Length)];
 
         return result;
+    }
+    
+    public static string GetTitle(this string content)
+    {
+        var breakLine = Environment.NewLine.ToCharArray();
+
+        content = content.Trim().TrimStart(breakLine);
+
+        var result = ContentRegex.Match(content).ToString().TrimEnd(breakLine);
+        
+        result = UrlRegex.Replace(result, "");
+        result = FontRegex.Replace(result, "");
+
+        return result.Length > 40 ? result[..40] : result;
     }
 }
