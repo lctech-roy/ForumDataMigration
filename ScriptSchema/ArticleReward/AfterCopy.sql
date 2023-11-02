@@ -5,3 +5,5 @@ ALTER TABLE "ArticleReward"
     SET LOGGED;
 
 ANALYZE "ArticleReward";
+
+UPDATE "Article" SET "Price" = 0 WHERE "Type" = 3;
