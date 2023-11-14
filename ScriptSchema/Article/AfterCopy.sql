@@ -33,6 +33,7 @@ ALTER TABLE "ArticleMassageReviewHistory" ADD CONSTRAINT "FK_ArticleMassageRevie
 ALTER TABLE "ArticleMassageCommentViolationHistory" ADD CONSTRAINT "FK_ArticleMassageCommentViolationHistory_Article_ArticleId" FOREIGN KEY ("ArticleId") REFERENCES "Article" ("Id");
 ALTER TABLE "ArticleFile" ADD CONSTRAINT "FK_ArticleFile_Article_ArticleId" FOREIGN KEY ("ArticleId") REFERENCES "Article" ("Id") ON DELETE CASCADE;
 ALTER TABLE "ArticleMassageHistory" ADD CONSTRAINT "FK_ArticleMassageHistory_Article_ArticleId" FOREIGN KEY ("ArticleId") REFERENCES "Article" ("Id") ON DELETE CASCADE;
+ALTER TABLE "ArticleReward" ADD CONSTRAINT "FK_ArticleReward_Article_Id" FOREIGN KEY ("Id") REFERENCES "Article" ("Id");
 
 ANALYZE "Article";
 ANALYZE "ArticleAttachment";
