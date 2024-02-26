@@ -29,7 +29,6 @@ serviceCollection.AddSingleton<GameItemMigration>();
 serviceCollection.AddSingleton<MemberBagMigration>();
 serviceCollection.AddSingleton<ParticipleMigration>();
 serviceCollection.AddSingleton<ArticleBlackListMemberMigration>();
-serviceCollection.AddSingleton<TaskMigration>();
 
 serviceCollection.AddSingleton<FileExtensionContentTypeProvider>(_ =>
                                                                  {
@@ -63,7 +62,6 @@ var gameItemMigration = serviceProvider.GetRequiredService<GameItemMigration>();
 var memberBagMigration = serviceProvider.GetRequiredService<MemberBagMigration>();
 var participleMigration = serviceProvider.GetRequiredService<ParticipleMigration>();
 var blackListMigration = serviceProvider.GetRequiredService<ArticleBlackListMemberMigration>();
-var taskMigration = serviceProvider.GetRequiredService<TaskMigration>();
 
 var token = new CancellationTokenSource().Token;
 
@@ -78,8 +76,8 @@ Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteAttachmentAsync), () => migration.ExecuteAttachmentAsync());
 
 // 3.文章,留言
-await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
-await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(articleMigration), async () => await articleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async () => await migration.ExecuteArticleAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(commentMigration), async () => await commentMigration.MigrationAsync(token)); 
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteCommentAsync), async () => await migration.ExecuteCommentAsync(token));
 
@@ -112,15 +110,11 @@ await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleAsync), async (
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteMemberBagAsync), async () => await migration.ExecuteMemberBagAsync());
 
 //7.敏感字
-// await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await par`ticipleMigration.MigrationAsync(token));
+// await CommonHelper.WatchTimeAsync(nameof(participleMigration),async () => await participleMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteParticipleAsync), async () => await migration.ExecuteParticipleAsync());
 
 //8.1128黑名單
 // await CommonHelper.WatchTimeAsync(nameof(blackListMigration),async () => await blackListMigration.MigrationAsync(token));
 // await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteArticleBlackListMemberAsync), async () => await migration.ExecuteArticleBlackListMemberAsync());
-
-//9.任務設定
-// CommonHelper.WatchTime(nameof(TaskMigration), () => taskMigration.Migration());
-// await CommonHelper.WatchTimeAsync(nameof(migration.ExecuteTaskAsync), async () => await migration.ExecuteTaskAsync());
 
 Console.WriteLine("Hello, World!");
